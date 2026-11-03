@@ -10,7 +10,7 @@ Avaliador de artigos científicos. Quem submete envia o PDF de um artigo e receb
 
 O sistema recomenda; não decide sozinho. Risco alto de plágio e pontos sem consenso vão para revisão humana.
 
-> **Situação (03/11/2026):** Etapa 0.1 do M0 em andamento: ambiente `uv`, base Django e configuração centralizada. O restante do M0 está planejado em [M0 — Fundação](planning/2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md).
+> **Situação (03/11/2026):** Etapas 0.1 e 0.2 do M0 implementadas localmente. Os testes que exigem PostgreSQL ainda precisam rodar no CI. O restante do M0 está planejado em [M0 — Fundação](planning/2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md).
 
 ## Como funciona
 

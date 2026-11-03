@@ -11,6 +11,7 @@ ALLOWED_HOSTS = config.allowed_hosts
 CSRF_TRUSTED_ORIGINS = config.csrf_trusted_origins
 
 INSTALLED_APPS = [
+    "attempts.apps.AttemptsConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
