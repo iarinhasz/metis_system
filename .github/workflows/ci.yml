@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_DB: metis
+          POSTGRES_USER: metis
+          POSTGRES_PASSWORD: metis
+        ports:
+          - 5440:5432
+        options: >-
+          --health-cmd "pg_isready -U metis -d metis"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      METIS_SECRET_KEY: ci-only-secret
+      METIS_POSTGRES_HOST: localhost
+      METIS_POSTGRES_PORT: 5440
+      METIS_POSTGRES_DB: metis
+      METIS_POSTGRES_USER: metis
+      METIS_POSTGRES_PASSWORD: metis
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.14
+      - run: uv sync --locked --all-groups
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run mypy metis
+      - run: uv run pytest

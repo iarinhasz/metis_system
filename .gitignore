@@ -1,0 +1,13 @@
+dataset_project/raw/
+dataset_project/processed/
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+staticfiles/
+media/
+raw/

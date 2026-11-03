@@ -10,7 +10,7 @@ Avaliador de artigos científicos. Quem submete envia o PDF de um artigo e receb
 
 O sistema recomenda; não decide sozinho. Risco alto de plágio e pontos sem consenso vão para revisão humana.
 
-> **Situação (25/10/2026):** desenho aprovado; implementação não iniciada. O próximo passo é o marco M0 ([planejamento](planning/2026-10_october/1_desenho_inicial/00_sumario.md)).
+> **Situação (03/11/2026):** Etapa 0.1 do M0 em andamento: ambiente `uv`, base Django e configuração centralizada. O restante do M0 está planejado em [M0 — Fundação](planning/2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md).
 
 ## Como funciona
 
@@ -35,3 +35,15 @@ Django 6 + Django Ninja · Celery + Redis · PostgreSQL 18 + pgvector · Agno 3 
 ## Dados
 
 `dataset_project/` tem o loader do [PeerRead](https://github.com/allenai/PeerRead): artigos de computação com reviews e notas por aspecto. É usado para semear o corpus de similaridade e para calibrar as avaliações. Veja os limites em [01_diagnostico.md](planning/2026-10_october/1_desenho_inicial/01_diagnostico.md#o-peerread-dataset_project).
+
+## Desenvolvimento
+
+Requer Python 3.14 e `uv`. Para preparar o ambiente e executar o servidor Django:
+
+```bash
+uv sync --group dev --group analysis
+cp .env.example .env
+uv run python manage.py check
+```
+
+O grupo `analysis` fornece Jupyter e pandas para o notebook PeerRead. Para iniciar o notebook, use `uv run jupyter lab` e selecione o kernel do ambiente `.venv`.

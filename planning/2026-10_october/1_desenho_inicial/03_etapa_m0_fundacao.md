@@ -1,6 +1,6 @@
 # M0 — Fundação
 
-**Situação:** não iniciado
+**Situação:** Etapa 0.1 implementada localmente; execução dos testes e CI pendente.
 **Objetivo:** esqueleto ponta a ponta. Um PDF submetido passa pelos 5 estágios (stubs) até `done`, com retries, gate humano e reconciliador funcionando
 **Referência:** [Orquestração](../../../docs/orchestration.md), [Modelos de dados](../../../docs/data_models.md), [Infraestrutura](../../../docs/infrastructure.md)
 **Fora daqui:** `LLMCall` e o primeiro agente (M1), Questions (M2), as saídas reais dos estágios, o serviço `grobid` (M1)
