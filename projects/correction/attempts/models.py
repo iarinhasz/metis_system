@@ -10,8 +10,8 @@ from django.db.models import Func
 from django.db.models.functions import Now
 from django.utils import timezone
 
-from attempts.managers import AttemptManagement, RunManagement
-from attempts.status import RunStatus, Stage
+from projects.correction.attempts.managers import AttemptManagement, RunManagement
+from projects.correction.attempts.status import RunStatus, Stage
 
 
 def private_upload_path(instance: Attempt, filename: str) -> str:

@@ -38,7 +38,7 @@ package = false
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-include = ["metis/**/*.py", "attempts/**/*.py", "manage.py"]
+include = ["projects/**/*.py", "manage.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "TID"]
@@ -49,8 +49,9 @@ select = ["E", "F", "I", "UP", "B", "TID"]
 
 [tool.ruff.lint.per-file-ignores]
 "manage.py" = ["TID251"]
-"metis/wsgi.py" = ["TID251"]
-"metis/celery.py" = ["TID251"]
+"projects/correction/manage.py" = ["TID251"]
+"projects/correction/metis/wsgi.py" = ["TID251"]
+"projects/correction/metis/celery.py" = ["TID251"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -62,9 +63,10 @@ strict = true
 exclude = ["dataset_project/"]
 
 [tool.django-stubs]
-django_settings_module = "metis.settings"
+django_settings_module = "projects.correction.metis.settings"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "metis.settings"
+DJANGO_SETTINGS_MODULE = "projects.correction.metis.settings"
+pythonpath = ["."]
 python_files = ["test_*.py"]
 addopts = "-ra"

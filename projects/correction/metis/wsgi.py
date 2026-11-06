@@ -4,6 +4,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "metis.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "projects.correction.metis.settings")
 
 application = get_wsgi_application()

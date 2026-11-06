@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.db.models import Model
 from django.http import HttpRequest
 
-from attempts.models import Article, Attempt, Run, RunEvent
+from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
 
 
 class ReadOnlyModelAdmin(admin.ModelAdmin):  # type: ignore[type-arg]

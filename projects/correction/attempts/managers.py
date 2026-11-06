@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from django.db import models, transaction
 from django.utils import timezone
 
-from attempts.status import (
+from projects.correction.attempts.status import (
     CHECKPOINTS,
     FINAL,
     RECOVERABLE,
@@ -22,7 +22,7 @@ from attempts.status import (
 )
 
 if TYPE_CHECKING:
-    from attempts.models import Article, Attempt, Run
+    from projects.correction.attempts.models import Article, Attempt, Run
 
 
 class InvalidTransition(ValueError):
@@ -61,7 +61,7 @@ class AttemptManagement(models.Manager["Attempt"]):
             sha256=sha256,
             **fields,
         )
-        from attempts.models import Run
+        from projects.correction.attempts.models import Run
 
         Run.objects.supersede_other_attempts(locked_article, attempt)
         return attempt, True
@@ -104,7 +104,7 @@ class RunManagement(models.Manager["Run"]):
         payload: dict[str, Any] | None = None,
         event_key: str,
     ) -> None:
-        from attempts.models import RunEvent
+        from projects.correction.attempts.models import RunEvent
 
         RunEvent.objects.get_or_create(
             event_key=event_key,

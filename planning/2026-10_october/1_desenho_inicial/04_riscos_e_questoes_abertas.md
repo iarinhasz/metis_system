@@ -23,7 +23,7 @@
 |---|---|---|---|
 | Q1 | Quais modelos exatos em cada papel, e de quais provedores a equipe tem chave? | M1 (descrição de figuras); M3 (avaliadores e juiz) | 3 famílias (ex.: Gemini, GPT, Claude) e um juiz forte fixo |
 | Q2 | Qual o orçamento por artigo (tokens + buscas pagas)? | M3 | Medir em 10 artigos no M3 e decidir com o número |
-| Q3 | Como identificar o artigo entre versões? | M0 (etapa 0.3) | `external_id` obrigatório, enviado por quem submete |
+| Q3 | Como identificar o artigo entre versões? | M0 (etapa 0.3) | **Decidido:** `external_id` obrigatório, enviado por quem submete |
 | Q4 | Quem faz a curadoria das Questions, e quais áreas entram no M2? | M2 | A genérica + Computação, Física/Quântica e Saúde |
 | Q5 | Em que idioma sai o relatório? | M3 | No idioma do artigo, com opção de escolher na submissão |
 | Q6 | Como avisar quem submeteu que o relatório ficou pronto? | M3 | Consulta periódica (polling) no início; webhook com `Idempotency-Key` depois |

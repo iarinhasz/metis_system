@@ -1,6 +1,6 @@
 """Cobertura estrutural da máquina de estados."""
 
-from attempts.status import (
+from projects.correction.attempts.status import (
     CHECKPOINTS,
     FINAL,
     RECOVERABLE,

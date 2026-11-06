@@ -4,9 +4,9 @@ from collections.abc import Iterator
 
 import pytest
 
-from attempts.managers import InvalidTransition, RunConflict
-from attempts.models import Article, Attempt, Run
-from attempts.status import STAGES, HumanDecision, RunStatus, Stage
+from projects.correction.attempts.managers import InvalidTransition, RunConflict
+from projects.correction.attempts.models import Article, Attempt, Run
+from projects.correction.attempts.status import STAGES, HumanDecision, RunStatus, Stage
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from metis.config import settings as config
+from projects.correction.metis.config import settings as config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config.secret_key
@@ -11,7 +11,7 @@ ALLOWED_HOSTS = config.allowed_hosts
 CSRF_TRUSTED_ORIGINS = config.csrf_trusted_origins
 
 INSTALLED_APPS = [
-    "attempts.apps.AttemptsConfig",
+    "projects.correction.attempts.apps.AttemptsConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -31,7 +31,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "metis.urls"
+ROOT_URLCONF = "projects.correction.metis.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -46,7 +46,7 @@ TEMPLATES = [
         },
     },
 ]
-WSGI_APPLICATION = "metis.wsgi.application"
+WSGI_APPLICATION = "projects.correction.metis.wsgi.application"
 
 DATABASES = {
     "default": {
@@ -65,4 +65,5 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_ROOT = BASE_DIR / config.media_root
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

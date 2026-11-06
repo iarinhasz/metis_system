@@ -7,8 +7,8 @@ import django.db.models.functions.datetime
 import django.utils.timezone
 from django.db import migrations, models
 
-import attempts.models
-import attempts.status
+import projects.correction.attempts.models
+import projects.correction.attempts.status
 
 
 class Migration(migrations.Migration):
@@ -79,7 +79,12 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("attempt_number", models.PositiveIntegerField()),
-                ("file", models.FileField(upload_to=attempts.models.private_upload_path)),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to=projects.correction.attempts.models.private_upload_path
+                    ),
+                ),
                 ("original_filename", models.CharField(max_length=255)),
                 ("size_bytes", models.PositiveBigIntegerField()),
                 ("sha256", models.CharField(max_length=64)),
@@ -149,7 +154,7 @@ class Migration(migrations.Migration):
                             ("error_unexpected", "error_unexpected"),
                         ],
                         db_index=True,
-                        default=attempts.status.RunStatus["RECEIVED"],
+                        default=projects.correction.attempts.status.RunStatus["RECEIVED"],
                         max_length=40,
                     ),
                 ),

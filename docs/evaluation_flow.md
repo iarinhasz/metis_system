@@ -21,7 +21,7 @@ E1 extração ──▶ E2 perfil ──▶ E3 integridade ──┬── risco
 
 ## 0. Submissão
 
-1. O sistema que submete chama `POST /api/attempts` com o PDF e a identificação do artigo, autenticado por token de serviço.
+1. O sistema que submete chama `POST /api/attempts` como multipart com `file` e `external_id`, autenticado por token de serviço.
 2. A API valida o arquivo: cabeçalho `%PDF-`, tamanho máximo e, no E1, número de páginas.
 3. A API calcula o sha256 do arquivo.
    - **Mesmo artigo e mesmo sha256** → responde **200** com a attempt e o run existentes. Isso torna o reenvio idempotente: um cliente que perdeu a resposta pode repetir a chamada sem criar duplicata.
@@ -105,7 +105,7 @@ Detalhe: [Avaliadores, juiz e consolidação](evaluators_and_judge.md).
 
 | Método | Caminho | Autenticação | O que faz | Marco |
 |---|---|---|---|---|
-| POST | `/api/attempts` | token de serviço | Multipart: `file` (PDF) + identificação do artigo. **202** versão nova, **200** reenvio idêntico | M0 |
+| POST | `/api/attempts` | token de serviço | Multipart: `file` (PDF) + `external_id` obrigatório. **202** versão nova, **200** reenvio idêntico | M0 |
 | GET | `/api/runs/{run_id}` | token de serviço | Status, estágio atual e eventos do run | M0 |
 | POST | `/api/runs/{run_id}/decision` | token de serviço | Decisão do gate (`continue` ou `close`) para quem tiver tela própria; o caminho padrão é o admin | M0 |
 | GET | `/api/runs/{run_id}/report` | token de serviço | Relatório final | M3 |

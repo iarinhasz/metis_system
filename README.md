@@ -10,7 +10,7 @@ Avaliador de artigos científicos. Quem submete envia o PDF de um artigo e receb
 
 O sistema recomenda; não decide sozinho. Risco alto de plágio e pontos sem consenso vão para revisão humana.
 
-> **Situação (03/11/2026):** Etapas 0.1 e 0.2 do M0 implementadas localmente. Os testes que exigem PostgreSQL ainda precisam rodar no CI. O restante do M0 está planejado em [M0 — Fundação](planning/2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md).
+> **Situação (03/11/2026):** Etapas 0.1–0.3 do M0 implementadas localmente. Os testes que exigem PostgreSQL ainda precisam rodar no CI. O restante do M0 está planejado em [M0 — Fundação](planning/2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md).
 
 ## Como funciona
 
@@ -47,3 +47,5 @@ uv run python manage.py check
 ```
 
 O grupo `analysis` fornece Jupyter e pandas para o notebook PeerRead. Para iniciar o notebook, use `uv run jupyter lab` e selecione o kernel do ambiente `.venv`.
+
+O código Django fica em `projects/correction/` (`metis/` e apps de domínio); `dataset_project/` mantém os dados e a análise PeerRead separados.

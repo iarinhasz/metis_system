@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from metis.config import MetisSettings
+from projects.correction.metis.config import MetisSettings
 
 
 @pytest.mark.parametrize(
