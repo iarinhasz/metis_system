@@ -1,0 +1,45 @@
+# Riscos e questões abertas
+
+Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../2026-10_october/1_desenho_inicial/04_riscos_e_questoes_abertas.md). Aqui estão revistos, com os novos.
+
+## Riscos
+
+| # | Risco | Impacto | Mitigação | Etapa |
+|---|---|---|---|---|
+| R1 | Custo de LLM por artigo acima do esperado | Inviabiliza o volume | `LLMCall` desde a 1.4; orçamento por run; cache do prefixo; validadores antes do juiz; revisão parcial; o A/B mede | 1.4, 3.13, 6.2 |
+| R2 | Cobertura limitada da similaridade | Plágio não detectado | `coverage` no relatório; obras citadas como candidatas; corpus cresce a cada submissão | 4.3, 4.4 |
+| R3 | Falso positivo de plágio | Acusação injusta | Filtro por citação; regras calibradas; gate humano; nunca rejeição automática | 4.7, 4.10 |
+| R4 | Manuscrito inédito enviado a provedores de LLM | Vazamento | Conferir a retenção da OpenAI e do Google antes do primeiro uso real; embeddings locais; telemetria do Agno desligada; logs sem conteúdo | 1.2, 1.3 |
+| R5 | Esforço de curadoria das Questions | Poucas áreas | Genérica sempre disponível; LLM rascunha; rubric check; 2–3 áreas | 2.6, 2.7, 3.12 |
+| R6 | Calibração limitada ao PeerRead | Notas mal calibradas fora de CS | Dados por área; revisão humana por amostragem; concordância | 6.1 |
+| R7 | APIs externas mudam preço e limite | Custo e falhas | Clientes isolados em `scholarly/`; cache; orçamento | 4.1 |
+| R8 | Agno 3 é recente | Quebra numa atualização | `>=3.1,<4`; spike; uso concentrado em `agents/` e nos `workflow.py`; teste de contrato fora do CI | 1.2, 1.3 |
+| R9 | Extração pesada em CPU | Lentidão | Fila própria, concorrência baixa, cache por sha256 | 1.6, 1.9 |
+| R10 | Prompt injection evolui | Avaliação manipulada | Scan do E1; delimitação no prompt; conferência das evidências; juiz | 1.7, 3.7, 3.8 |
+| R11 | Viés dos modelos (autopreferência, bajulação) | Notas enviesadas | Juiz cruzado (D14); réplica; mediana | 3.8, 3.9 |
+| R12 | Complexidade do modo por seção | Custo e erro não detectado | Checagens entre seções; mapa em todo passe; juiz com o artigo inteiro; A/B | 3.4, 3.13 |
+| R13 | **Novo.** Duas famílias em três slots deixam os erros mais correlacionados | A mediana e o juiz pegam menos erro | Juiz sempre da outra família; slot C de outro tamanho ou geração; concordância A×C medida à parte no A/B; um 3º provedor entra no C só por config | 3.1, 3.13 |
+| R14 | **Novo.** Threads do `Parallel` e dos pools abrem conexões do Django | Conexões esgotadas no Postgres | `bounded_map` fecha a conexão por thread; `ProviderLimiter`; teste com `transaction=True` (D20) | 1.3 |
+| R15 | **Novo.** Agno, Docling ou torch sem suporte a Python 3.14 | Bloqueia o M1 | Spike 1.2; conferir as wheels na 1.6; plano B: imagem 3.13 só nos workers que precisarem | 1.2, 1.6 |
+| R16 | **Novo.** O contrato `ExtractedDocument` muda depois que as fixtures existem | Trilhas A e I quebram | `contract_version`; regenerar as fixtures pelo comando; mudança de contrato avisada no PR | 1.1 |
+| R17 | **Novo.** O E4 não cabe no soft limit da task (25 min) | Estágio morto pelo Celery | Medir na 3.10 e no A/B; ajustar a concorrência; se preciso, dividir o E4 em avaliação e juiz, com um checkpoint novo | 3.10, 3.13 |
+
+## Questões abertas
+
+| # | Pergunta | Situação | Decidir antes de |
+|---|---|---|---|
+| Q1 | Quais modelos em cada papel? | **Parcialmente decidido (D14):** OpenAI e Google; A = GPT, B = Gemini, C = outro modelo de uma das duas; juiz cruzado. Ainda abertos: os ids exatos de cada papel | 1.3 (papéis), 1.8 (`vision`), 3.1 (avaliadores e juízes) |
+| Q2 | Orçamento por artigo | Aberta; medido no A/B | 3.13 |
+| Q3 | Identificação do artigo entre versões | **Decidido:** `external_id` obrigatório | — |
+| Q4 | Curadoria e áreas iniciais | Aberta; proposta: genérica + Computação, Física/Quântica e Saúde | 2.7 |
+| Q5 | Idioma do relatório | Aberta; proposta: idioma do artigo, com opção na submissão | 3.11 |
+| Q6 | Aviso de relatório pronto | Aberta; polling no início | Depois do M3 |
+| Q7 | Retenção de dados (LGPD) | Aberta | Antes de qualquer uso real; 6.4 |
+| Q8 | Revisores humanos no admin | Aberta; proposta: grupo "revisores" | 4.9 |
+| Q9 | Limites de upload e de páginas | 50 MB decidido; páginas a medir no M1 | 6.3 |
+| Q10 | Volume esperado por dia | Aberta | Antes de dimensionar workers |
+| Q11 | Metas numéricas | Abertas; definidas na primeira medição de cada uma | 4.10, 5.6, 6.1 |
+| Q12 | Modo de avaliação padrão | Aberta; decidida pelo A/B | 3.13 |
+| Q13 | Checagens entre seções da primeira versão | Aberta; proposta: promessas × resultados, método × pergunta, figuras × texto | 3.4 |
+| Q14 | Papéis por `paper_type` cobrem os artigos reais? | Aberta | 2.4, 2.7 |
+| Q15 | **Nova.** Quem fica em cada trilha (P, A, I)? | Aberta | Início da fase 1 |

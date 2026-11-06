@@ -55,7 +55,8 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `extracted_document` (M1) | FK para a extração usada |
 | `question` (M2) | FK para a Question resolvida |
 | `profile` (M2) | Perfil do E2: área, confiança, tipo de artigo, idioma, papéis das seções e mapa do documento |
-| `config_snapshot` (M2+) | `ModelSpec`s, versões de prompt, versão da taxonomia, snapshot da Question |
+| `config_snapshot` (M2+) | `ModelSpec`s, versões de prompt, versão da taxonomia, snapshot da Question, modo de avaliação. Num rubric check, leva a Question rascunho |
+| `purpose` (M2) | `evaluation` (padrão), `rubric_check` ou `ab_test`. Só `evaluation` aparece para quem submete e torna outros runs `superseded` (D18) |
 
 **`RunEvent`**: append-only.
 
@@ -109,7 +110,7 @@ Os critérios não são model: ficam em código (`EvaluationConfig`), ver [Perfi
 | Model | Campos principais |
 |---|---|
 | `ReviewRound` | `run`, `evaluator_slot`, `model_spec` (snapshot), `round_number`, `mode` (`sectioned` ou `whole_document`), `observations`, `cross_checks`, `criteria` (sínteses), `changed_items` e as respostas `accept`/`rebut` dos itens revisados. Guarda o estado completo da revisão naquela rodada. Único por (run, slot, rodada) |
-| `JudgeVerdict` | `round`, `item_type` (observação, checagem ou critério), `item_key`, `verdict`, `issues` (categoria, trecho, motivo), `judge_model`. Único por (rodada, tipo, item) |
+| `JudgeVerdict` | `round`, `item_type` (observação, checagem ou critério), `item_key`, `verdict`, `issues` (categoria, trecho, motivo), `source` (`validator` ou `judge`), `judge_model` (vazio quando é validador). Único por (rodada, tipo, item) |
 | `FinalReport` | `run` (1:1), `recommendation`, `total_score`, `agreement`, `content` (JSON completo, ver [Avaliadores e juiz](evaluators_and_judge.md#consolidação-e5)) |
 
 ## Estados do Run

@@ -45,8 +45,9 @@ Toda configuração passa por `metis/config.py` (pydantic-settings, prefixo `MET
 | `METIS_STAGE_SOFT_TIME_LIMIT_SECONDS`, `METIS_STAGE_TIME_LIMIT_SECONDS`, `METIS_BROKER_VISIBILITY_TIMEOUT_SECONDS` | Limites de tempo | M0 |
 | `METIS_RECONCILE_INTERVAL_SECONDS`, `METIS_REPUBLISH_AFTER_SECONDS`, `METIS_STALE_STAGE_AFTER_SECONDS`, `METIS_MAX_REPUBLISH`, `METIS_MAX_STAGE_CLAIMS` | Reconciliador | M0 |
 | `METIS_GROBID_URL` | GROBID | M1 |
-| `METIS_OPENAI_API_KEY`, `METIS_GOOGLE_API_KEY`, `METIS_ANTHROPIC_API_KEY` | Provedores de LLM, passados explicitamente pela `ModelFactory` | M1 |
-| `ModelSpec` por papel (profiler, describer, avaliadores, juiz, meta-revisor) | Qual modelo cumpre cada papel | M1–M3 |
+| `METIS_OPENAI_API_KEY`, `METIS_GOOGLE_API_KEY` | Provedores de LLM, passados explicitamente pela `ModelFactory`. Um 3º provedor (para o slot C) entra com a própria chave | M1 |
+| `ModelSpec` por papel (`evaluator_a`, `evaluator_b`, `evaluator_c`, `judge_openai`, `judge_google`, `meta_reviewer`, `vision`, `fast`, `adjudicator`) | Qual modelo cumpre cada papel (ver [Agentes e workflows](agents.md#modelos-e-papéis)) | M1–M3 |
+| `METIS_LLM_MAX_CONCURRENCY` | Chamadas simultâneas por provedor, por worker (`ProviderLimiter`) | M1 |
 | `METIS_CROSSREF_MAILTO`, `METIS_OPENALEX_API_KEY`, `METIS_SEMANTIC_SCHOLAR_API_KEY`, `METIS_UNPAYWALL_EMAIL` | APIs acadêmicas | M4–M5 |
 | Orçamento por run (tokens, buscas pagas) | Limite de custo | M3–M4 |
 | `AGNO_TELEMETRY=false` | Desliga a telemetria do Agno (lida pelo próprio Agno) | M1 |
@@ -57,7 +58,7 @@ Os valores iniciais e as regras de validação dos tempos estão em [Orquestraç
 
 | Serviço | Precisa de | Observação |
 |---|---|---|
-| Provedores de LLM (3 famílias) | Chave de API de cada um | Conferir a política de retenção de dados: os manuscritos são inéditos |
+| Provedores de LLM (hoje OpenAI e Google; um 3º opcional para o slot C) | Chave de API de cada um | Conferir a política de retenção de dados: os manuscritos são inéditos |
 | OpenAlex | Chave (a grátis dá US$ 1/dia) | Consulta por DOI é grátis; busca é paga |
 | Semantic Scholar | Chave | 1 req/s |
 | Crossref | E-mail (`mailto`) | Pool *polite* |

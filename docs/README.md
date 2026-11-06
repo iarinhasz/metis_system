@@ -2,21 +2,24 @@
 
 Estes documentos descrevem **o desenho aprovado em 25/10/2026**. O código ainda não existe. Quando existir, ele passa a ser a fonte de verdade e estes documentos acompanham as mudanças.
 
-O plano de construção (decisões, marcos, riscos) está em [planning/2026-10_october/1_desenho_inicial](../planning/2026-10_october/1_desenho_inicial/00_sumario.md).
+O plano de construção (decisões, marcos, riscos) está em [planning/2026-10_october/1_desenho_inicial](../planning/2026-10_october/1_desenho_inicial/00_sumario.md). O plano completo, com as etapas de todos os marcos e as trilhas da equipe, está em [planning/2026-11_november/1_plano_completo](../planning/2026-11_november/1_plano_completo/00_sumario.md).
+
+Os caminhos de código citados nos docs (`metis/config.py`, `attempts/`, `agents/`…) são relativos a `projects/correction/`.
 
 ## Ordem recomendada
 
 1. [Arquitetura](architecture.md): componentes, responsabilidades e limites.
-2. [Fluxo de uma avaliação](evaluation_flow.md): o que acontece com um artigo, da submissão ao relatório.
+2. [Fluxo de uma avaliação](evaluation_flow.md): o que acontece com um artigo, da submissão ao relatório. Em diagramas: [Grafo do fluxo](flow_graph.md), com as entidades e as ligações entre elas.
 3. [Orquestração](orchestration.md): como Celery e Agno dividem o trabalho, retries e recuperação.
-4. Os estágios, na ordem do pipeline:
+4. [Agentes e workflows](agents.md): o pacote `agents/`, o catálogo de agentes e o workflow Agno de cada estágio.
+5. Os estágios, na ordem do pipeline:
    1. [Extração](extraction.md)
    2. [Perfil e Questions](questions_and_profiling.md)
    3. [Checagem de integridade](integrity_check.md)
    4. [Avaliadores, juiz e consolidação](evaluators_and_judge.md)
-5. [Modelos de dados](data_models.md): entidades e máquina de estados.
-6. [Infraestrutura](infrastructure.md): serviços do Docker, configuração e chaves.
-7. [Convenções](conventions.md): organização do código, padrões, prompts e testes.
+6. [Modelos de dados](data_models.md): entidades e máquina de estados.
+7. [Infraestrutura](infrastructure.md): serviços do Docker, configuração e chaves.
+8. [Convenções](conventions.md): organização do código, padrões, prompts e testes.
 
 ## Índice
 
@@ -25,6 +28,8 @@ O plano de construção (decisões, marcos, riscos) está em [planning/2026-10_o
 | [Arquitetura](architecture.md) | Componentes, divisão Celery × Agno, apps e regras de dependência, segurança, limites conhecidos |
 | [Fluxo de uma avaliação](evaluation_flow.md) | Submissão, estágios E1–E5, gate humano, versões, reprocessamento, endpoints da API |
 | [Orquestração](orchestration.md) | Estágios e checkpoints, ciclo de uma task, posse do estágio, erros, retries, reconciliador, regras do Agno |
+| [Grafo do fluxo](flow_graph.md) | Diagramas: entidades e como se ligam, o que cada estágio grava e lê, os passos e agentes de cada estágio, estados da execução |
+| [Agentes e workflows](agents.md) | Fronteiras do Agno, pacote `agents/`, modelos e juiz cruzado, catálogo de agentes, workflow por estágio, estado, concorrência, custo, testes |
 | [Extração](extraction.md) | GROBID, Docling, recorte e descrição das figuras, texto oculto, `ExtractedDocument` |
 | [Perfil e Questions](questions_and_profiling.md) | Taxonomia, classificação do artigo, resolução da Question, papéis das seções e mapa do documento, critérios, curadoria |
 | [Checagem de integridade](integrity_check.md) | Fases 0, 1 e 2, regras de risco, relatório, gate, APIs acadêmicas |

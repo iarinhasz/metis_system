@@ -1,6 +1,6 @@
 # Fluxo de uma avaliação
 
-Este documento segue um artigo da submissão ao relatório final. A mecânica de cada passo (claims, retries, recuperação) está em [Orquestração](orchestration.md).
+Este documento segue um artigo da submissão ao relatório final. A mecânica de cada passo (claims, retries, recuperação) está em [Orquestração](orchestration.md), e os diagramas com as entidades e as ligações entre elas em [Grafo do fluxo](flow_graph.md).
 
 ## Visão em uma página
 

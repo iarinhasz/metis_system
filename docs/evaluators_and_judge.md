@@ -61,9 +61,11 @@ Cada papel de seção avalia só os critérios que dependem dele. A tabela é a 
 
 ## Os avaliadores
 
-- **Três slots**, cada um com um `ModelSpec` (provedor, modelo, parâmetros), de **famílias diferentes** (ex.: Gemini, GPT, Claude). A configuração fica nos settings, e o Run guarda um snapshot.
+- **Três slots**, cada um com um `ModelSpec` (provedor, modelo, parâmetros). A configuração fica nos settings, e o Run guarda um snapshot.
+  - Hoje há chave da OpenAI e do Google (D14): A = GPT, B = Gemini, C = outro modelo de uma das duas famílias, de tamanho ou geração diferente.
+  - O slot C troca de provedor só por config (ex.: OpenRouter ou Ollama) quando houver chave de uma 3ª família.
 - **Independência.** Cada avaliador faz os próprios passes, checagens e síntese. Só o mapa do documento é compartilhado, e ele é extraído em código, sem nenhuma opinião.
-- **Por que famílias diferentes:** os erros ficam menos correlacionados. Três execuções do mesmo modelo tendem a errar igual, e aí nem o juiz nem a mediana pegam.
+- **Por que famílias diferentes:** os erros ficam menos correlacionados. Três execuções do mesmo modelo tendem a errar igual, e aí nem o juiz nem a mediana pegam. Com duas famílias em três slots, a correlação é maior (risco R13): o A/B do M3 mede a concordância entre os slots da mesma família à parte.
 
 **Saídas**
 
@@ -101,7 +103,7 @@ Rodam antes do juiz, em cadeia (Chain of Responsibility), sem custo de LLM:
 O juiz **verifica**; não dá nota nem reescreve a avaliação. É ele que tem a visão global, com o artigo inteiro.
 
 - **Uma chamada por avaliador**, com a revisão inteira (observações, checagens e síntese), para pegar contradição entre as partes.
-- **Modelo forte e fixo.** Para evitar viés de autopreferência, a revisão do avaliador da mesma família do juiz vai para um juiz alternativo (regra em `ModelFactory.judge_for(spec)`).
+- **Juiz cruzado, de modelo forte.** Para evitar viés de autopreferência, cada revisão é julgada por um modelo forte da **outra** família: o GPT é julgado pelo Gemini, e o Gemini pelo GPT. O slot C segue a regra da família dele (`ModelFactory.judge_for(spec)`, D14).
 - **Dicas de divergência** calculadas em código: "B deu 2 em soundness; A e C deram 4". Divergência sozinha não invalida.
 - **Checklist:**
 
@@ -132,7 +134,8 @@ O que roda de novo depende de onde está o problema:
 
 ## O loop
 
-- **Limite:** `Loop(max_iterations=2)` no Agno. O `end_condition` consulta o estado persistido (há itens pendentes?).
+- **Forma (D17):** a rodada 1 é validada e julgada antes do loop. Se sobrar item pendente, cada iteração do loop é "revisar → validar → julgar", então a última revisão sempre passa pelo juiz.
+- **Limite:** `Loop(max_iterations=2)` no Agno, dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
 - **Itens que esgotam as rodadas** viram `unresolved`:
   - uma observação `unresolved` sai das sínteses;
   - um critério `unresolved` sai da agregação;
@@ -156,26 +159,23 @@ O que roda de novo depende de onde está o problema:
    - Em seguida, só a síntese de `soundness` roda de novo, e a nota passa a 3.
 5. O juiz valida, não sobra item pendente e o loop termina. Ficam gravadas as duas `ReviewRound` de B e os vereditos de cada rodada.
 
-## Esboço do workflow (Agno 3)
+## Workflow (Agno 3)
 
-```python
-Workflow(name="evaluation", telemetry=False, steps=[
-    Parallel(*[Steps(name=f"evaluator_{s.slot}", steps=[
-                   Step(name=f"sections_{s.slot}", executor=SectionPassStep(s, ctx, deps), max_retries=0),
-                   Step(name=f"cross_checks_{s.slot}", executor=CrossCheckStep(s, ctx, deps), max_retries=0),
-                   Step(name=f"synthesis_{s.slot}", executor=SynthesisStep(s, ctx, deps), max_retries=0),
-               ]) for s in ctx.evaluator_specs], name="evaluators"),
-    Loop(name="judge_loop", max_iterations=settings.MAX_REVISION_ROUNDS, end_condition=no_pending_items(run),
-         steps=[Step(name="judge", executor=JudgeStep(ctx, deps), max_retries=0),
-                Step(name="revise", executor=RevisionStep(ctx, deps), max_retries=0)]),
-    Step(name="consolidate", executor=ConsolidationStep(ctx, deps), max_retries=0),
-])
+```text
+Parallel(evaluator_A, evaluator_B, evaluator_C)      # cada um: passes por seção → checagens → síntese
+validate → judge                                     # rodada 1
+Condition(há pendências,
+    Loop(máx. 2, até não haver pendências,
+         [revise → validate → judge]))               # a última revisão sempre passa pelo juiz
+mark_unresolved
 ```
 
+O esboço em código (E4 e E5), com a tabela do que cada passo lê, grava e pula num retry, está em [Agentes e workflows](agents.md#e4--avaliação-evaluationworkflowpy). Em resumo:
 - **Passes por seção:** rodam dentro do `SectionPassStep`, num pool com limite de concorrência, porque o `Parallel` do Agno não tem limite.
 - **Executors:** classes chamáveis, com as dependências no construtor.
 - **Idempotência:** um passe ou uma síntese que já tem saída na rodada é pulado quando o estágio é retentado.
 - **Agentes:** vêm da `AgentFactory`, criados por execução.
+- **A consolidação é outro estágio** (E5), com o próprio workflow.
 
 ## Consolidação (E5)
 

@@ -1,6 +1,6 @@
 # Metis: desenho inicial e roteiro
 
-**Situação:** desenho aprovado em 25/10/2026, incluindo a avaliação por seção (D13); implementação não iniciada. Próximo passo: o M0 ([03](03_etapa_m0_fundacao.md))
+**Situação:** desenho aprovado em 25/10/2026, incluindo a avaliação por seção (D13). Em 05/11, o [plano completo](../../2026-11_november/1_plano_completo/00_sumario.md) detalhou todos os marcos e acrescentou as decisões D14–D21; este arquivo fica como registro do desenho inicial
 **Data:** 25/10/2026
 **Base:** repositório vazio, exceto `dataset_project/` (loader do PeerRead)
 **Como o sistema funciona:** [docs/](../../../docs/README.md)

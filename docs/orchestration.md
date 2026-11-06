@@ -106,18 +106,16 @@ Todos usam a mesma imagem, com `prefetch_multiplier=1` e `acks_late`.
 
 ## Agno dentro dos estágios
 
-Regras confirmadas na documentação e no código do Agno 3:
+O `execute()` de cada estágio monta o Workflow Agno do estágio e chama `workflow.run()`. O desenho completo (fronteiras, `agents/`, catálogo de agentes, workflow por estágio, estado, concorrência, custo e testes) está em [Agentes e workflows](agents.md). As regras que tocam a orquestração:
 
-- **Construção por task.** `ModelFactory`/`AgentFactory` criam o workflow e os agentes dentro de cada task, nunca como singletons de módulo: o cliente HTTP do modelo fica preso ao event loop em que nasceu. Cada ramo de um `Parallel` recebe uma instância própria de Agent, porque o Agno não copia agentes entre ramos.
+- **Construção por task.** O workflow e os agentes são criados dentro de cada task, nunca como singletons de módulo: o cliente HTTP do modelo fica preso ao event loop em que nasceu. Cada ramo de um `Parallel` recebe uma instância própria de Agent.
 - **Execução síncrona.** `workflow.run()` nos workers prefork. O `background=True` do Agno não é usado: o Celery já é a camada de background.
 - **Configuração:** `Workflow(..., telemetry=False)`, `store_media=False`, `run_id` = id da task Celery.
-- **Saídas tipadas.** Leia do banco ou de `step_input.get_step_output("<step>").content`. O `get_step_content` de um `Parallel` devolve strings.
-- **Fim de `Loop`.** O `end_condition` consulta o estado persistido (itens pendentes), não a lista de outputs; a documentação não garante que ela cubra só a iteração atual.
-- **Parse do `output_schema`.** Se falhar, `response.content` volta como `str`. O validador trata isso como saída inválida.
-- **Concorrência do `Parallel`** é ilimitada (um thread por ramo). Para N figuras ou N passes por seção, use um pool com limite dentro de um passo de função.
+- **Retomada pelo banco.** Um retry do estágio executa o workflow inteiro de novo, e cada passo pula o que já tem saída persistida.
+- **Concorrência com limite.** `Parallel` e os pools rodam em threads; os pools usam `bounded_map`, que fecha a conexão do Django em cada thread, e o `ProviderLimiter` limita as chamadas por provedor.
 - **Workflow, não Team.** O fluxo é determinístico; num Team, o líder LLM decide o que fazer.
 - **O gate fica na máquina de estados**, não no `HumanReview` do Agno: ele atravessa estágios Celery e precisa sobreviver a restart de worker.
-- **O `PostgresDb` do Agno é opcional.** Se usado, fica num schema `agno` no mesmo Postgres, só para inspecionar execuções.
+- **O `PostgresDb` do Agno fica desligado.** Se um dia for usado, fica num schema `agno` no mesmo Postgres, só para inspecionar execuções.
 
 ## Idempotência, camada por camada
 
