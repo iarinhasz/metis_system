@@ -44,8 +44,8 @@ include = ["projects/**/*.py", "manage.py"]
 select = ["E", "F", "I", "UP", "B", "TID"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"os.getenv" = { msg = "Leia variáveis de ambiente somente em metis.config." }
-"os.environ" = { msg = "Leia variáveis de ambiente somente em metis.config." }
+"os.getenv" = { msg = "Leia variáveis de ambiente somente em projects.correction.metis.config." }
+"os.environ" = { msg = "Leia variáveis de ambiente somente em projects.correction.metis.config." }
 
 [tool.ruff.lint.per-file-ignores]
 "manage.py" = ["TID251"]
@@ -70,3 +70,7 @@ DJANGO_SETTINGS_MODULE = "projects.correction.metis.settings"
 pythonpath = ["."]
 python_files = ["test_*.py"]
 addopts = "-ra"
+filterwarnings = [
+    # O STATIC_ROOT só existe depois do collectstatic (na imagem Docker); nos testes, não.
+    "ignore:No directory at:UserWarning",
+]

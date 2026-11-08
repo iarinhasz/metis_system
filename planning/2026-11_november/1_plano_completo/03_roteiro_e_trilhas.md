@@ -26,6 +26,8 @@ A ordem dos marcos continua a do [roteiro de outubro](../../2026-10_october/1_de
 
 ## Trilhas
 
+> **Desde 07/11/2026, as trilhas viraram 4 módulos, um por integrante.** Plataforma e Extração é a antiga P. A antiga A foi dividida em Agentes, Perfil e Relatório e em Avaliação. Integridade é a antiga I. A divisão, a ordem das etapas, as dependências, as branches e o fluxo de PR estão em [divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html) (abra no navegador). As tabelas abaixo ficam como histórico.
+
 | Trilha | Foco | Apps e pacotes |
 |---|---|---|
 | **P** — plataforma e extração | Pipeline, operação, E1, E5 | `pipeline/`, `metis/`, `extraction/`, parte de `evaluation/` (E5) |

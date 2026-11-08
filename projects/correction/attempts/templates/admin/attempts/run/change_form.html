@@ -1,0 +1,36 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  .run-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .run-actions .button { padding: 8px 14px; }
+</style>
+{% endblock %}
+
+{% block object-tools %}
+  {% comment %}
+    O formulário das ações fica fora do formulário de edição (formulários não se aninham);
+    os botões do bloco abaixo apontam para ele pelo atributo form.
+  {% endcomment %}
+  {% if run_panel %}
+    <form id="run-actions" method="post" action="{% url 'admin:attempts_run_action' original.pk %}">{% csrf_token %}</form>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}
+
+{% block field_sets %}
+  {% if run_panel %}
+    <fieldset class="module aligned">
+      <h2>{{ run_panel.title }}</h2>
+      <div class="form-row">
+        <p>{{ run_panel.help }}</p>
+        <div class="run-actions">
+          {% for value, label, style in run_panel.actions %}
+            <button type="submit" form="run-actions" name="action" value="{{ value }}" class="button {{ style }}">{{ label }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </fieldset>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+from kombu import Queue
+
+from projects.correction.attempts.status import QUEUES, STAGES
 from projects.correction.metis.config import settings as config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,6 +15,7 @@ CSRF_TRUSTED_ORIGINS = config.csrf_trusted_origins
 
 INSTALLED_APPS = [
     "projects.correction.attempts.apps.AttemptsConfig",
+    "projects.correction.pipeline.apps.PipelineConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -67,3 +71,18 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = BASE_DIR / config.media_root
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_BROKER_URL = config.redis_url
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": config.broker_visibility_timeout_seconds}
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_SOFT_TIME_LIMIT = config.stage_soft_time_limit_seconds
+CELERY_TASK_TIME_LIMIT = config.stage_time_limit_seconds
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_QUEUES = [Queue(name) for name in QUEUES]
+CELERY_TASK_ROUTES = {spec.task_name: {"queue": spec.queue} for spec in STAGES}
+CELERY_TIMEZONE = TIME_ZONE

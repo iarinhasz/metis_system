@@ -21,6 +21,8 @@ Como o pipeline anda, falha e se recupera. Os estados citados aqui estão defini
 
 O E2 roda na fila `evaluation` porque é uma chamada de LLM, não um parse.
 
+A fila e o nome da task de cada estágio ficam no `STAGES` (`attempts/status.py`). As rotas do Celery (`CELERY_TASK_ROUTES`) e a publicação (`pipeline/publishing.py`) são geradas a partir dele.
+
 ## Ciclo de uma task de estágio
 
 Todas as tasks seguem a mesma base, `StageTask` (Template Method). Cada estágio implementa só o `execute()`:
@@ -39,9 +41,9 @@ claim ──▶ execute() ──▶ complete ──▶ publica o próximo estág
    - se o run está no checkpoint do estágio, passa para o status "rodando" e grava `stage`, `current_task_id` e `stage_started_at`;
    - se já está rodando **com o mesmo id de task**, retoma (é um retry ou uma reentrega);
    - em qualquer outro caso, sai sem efeito.
-2. **`execute()`.** O trabalho do estágio, em código ou num workflow Agno. Cada passo persiste o que produz.
+2. **`execute()`.** O trabalho do estágio, em código ou num workflow Agno. Recebe um `StageContext(run_id, attempt_id, task_id, stage)` e devolve um `StageOutcome(payload, halt)`. Cada passo persiste o que produz.
 3. **Complete.** Só fecha se a task ainda for a dona: status "rodando" + `current_task_id` igual ao dela. Se perdeu a posse no meio do caminho (chegou uma versão nova do artigo, ou o reconciliador liberou o estágio), encerra sem efeito.
-4. **Publicação.** Registra no `on_commit` a task do estágio seguinte, se houver. O E3 pode terminar em `waiting_human_review`, e aí nada é publicado.
+4. **Publicação.** Registra no `on_commit` a task do estágio seguinte, se houver. O E3 pode terminar em `waiting_human_review` (`halt=True` no `StageOutcome`), e aí nada é publicado.
 
 ### Por que a posse é pelo id da task
 
@@ -64,6 +66,21 @@ O Celery mantém o mesmo id da task em `retry()` e na reentrega depois da morte 
 - **Backoff:** exponencial com jitter completo, calculado pelo próprio Celery (`get_exponential_backoff_interval`). Valores iniciais: 3 retries, base de 60 s, teto de 15 min.
 - **Registro:** cada retry gera um `RunEvent` `retry_scheduled` com o erro e o tempo de espera.
 - **Dentro do Agno:** `Step(max_retries=0)`, porque o retry de step do Agno não tem backoff. O retry de uma chamada fica no modelo (`retries` + `exponential_backoff=True`, só para 429/5xx), e o do estágio inteiro fica no Celery.
+
+## Gate humano e reprocessamento
+
+Os casos de uso ficam em `pipeline/services.py` e mudam o status pelo `RunManagement`. A publicação do estágio seguinte sai no `on_commit`, como no ciclo da task.
+
+| Ação | De | Para | Publica |
+|---|---|---|---|
+| Continuar avaliação | `waiting_human_review` | `integrity_checked` | o E4 |
+| Encerrar | `waiting_human_review` | `closed_by_reviewer` | nada |
+| Reprocessar | `error_*`, `waiting_setup` | checkpoint do estágio que falhou | esse estágio |
+
+- **Onde:** na página do run no admin, que mostra só as ações do estado atual. A decisão do gate também tem `POST /api/runs/{id}/decision`.
+- **Fora do estado certo**, a ação é recusada (409 na API, mensagem no admin) e nada muda.
+- **Quem:** no admin, usuário com permissão de alterar o Run. O grupo "revisores" (Q8) entra na 4.9.
+- **Auditoria:** o `RunEvent` da transição grava o ator (`admin:<usuário>` ou `service-api`), a decisão e a nota.
 
 ## Reconciliador
 

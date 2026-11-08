@@ -45,28 +45,61 @@ class StageSpec:
     checkpoint: RunStatus
     running: RunStatus
     completed: RunStatus
+    queue: str
+    task_name: str
 
 
 STAGES = (
-    StageSpec(Stage.EXTRACTION, RunStatus.RECEIVED, RunStatus.EXTRACTING, RunStatus.EXTRACTED),
-    StageSpec(Stage.PROFILING, RunStatus.EXTRACTED, RunStatus.PROFILING, RunStatus.PROFILED),
+    StageSpec(
+        Stage.EXTRACTION,
+        RunStatus.RECEIVED,
+        RunStatus.EXTRACTING,
+        RunStatus.EXTRACTED,
+        queue="extraction",
+        task_name="pipeline.extract_attempt",
+    ),
+    StageSpec(
+        Stage.PROFILING,
+        RunStatus.EXTRACTED,
+        RunStatus.PROFILING,
+        RunStatus.PROFILED,
+        queue="evaluation",
+        task_name="pipeline.profile_attempt",
+    ),
     StageSpec(
         Stage.INTEGRITY,
         RunStatus.PROFILED,
         RunStatus.CHECKING_INTEGRITY,
         RunStatus.INTEGRITY_CHECKED,
+        queue="integrity",
+        task_name="pipeline.check_integrity",
     ),
     StageSpec(
         Stage.EVALUATION,
         RunStatus.INTEGRITY_CHECKED,
         RunStatus.EVALUATING,
         RunStatus.EVALUATED,
+        queue="evaluation",
+        task_name="pipeline.evaluate_attempt",
     ),
-    StageSpec(Stage.CONSOLIDATION, RunStatus.EVALUATED, RunStatus.CONSOLIDATING, RunStatus.DONE),
+    StageSpec(
+        Stage.CONSOLIDATION,
+        RunStatus.EVALUATED,
+        RunStatus.CONSOLIDATING,
+        RunStatus.DONE,
+        queue="evaluation",
+        task_name="pipeline.consolidate_report",
+    ),
 )
 
 STAGE_BY_NAME = {spec.stage: spec for spec in STAGES}
 STAGE_BY_RUNNING_STATUS = {spec.running: spec for spec in STAGES}
+STAGE_BY_CHECKPOINT = {spec.checkpoint: spec for spec in STAGES}
+NEXT_STAGE: dict[Stage, Stage | None] = {
+    spec.stage: (STAGES[index + 1].stage if index + 1 < len(STAGES) else None)
+    for index, spec in enumerate(STAGES)
+}
+QUEUES = ("extraction", "integrity", "evaluation", "default")
 CHECKPOINTS = frozenset(spec.checkpoint for spec in STAGES)
 RUNNING = frozenset(spec.running for spec in STAGES)
 FINAL = frozenset(

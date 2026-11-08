@@ -10,8 +10,11 @@ from django.db.models import Func
 from django.db.models.functions import Now
 from django.utils import timezone
 
-from projects.correction.attempts.managers import AttemptManagement, RunManagement
 from projects.correction.attempts.status import RunStatus, Stage
+from projects.correction.queries.attempts.article import ArticleManagement
+from projects.correction.queries.attempts.attempt import AttemptManagement
+from projects.correction.queries.attempts.run import RunManagement
+from projects.correction.queries.attempts.run_event import RunEventManagement
 
 
 def private_upload_path(instance: Attempt, filename: str) -> str:
@@ -36,7 +39,7 @@ class TimeStampModel(models.Model):
         abstract = True
 
 
-class Article(TimeStampModel):
+class Article(ArticleManagement, TimeStampModel):
     external_id = models.CharField(max_length=255, unique=True)
     title = models.TextField(blank=True)
 
@@ -44,7 +47,7 @@ class Article(TimeStampModel):
         return self.title or self.external_id
 
 
-class Attempt(TimeStampModel):
+class Attempt(AttemptManagement, TimeStampModel):
     article = models.ForeignKey(Article, on_delete=models.PROTECT, related_name="attempts")
     attempt_number = models.PositiveIntegerField()
     file = models.FileField(upload_to=private_upload_path)
@@ -52,8 +55,6 @@ class Attempt(TimeStampModel):
     size_bytes = models.PositiveBigIntegerField()
     sha256 = models.CharField(max_length=64)
     submitted_by = models.CharField(max_length=255)
-
-    objects = AttemptManagement()
 
     class Meta:
         constraints = [
@@ -68,7 +69,7 @@ class Attempt(TimeStampModel):
         return f"{self.article} · v{self.attempt_number}"
 
 
-class Run(TimeStampModel):
+class Run(RunManagement, TimeStampModel):
     attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name="runs")
     status = models.CharField(
         max_length=40,
@@ -88,8 +89,6 @@ class Run(TimeStampModel):
     version = models.PositiveIntegerField(default=1)
     last_error = models.TextField(blank=True)
 
-    objects = RunManagement()
-
     class Meta:
         ordering = ["-created_at"]
 
@@ -97,7 +96,7 @@ class Run(TimeStampModel):
         return f"Run {self.pk} ({self.status})"
 
 
-class RunEvent(TimeStampModel):
+class RunEvent(RunEventManagement, TimeStampModel):
     class EventType(models.TextChoices):
         TRANSITION = "transition", "Transição"
         RETRY_SCHEDULED = "retry_scheduled", "Retry agendado"
@@ -117,7 +116,7 @@ class RunEvent(TimeStampModel):
         ordering = ["created_at", "id"]
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+        if self.pk and type(self).is_persisted(self.pk):
             raise ValidationError("RunEvent é append-only e não pode ser alterado.")
         super().save(*args, **kwargs)
 
