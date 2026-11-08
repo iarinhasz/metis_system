@@ -1,5 +1,8 @@
 """Testes das rotas de submissão e consulta de runs."""
 
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -11,6 +14,16 @@ from projects.correction.attempts.status import Stage
 from projects.correction.metis.config import settings
 
 PDF_V1 = b"%PDF-1.7\nconteudo de teste\n"
+
+
+CaptureOnCommit = Callable[..., AbstractContextManager[list[Callable[[], Any]]]]
+
+
+@pytest.fixture
+def publisher(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    mock = Mock()
+    monkeypatch.setattr("projects.correction.pipeline.publishing.publish_stage", mock)
+    return mock
 
 
 @pytest.fixture
@@ -45,36 +58,38 @@ def test_blocks_when_token_not_configured(
 
 @pytest.mark.django_db
 def test_new_attempt_returns_202_and_publishes_after_commit(
-    authenticated_client: Client, monkeypatch: pytest.MonkeyPatch
+    authenticated_client: Client,
+    publisher: Mock,
+    django_capture_on_commit_callbacks: CaptureOnCommit,
 ) -> None:
-    publisher = Mock()
-    monkeypatch.setattr("projects.correction.attempts.api.publish_extraction", publisher)
-    response = authenticated_client.post(
-        "/api/attempts",
-        {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        response = authenticated_client.post(
+            "/api/attempts",
+            {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
+        )
 
     assert response.status_code == 202
     body = response.json()
     assert body["attempt_number"] == 1
     assert body["status"] == "received"
-    publisher.assert_called_once_with(body["run_id"])
+    publisher.assert_called_once_with(body["run_id"], Stage.EXTRACTION)
 
 
 @pytest.mark.django_db
 def test_same_file_returns_existing_ids(
-    authenticated_client: Client, monkeypatch: pytest.MonkeyPatch
+    authenticated_client: Client,
+    publisher: Mock,
+    django_capture_on_commit_callbacks: CaptureOnCommit,
 ) -> None:
-    publisher = Mock()
-    monkeypatch.setattr("projects.correction.attempts.api.publish_extraction", publisher)
-    first = authenticated_client.post(
-        "/api/attempts",
-        {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
-    )
-    second = authenticated_client.post(
-        "/api/attempts",
-        {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        first = authenticated_client.post(
+            "/api/attempts",
+            {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
+        )
+        second = authenticated_client.post(
+            "/api/attempts",
+            {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
+        )
 
     assert first.status_code == 202
     assert second.status_code == 200

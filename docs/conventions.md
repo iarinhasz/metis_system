@@ -9,7 +9,7 @@
 
 ## Organização
 
-O código é organizado por domínio (apps Django). Cada app tem `models.py`, `managers.py`, `services/`, `api.py`, `admin.py` e `tests/`. As regras de dependência entre módulos estão em [Arquitetura](architecture.md#apps-e-regras-de-dependência).
+O código é organizado por domínio (apps Django). Cada app tem `models.py`, `queries/`, `services/`, `api.py`, `admin.py` e `tests/`. As regras de dependência entre módulos estão em [Arquitetura](architecture.md#apps-e-regras-de-dependência).
 
 ## Regras do código
 
@@ -22,7 +22,7 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `m
 | O Agno só é instanciado pela `AgentFactory` | Um ponto para modelos, retries, telemetria e fakes |
 | APIs acadêmicas só por `scholarly/` | Rate limit, cache e chaves num lugar |
 | Status, estágios, vereditos e categorias são enums, nunca strings soltas | Erro de digitação vira erro de import |
-| Services e views acessam o ORM pelos managers | Consultas reaproveitáveis e testáveis |
+| Todo acesso ao banco fica em `queries/` do app, num Management por model (`RunManagement`, `RunEventManagement`…); API, pipeline, services e os próprios Managements chamam esses métodos, nunca o ORM direto | Consultas num lugar só: reaproveitáveis, testáveis e fáceis de revisar (N+1, locks) |
 | Saídas são estruturadas (pydantic/JSON); nunca uma string que outra parte do código parseia | Parsear texto livre quebra quando o formato muda |
 | Nada de texto do manuscrito, dado pessoal ou segredo em log | Os manuscritos são inéditos e confidenciais |
 | Comandos de gestão rodam em dry-run por padrão e só gravam com `--execute` | Operação segura |
@@ -37,7 +37,7 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `m
 | Strategy | `CandidateSource` (interno, citadas, S2, arXiv, OpenAlex), `SimilarityDetector` (léxico, semântico), modo de avaliação (`sectioned`, `whole_document`) | Várias implementações reais desde o início; os dois modos de avaliação são necessários para o A/B |
 | Chain of Responsibility | Validadores antes do juiz; fallback da Question | Ordem explícita, cada elo testável |
 | Template Method | `StageTask` | Claim, persistência e eventos iguais em todo estágio |
-| Repository (managers) | `RunManagement`, `AttemptManagement`… | Status só via manager + evento |
+| Repository (Managements em `queries/`) | `ArticleManagement`, `AttemptManagement`, `RunManagement`, `RunEventManagement` | Status só via `RunManagement` + evento; consultas fora de `queries/` não existem |
 
 ## Prompts
 

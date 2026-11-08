@@ -1,9 +1,10 @@
 # Metis: plano completo do projeto
 
-**Situação:** M0 implementado até a etapa 0.3 (API de submissão), localmente; o CI com Postgres está pendente. O código fica em `projects/correction/`. Próximo passo: as pendências da 0.3 e a etapa 0.4 ([04](04_etapas_m0_restante.md))
+**Situação:** M0 implementado até a etapa 0.4 (pipeline com estágios stub), na branch `feat/pipeline`; falta confirmar o CI com Postgres no GitHub. O código fica em `projects/correction/`. Próximo passo: a etapa 0.5 ([04](04_etapas_m0_restante.md))
 **Data:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)
 **Fluxo no Agno:** [docs/agents.md](../../../docs/agents.md); em diagramas, com as entidades e as ligações: [docs/flow_graph.md](../../../docs/flow_graph.md)
+**Equipe (07/11):** 4 módulos, um por integrante, com uma branch por etapa e PR para a `dev`: [divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html) (abra no navegador)
 
 ---
 

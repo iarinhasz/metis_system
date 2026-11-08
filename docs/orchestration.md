@@ -21,6 +21,8 @@ Como o pipeline anda, falha e se recupera. Os estados citados aqui estão defini
 
 O E2 roda na fila `evaluation` porque é uma chamada de LLM, não um parse.
 
+A fila e o nome da task de cada estágio ficam no `STAGES` (`attempts/status.py`). As rotas do Celery (`CELERY_TASK_ROUTES`) e a publicação (`pipeline/publishing.py`) são geradas a partir dele.
+
 ## Ciclo de uma task de estágio
 
 Todas as tasks seguem a mesma base, `StageTask` (Template Method). Cada estágio implementa só o `execute()`:
@@ -39,9 +41,9 @@ claim ──▶ execute() ──▶ complete ──▶ publica o próximo estág
    - se o run está no checkpoint do estágio, passa para o status "rodando" e grava `stage`, `current_task_id` e `stage_started_at`;
    - se já está rodando **com o mesmo id de task**, retoma (é um retry ou uma reentrega);
    - em qualquer outro caso, sai sem efeito.
-2. **`execute()`.** O trabalho do estágio, em código ou num workflow Agno. Cada passo persiste o que produz.
+2. **`execute()`.** O trabalho do estágio, em código ou num workflow Agno. Recebe um `StageContext(run_id, attempt_id, task_id, stage)` e devolve um `StageOutcome(payload, halt)`. Cada passo persiste o que produz.
 3. **Complete.** Só fecha se a task ainda for a dona: status "rodando" + `current_task_id` igual ao dela. Se perdeu a posse no meio do caminho (chegou uma versão nova do artigo, ou o reconciliador liberou o estágio), encerra sem efeito.
-4. **Publicação.** Registra no `on_commit` a task do estágio seguinte, se houver. O E3 pode terminar em `waiting_human_review`, e aí nada é publicado.
+4. **Publicação.** Registra no `on_commit` a task do estágio seguinte, se houver. O E3 pode terminar em `waiting_human_review` (`halt=True` no `StageOutcome`), e aí nada é publicado.
 
 ### Por que a posse é pelo id da task
 

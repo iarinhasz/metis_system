@@ -1,6 +1,6 @@
 # M0 — Fundação (restante)
 
-**Situação:** etapas 0.1–0.3 implementadas localmente, em `projects/correction/`.
+**Situação:** etapas 0.1–0.4 implementadas, em `projects/correction/`; a 0.4 está na branch `feat/pipeline`.
 **Trilha:** P
 **Referência:** [etapas originais do M0](../../2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md), [Orquestração](../../../docs/orchestration.md)
 
@@ -13,7 +13,8 @@ As etapas 0.4–0.7 seguem o [plano de outubro](../../2026-10_october/1_desenho_
 **O que fazer**
 - A reorganização (monorepo) e a API da 0.3 já estão no commit `548587f`.
 - Rodar `ruff check`, `ruff format --check`, `mypy projects/correction` e `pytest` no CI, com o serviço `pgvector/pgvector:pg18`.
-- Mensagem do `banned-api` no `pyproject.toml`: trocar "metis.config" por "projects.correction.metis.config".
+- Mensagem do `banned-api` no `pyproject.toml`: trocar "metis.config" por "projects.correction.metis.config". Feito na 0.4.
+- Os testes da 0.3 que dependiam do `on_commit` (API) e do claim fora do checkpoint foram corrigidos na 0.4, ao rodarem pela primeira vez no Postgres.
 
 **Pronto quando:** CI verde com os testes da 0.3 rodando no Postgres.
 

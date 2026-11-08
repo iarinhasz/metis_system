@@ -1,4 +1,4 @@
-"""Operações transacionais para tentativas e execuções."""
+"""Consultas e operações transacionais de Run: único ponto de escrita de status."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from projects.correction.attempts.status import (
 
 if TYPE_CHECKING:
     from projects.correction.attempts.models import Article, Attempt, Run
+    from projects.correction.attempts.queries.run_events import RunEventManagement
 
 
 class InvalidTransition(ValueError):
@@ -33,42 +34,25 @@ class RunConflict(ValueError):
     """Indica uma operação válida somente em outro estado do run."""
 
 
-class AttemptManagement(models.Manager["Attempt"]):
-    """Cria versões do artigo com hash e número de tentativa protegidos."""
+def _events() -> RunEventManagement:
+    from projects.correction.attempts.models import RunEvent
 
-    def find_by_sha256(self, article: Article, sha256: str) -> Attempt | None:
-        return self.filter(article=article, sha256=sha256).first()
-
-    @transaction.atomic
-    def create_next(
-        self,
-        article: Article,
-        *,
-        sha256: str,
-        **fields: Any,
-    ) -> tuple[Attempt, bool]:
-        locked_article = type(article).objects.select_for_update().get(pk=article.pk)
-        existing = self.find_by_sha256(locked_article, sha256)
-        if existing:
-            return existing, False
-
-        latest = self.filter(article=locked_article).aggregate(
-            max_number=models.Max("attempt_number")
-        )
-        attempt = self.create(
-            article=locked_article,
-            attempt_number=(latest["max_number"] or 0) + 1,
-            sha256=sha256,
-            **fields,
-        )
-        from projects.correction.attempts.models import Run
-
-        Run.objects.supersede_other_attempts(locked_article, attempt)
-        return attempt, True
+    return RunEvent.objects
 
 
 class RunManagement(models.Manager["Run"]):
     """Único ponto de escrita de status e eventos de Run."""
+
+    def get_with_events(self, run_id: Any) -> Run | None:
+        """Run com a attempt e a trilha de eventos já carregadas, sem N+1."""
+        return self.select_related("attempt").prefetch_related("events").filter(pk=run_id).first()
+
+    def latest_for_attempt(self, attempt: Attempt) -> Run | None:
+        return self.filter(attempt=attempt).order_by("-created_at", "-pk").first()
+
+    def is_owned_by(self, run_id: Any, task_id: str) -> bool:
+        """Diz se a task ainda é a dona do estágio em execução."""
+        return self.filter(pk=run_id, current_task_id=task_id).exists()
 
     @transaction.atomic
     def create(self, **kwargs: Any) -> Run:
@@ -78,7 +62,7 @@ class RunManagement(models.Manager["Run"]):
         kwargs["status"] = RunStatus.RECEIVED
         kwargs["version"] = 1
         run = super().create(**kwargs)
-        self._append_event(
+        _events().append(
             run,
             event_type="transition",
             from_status="",
@@ -90,35 +74,6 @@ class RunManagement(models.Manager["Run"]):
 
     def _locked(self, run_id: Any) -> Run:
         return self.select_for_update().get(pk=run_id)
-
-    @staticmethod
-    def _append_event(
-        run: Run,
-        *,
-        event_type: str,
-        from_status: str = "",
-        to_status: str = "",
-        actor: str = "pipeline",
-        stage: str = "",
-        task_id: str = "",
-        payload: dict[str, Any] | None = None,
-        event_key: str,
-    ) -> None:
-        from projects.correction.attempts.models import RunEvent
-
-        RunEvent.objects.get_or_create(
-            event_key=event_key,
-            defaults={
-                "run": run,
-                "event_type": event_type,
-                "from_status": from_status,
-                "to_status": to_status,
-                "actor": actor,
-                "stage": stage,
-                "task_id": task_id,
-                "payload": payload or {},
-            },
-        )
 
     def _transition(
         self,
@@ -139,7 +94,7 @@ class RunManagement(models.Manager["Run"]):
             setattr(run, field, value)
         run.updated_at = timezone.now()
         run.save(update_fields=["status", "version", "updated_at", *(updates or {}).keys()])
-        self._append_event(
+        _events().append(
             run,
             event_type="transition",
             from_status=from_status,
@@ -238,7 +193,7 @@ class RunManagement(models.Manager["Run"]):
         self, run_id: Any, task_id: str, retry_number: int, payload: dict[str, Any]
     ) -> None:
         run = self._locked(run_id)
-        self._append_event(
+        _events().append(
             run,
             event_type="retry_scheduled",
             from_status=run.status,
@@ -313,7 +268,7 @@ class RunManagement(models.Manager["Run"]):
         run.publish_count += 1
         run.updated_at = timezone.now()
         run.save(update_fields=["publish_count", "updated_at"])
-        self._append_event(
+        _events().append(
             run,
             event_type="republished",
             from_status=run.status,

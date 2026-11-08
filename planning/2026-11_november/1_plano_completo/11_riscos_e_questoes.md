@@ -42,4 +42,4 @@ Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../20
 | Q12 | Modo de avaliação padrão | Aberta; decidida pelo A/B | 3.13 |
 | Q13 | Checagens entre seções da primeira versão | Aberta; proposta: promessas × resultados, método × pergunta, figuras × texto | 3.4 |
 | Q14 | Papéis por `paper_type` cobrem os artigos reais? | Aberta | 2.4, 2.7 |
-| Q15 | **Nova.** Quem fica em cada trilha (P, A, I)? | Aberta | Início da fase 1 |
+| Q15 | **Nova.** Quem fica em cada trilha (P, A, I)? | **Parcialmente decidido (07/11):** as trilhas viraram 4 módulos ([divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html)); Plataforma e Extração fica com Iara Yasmin. Faltam os nomes de Agentes, Perfil e Relatório, de Avaliação e de Integridade | Início da fase 1 |

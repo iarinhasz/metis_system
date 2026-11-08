@@ -44,8 +44,8 @@ include = ["projects/**/*.py", "manage.py"]
 select = ["E", "F", "I", "UP", "B", "TID"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"os.getenv" = { msg = "Leia variáveis de ambiente somente em metis.config." }
-"os.environ" = { msg = "Leia variáveis de ambiente somente em metis.config." }
+"os.getenv" = { msg = "Leia variáveis de ambiente somente em projects.correction.metis.config." }
+"os.environ" = { msg = "Leia variáveis de ambiente somente em projects.correction.metis.config." }
 
 [tool.ruff.lint.per-file-ignores]
 "manage.py" = ["TID251"]

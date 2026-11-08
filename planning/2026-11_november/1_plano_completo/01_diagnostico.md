@@ -11,7 +11,7 @@ Tudo em `projects/correction/`, com `manage.py` na raiz repassando para `project
 | API | `metis/api.py`, `metis/authentication.py` | Pronto: `NinjaAPI` fechada por padrão (`DenyAllAuth`), `/docs` só em DEBUG, `ServiceBearerAuth` com `compare_digest` |
 | Models | `attempts/models.py` | `Article`, `Attempt`, `Run`, `RunEvent`, base UUIDv7 |
 | Máquina de estados | `attempts/status.py` | `RunStatus`, `Stage`, `HumanDecision`, `STAGES`, `TRANSITIONS` e os conjuntos |
-| Operações do run | `attempts/managers.py` | `AttemptManagement` e `RunManagement` com lock, validação de transição e evento na mesma transação |
+| Operações do run | `attempts/queries/` (antes `managers.py`) | `ArticleManagement`, `AttemptManagement`, `RunManagement` e `RunEventManagement`: todo acesso ao banco, com lock, validação de transição e evento na mesma transação |
 | Submissão e status | `attempts/api.py` | `POST /api/attempts` (multipart, `external_id` obrigatório, 202/200), `GET /api/runs/{id}`, health |
 | Publicação | `attempts/publishing.py` | `publish_extraction(run_id)` via `send_task` na fila `extraction` |
 | Testes | `metis/tests/`, `attempts/tests/` | Config, status, run management e API |

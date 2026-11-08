@@ -10,7 +10,12 @@ from django.db.models import Func
 from django.db.models.functions import Now
 from django.utils import timezone
 
-from projects.correction.attempts.managers import AttemptManagement, RunManagement
+from projects.correction.attempts.queries import (
+    ArticleManagement,
+    AttemptManagement,
+    RunEventManagement,
+    RunManagement,
+)
 from projects.correction.attempts.status import RunStatus, Stage
 
 
@@ -39,6 +44,8 @@ class TimeStampModel(models.Model):
 class Article(TimeStampModel):
     external_id = models.CharField(max_length=255, unique=True)
     title = models.TextField(blank=True)
+
+    objects = ArticleManagement()
 
     def __str__(self) -> str:
         return self.title or self.external_id
@@ -113,11 +120,13 @@ class RunEvent(TimeStampModel):
     payload = models.JSONField(default=dict)
     event_key = models.CharField(max_length=255, unique=True)
 
+    objects = RunEventManagement()
+
     class Meta:
         ordering = ["created_at", "id"]
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+        if self.pk and type(self).objects.is_persisted(self.pk):
             raise ValidationError("RunEvent é append-only e não pode ser alterado.")
         super().save(*args, **kwargs)
 

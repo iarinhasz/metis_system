@@ -4,8 +4,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from projects.correction.attempts.managers import InvalidTransition, RunConflict
 from projects.correction.attempts.models import Article, Attempt, Run
+from projects.correction.attempts.queries import InvalidTransition, RunConflict
 from projects.correction.attempts.status import STAGES, HumanDecision, RunStatus, Stage
 
 
@@ -66,9 +66,20 @@ def test_complete_requires_ownership(run: Run) -> None:
 
 
 @pytest.mark.django_db
+def test_claim_outside_checkpoint_has_no_effect(run: Run) -> None:
+    assert Run.objects.claim_stage(run.pk, Stage.PROFILING, "task-1") is None
+    run.refresh_from_db()
+
+    assert run.status == RunStatus.RECEIVED
+    assert run.events.count() == 1
+
+
+@pytest.mark.django_db
 def test_invalid_transition_raises(run: Run) -> None:
+    Run.objects.claim_stage(run.pk, Stage.EXTRACTION, "task-1")
+
     with pytest.raises(InvalidTransition):
-        Run.objects.claim_stage(run.pk, Stage.PROFILING, "task-1")
+        Run.objects.complete_stage(run.pk, "task-1", RunStatus.WAITING_HUMAN_REVIEW)
 
 
 @pytest.mark.django_db

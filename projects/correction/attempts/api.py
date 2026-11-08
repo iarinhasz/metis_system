@@ -2,21 +2,21 @@
 
 import hashlib
 from datetime import datetime
-from functools import partial
 from pathlib import PurePath
 from typing import Annotated, Any
 
 from django.core.files.uploadedfile import UploadedFile
-from django.db import DatabaseError, connection, transaction
-from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
+from django.db import transaction
+from django.http import Http404, HttpRequest
 from ninja import File, Form, Router, Schema
 from ninja.files import UploadedFile as NinjaUploadedFile
 
 from projects.correction.attempts.models import Article, Attempt, Run
-from projects.correction.attempts.publishing import publish_extraction
+from projects.correction.attempts.queries import database_is_available
+from projects.correction.attempts.status import Stage
 from projects.correction.metis.authentication import ServiceBearerAuth
 from projects.correction.metis.config import settings
+from projects.correction.pipeline.publishing import publish_stage_on_commit
 
 router = Router(auth=ServiceBearerAuth())
 
@@ -94,7 +94,7 @@ def submit_attempt(
     queued_run_id: str | None = None
 
     with transaction.atomic():
-        article, _ = Article.objects.get_or_create(external_id=external_id)
+        article = Article.objects.get_or_create_by_external_id(external_id)
         attempt = Attempt.objects.find_by_sha256(article, sha256)
         created = attempt is None
         if attempt is None:
@@ -107,7 +107,7 @@ def submit_attempt(
                 submitted_by="service-api",
             )
 
-        run = attempt.runs.order_by("-created_at", "-pk").first()
+        run = Run.objects.latest_for_attempt(attempt)
         if run is None:
             run = Run.objects.create(attempt=attempt)
             queued_run_id = str(run.pk)
@@ -115,7 +115,7 @@ def submit_attempt(
             queued_run_id = str(run.pk)
 
         if queued_run_id:
-            transaction.on_commit(partial(publish_extraction, queued_run_id), robust=True)
+            publish_stage_on_commit(queued_run_id, Stage.EXTRACTION)
 
     return (202 if created else 200), SubmissionResponse(
         attempt_id=str(attempt.pk),
@@ -130,9 +130,9 @@ def submit_attempt(
 def get_run(request: HttpRequest, run_id: str) -> RunResponse:
     """Devolve o estado atual e a trilha de eventos em ordem cronológica."""
     del request
-    run = get_object_or_404(
-        Run.objects.select_related("attempt").prefetch_related("events"), pk=run_id
-    )
+    run = Run.objects.get_with_events(run_id)
+    if run is None:
+        raise Http404("Run não encontrado.")
     events = [
         RunEventResponse(
             event_type=event.event_type,
@@ -162,9 +162,6 @@ def get_run(request: HttpRequest, run_id: str) -> RunResponse:
 
 def health_check() -> tuple[int, dict[str, str]]:
     """Verifica a conexão com o Postgres para o healthcheck do container."""
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-    except DatabaseError:
+    if not database_is_available():
         return 503, {"status": "unavailable"}
     return 200, {"status": "ok"}
