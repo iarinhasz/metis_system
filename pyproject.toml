@@ -70,3 +70,7 @@ DJANGO_SETTINGS_MODULE = "projects.correction.metis.settings"
 pythonpath = ["."]
 python_files = ["test_*.py"]
 addopts = "-ra"
+filterwarnings = [
+    # O STATIC_ROOT só existe depois do collectstatic (na imagem Docker); nos testes, não.
+    "ignore:No directory at:UserWarning",
+]

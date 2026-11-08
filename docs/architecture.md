@@ -84,7 +84,7 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 | `extraction/` | app | E1 e o `ExtractedDocument` |
 | `integrity/` | app | E3, relatório, corpus (`SourceDocument`, `SourceChunk`), regras de risco |
 | `evaluation/` | app | E4 e E5: contexto, avaliadores, validadores, juiz, rodadas, relatório final |
-| `pipeline/` | app sem models | `StageTask`, tasks Celery, publicação, reconciliador, casos de uso que iniciam ou retomam runs |
+| `pipeline/` | app sem models | `StageTask`, tasks Celery, publicação, reconciliador e, em `services.py`, os casos de uso que iniciam ou retomam runs (submissão, decisão do gate, reprocessamento) |
 | `queries/` | pacote | Todo acesso ao banco: uma pasta por app (`queries/attempts/`…) e um Management por model, que o model herda (`Run.claim_stage(...)`) |
 | `agents/` | pacote | `ModelSpec`, `ModelFactory`, `AgentFactory`, schemas de saída, prompts, limites de concorrência, registro de uso, fakes |
 | `scholarly/` | pacote | Clientes de Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, com rate limit e cache |

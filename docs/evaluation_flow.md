@@ -107,7 +107,7 @@ Detalhe: [Avaliadores, juiz e consolidação](evaluators_and_judge.md).
 |---|---|---|---|---|
 | POST | `/api/attempts` | token de serviço | Multipart: `file` (PDF) + `external_id` obrigatório. **202** versão nova, **200** reenvio idêntico | M0 |
 | GET | `/api/runs/{run_id}` | token de serviço | Status, estágio atual e eventos do run | M0 |
-| POST | `/api/runs/{run_id}/decision` | token de serviço | Decisão do gate (`continue` ou `close`) para quem tiver tela própria; o caminho padrão é o admin | M0 |
+| POST | `/api/runs/{run_id}/decision` | token de serviço | Decisão do gate para quem tiver tela própria; o caminho padrão é o admin. JSON: `decision` (`continue` ou `close`) e `note` opcional. **200** com o run, **409** fora do gate, **404** run inexistente | M0 |
 | GET | `/api/runs/{run_id}/report` | token de serviço | Relatório final | M3 |
 | GET | `/api/runs/{run_id}/integrity` | token de serviço | Relatório de integridade | M4 |
 | GET | `/health/` | — | Healthcheck do container web (testa o banco) | M0 |

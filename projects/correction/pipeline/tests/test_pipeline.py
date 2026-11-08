@@ -1,10 +1,8 @@
 """Testes do ciclo dos estágios com Celery em modo eager e transações reais."""
 
-from collections.abc import Iterator
-
 import pytest
 
-from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
+from projects.correction.attempts.models import Attempt, Run, RunEvent
 from projects.correction.attempts.status import RunStatus, Stage
 from projects.correction.metis.celery import app
 from projects.correction.metis.config import settings
@@ -24,7 +22,7 @@ from projects.correction.pipeline.stages import (
     StageOutcome,
 )
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("eager_celery")]
 
 HAPPY_PATH = [
     "received",
@@ -39,31 +37,6 @@ HAPPY_PATH = [
     "consolidating",
     "done",
 ]
-
-
-@pytest.fixture(autouse=True)
-def eager_celery() -> Iterator[None]:
-    # Sem propagar: com propagate o Celery repassa o Retry ao chamador em vez de reexecutar
-    # a task. O StageTask registra no run todo erro do execute(), e os testes olham o status.
-    previous = (app.conf.task_always_eager, app.conf.task_eager_propagates)
-    app.conf.task_always_eager = True
-    app.conf.task_eager_propagates = False
-    yield
-    app.conf.task_always_eager, app.conf.task_eager_propagates = previous
-
-
-@pytest.fixture
-def run() -> Run:
-    article = Article.get_or_create_by_external_id("artigo-pipeline")
-    attempt, _ = Attempt.create_next(
-        article,
-        file="submissions/artigo-pipeline/paper.pdf",
-        original_filename="paper.pdf",
-        size_bytes=128,
-        sha256="a" * 64,
-        submitted_by="test-service",
-    )
-    return Run.create(attempt=attempt)
 
 
 def transitions(run: Run) -> list[str]:

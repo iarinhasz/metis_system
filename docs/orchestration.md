@@ -67,6 +67,21 @@ O Celery mantém o mesmo id da task em `retry()` e na reentrega depois da morte 
 - **Registro:** cada retry gera um `RunEvent` `retry_scheduled` com o erro e o tempo de espera.
 - **Dentro do Agno:** `Step(max_retries=0)`, porque o retry de step do Agno não tem backoff. O retry de uma chamada fica no modelo (`retries` + `exponential_backoff=True`, só para 429/5xx), e o do estágio inteiro fica no Celery.
 
+## Gate humano e reprocessamento
+
+Os casos de uso ficam em `pipeline/services.py` e mudam o status pelo `RunManagement`. A publicação do estágio seguinte sai no `on_commit`, como no ciclo da task.
+
+| Ação | De | Para | Publica |
+|---|---|---|---|
+| Continuar avaliação | `waiting_human_review` | `integrity_checked` | o E4 |
+| Encerrar | `waiting_human_review` | `closed_by_reviewer` | nada |
+| Reprocessar | `error_*`, `waiting_setup` | checkpoint do estágio que falhou | esse estágio |
+
+- **Onde:** na página do run no admin, que mostra só as ações do estado atual. A decisão do gate também tem `POST /api/runs/{id}/decision`.
+- **Fora do estado certo**, a ação é recusada (409 na API, mensagem no admin) e nada muda.
+- **Quem:** no admin, usuário com permissão de alterar o Run. O grupo "revisores" (Q8) entra na 4.9.
+- **Auditoria:** o `RunEvent` da transição grava o ator (`admin:<usuário>` ou `service-api`), a decisão e a nota.
+
 ## Reconciliador
 
 Uma task do beat (`pipeline.reconcile_runs`, a cada 5 min) cobre duas situações que o fluxo normal não cobre:

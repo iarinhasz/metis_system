@@ -94,6 +94,7 @@ STAGES = (
 
 STAGE_BY_NAME = {spec.stage: spec for spec in STAGES}
 STAGE_BY_RUNNING_STATUS = {spec.running: spec for spec in STAGES}
+STAGE_BY_CHECKPOINT = {spec.checkpoint: spec for spec in STAGES}
 NEXT_STAGE: dict[Stage, Stage | None] = {
     spec.stage: (STAGES[index + 1].stage if index + 1 < len(STAGES) else None)
     for index, spec in enumerate(STAGES)

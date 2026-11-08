@@ -9,7 +9,7 @@
 
 ## Organização
 
-O código é organizado por domínio (apps Django). Cada app tem `models.py`, `services/`, `api.py`, `admin.py` e `tests/`; as consultas ao banco do app ficam em `queries/<app>/`. As regras de dependência entre módulos estão em [Arquitetura](architecture.md#apps-e-regras-de-dependência).
+O código é organizado por domínio (apps Django). Cada app tem `models.py`, `api/`, `admin.py` e `tests/`. Em `api/`, o `schemas.py` tem os contratos de entrada e saída e o `routes.py` tem as rotas. Os casos de uso ficam em `services/` do app, ou em `pipeline/services.py` quando iniciam ou retomam um run, e as consultas ao banco em `queries/<app>/`. As regras de dependência entre módulos estão em [Arquitetura](architecture.md#apps-e-regras-de-dependência).
 
 ## Regras do código
 
@@ -18,6 +18,7 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `s
 | O status de um Run só muda por `RunManagement` (valida + grava evento na mesma transação) | Um único dono da máquina de estados |
 | Tasks são publicadas só depois do commit (`transaction.on_commit`) | A task nunca lê estado que ainda não foi gravado |
 | A mensagem Celery leva só ids | O banco é a fonte da verdade |
+| Cada arquivo tem uma responsabilidade. A rota só recebe, chama o caso de uso e responde; schemas, regra de negócio e helpers ficam nos módulos próprios | A regra fica testável sem HTTP, e o arquivo de rotas mostra a API de relance |
 | Variáveis de ambiente só em `metis/config.py` (o ruff TID251 bloqueia o resto) | Nada de `os.getenv` espalhado, com nomes divergentes |
 | O Agno só é instanciado pela `AgentFactory` | Um ponto para modelos, retries, telemetria e fakes |
 | APIs acadêmicas só por `scholarly/` | Rate limit, cache e chaves num lugar |
