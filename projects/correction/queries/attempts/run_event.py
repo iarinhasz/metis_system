@@ -1,23 +1,32 @@
-"""Consultas da trilha de auditoria (RunEvent, append-only)."""
+"""Consultas da trilha de auditoria (RunEvent é append-only)."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
-from django.db import models
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
+    from django.db import models
+
     from projects.correction.attempts.models import Run, RunEvent
 
 
-class RunEventManagement(models.Manager["RunEvent"]):
-    """Grava eventos de forma idempotente pela `event_key` única."""
+class RunEventManagement:
+    """Herdado por `RunEvent`. Uso: `RunEvent.for_run(run_id)`."""
 
-    def is_persisted(self, event_id: Any) -> bool:
-        return self.filter(pk=event_id).exists()
+    objects: ClassVar[models.Manager[RunEvent]]
 
+    @classmethod
+    def for_run(cls, run_id: Any) -> list[RunEvent]:
+        """Eventos do run em ordem cronológica."""
+        return list(cls.objects.filter(run_id=run_id).order_by("created_at", "id"))
+
+    @classmethod
+    def is_persisted(cls, event_id: Any) -> bool:
+        return cls.objects.filter(pk=event_id).exists()
+
+    @classmethod
     def append(
-        self,
+        cls,
         run: Run,
         *,
         event_type: str,
@@ -30,7 +39,7 @@ class RunEventManagement(models.Manager["RunEvent"]):
         payload: dict[str, Any] | None = None,
     ) -> RunEvent:
         """Cria o evento; se a `event_key` já existe (retry, reentrega), devolve o existente."""
-        event, _ = self.get_or_create(
+        event, _ = cls.objects.get_or_create(
             event_key=event_key,
             defaults={
                 "run": run,

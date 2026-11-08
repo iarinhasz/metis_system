@@ -85,6 +85,7 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 | `integrity/` | app | E3, relatório, corpus (`SourceDocument`, `SourceChunk`), regras de risco |
 | `evaluation/` | app | E4 e E5: contexto, avaliadores, validadores, juiz, rodadas, relatório final |
 | `pipeline/` | app sem models | `StageTask`, tasks Celery, publicação, reconciliador, casos de uso que iniciam ou retomam runs |
+| `queries/` | pacote | Todo acesso ao banco: uma pasta por app (`queries/attempts/`…) e um Management por model, que o model herda (`Run.claim_stage(...)`) |
 | `agents/` | pacote | `ModelSpec`, `ModelFactory`, `AgentFactory`, schemas de saída, prompts, limites de concorrência, registro de uso, fakes |
 | `scholarly/` | pacote | Clientes de Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, com rate limit e cache |
 | `evals/` | pacote | Comandos de avaliação offline (PeerRead) |
@@ -93,6 +94,7 @@ Regras:
 - `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda.
 - **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. O `Workflow` de cada estágio (com `Step`, `Parallel`, `Loop`, `Condition`) é montado no `workflow.py` do app do estágio. `agents/` não importa apps de domínio. Um teste de fronteira de imports garante as três regras (ver [Agentes e workflows](agents.md#fronteiras)).
 - **Só `scholarly/` chama APIs acadêmicas.** Rate limit, cache e chaves ficam num lugar só.
+- **Só `queries/` fala com o banco.** Fora de `queries/<app>/`, ninguém usa `Model.objects` nem `cursor`: o código chama o método do Management na classe do model (`Run.get_with_events(run_id)`).
 - **Só `metis/config.py` lê variáveis de ambiente.** O ruff bloqueia `os.getenv`/`os.environ` fora dele.
 
 ## Decisões principais

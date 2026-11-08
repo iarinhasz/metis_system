@@ -1,10 +1,10 @@
-"""Consultas e operações transacionais de Run: único ponto de escrita de status."""
+"""Consultas e operações transacionais de Run: o único ponto que muda o status."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from django.db import models, transaction
+from django.db import transaction
 from django.utils import timezone
 
 from projects.correction.attempts.status import (
@@ -22,8 +22,9 @@ from projects.correction.attempts.status import (
 )
 
 if TYPE_CHECKING:
-    from projects.correction.attempts.models import Article, Attempt, Run
-    from projects.correction.attempts.queries.run_events import RunEventManagement
+    from django.db import models
+
+    from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
 
 
 class InvalidTransition(ValueError):
@@ -34,35 +35,50 @@ class RunConflict(ValueError):
     """Indica uma operação válida somente em outro estado do run."""
 
 
-def _events() -> RunEventManagement:
+def _run_event() -> type[RunEvent]:
     from projects.correction.attempts.models import RunEvent
 
-    return RunEvent.objects
+    return RunEvent
 
 
-class RunManagement(models.Manager["Run"]):
-    """Único ponto de escrita de status e eventos de Run."""
+class RunManagement:
+    """Herdado por `Run`. Uso: `Run.claim_stage(run_id, stage, task_id)`.
 
-    def get_with_events(self, run_id: Any) -> Run | None:
+    Toda mudança de status passa por aqui: valida a transição, trava a linha e grava o
+    `RunEvent` na mesma transação.
+    """
+
+    objects: ClassVar[models.Manager[Run]]
+
+    @classmethod
+    def get_by_id(cls, run_id: Any) -> Run:
+        return cls.objects.get(pk=run_id)
+
+    @classmethod
+    def get_with_events(cls, run_id: Any) -> Run | None:
         """Run com a attempt e a trilha de eventos já carregadas, sem N+1."""
-        return self.select_related("attempt").prefetch_related("events").filter(pk=run_id).first()
+        return (
+            cls.objects.select_related("attempt")
+            .prefetch_related("events")
+            .filter(pk=run_id)
+            .first()
+        )
 
-    def latest_for_attempt(self, attempt: Attempt) -> Run | None:
-        return self.filter(attempt=attempt).order_by("-created_at", "-pk").first()
+    @classmethod
+    def latest_for_attempt(cls, attempt: Attempt) -> Run | None:
+        return cls.objects.filter(attempt=attempt).order_by("-created_at", "-pk").first()
 
-    def is_owned_by(self, run_id: Any, task_id: str) -> bool:
+    @classmethod
+    def is_owned_by(cls, run_id: Any, task_id: str) -> bool:
         """Diz se a task ainda é a dona do estágio em execução."""
-        return self.filter(pk=run_id, current_task_id=task_id).exists()
+        return cls.objects.filter(pk=run_id, current_task_id=task_id).exists()
 
+    @classmethod
     @transaction.atomic
-    def create(self, **kwargs: Any) -> Run:
-        actor = kwargs.pop("actor", "pipeline")
-        if RunStatus(kwargs.get("status", RunStatus.RECEIVED)) != RunStatus.RECEIVED:
-            raise InvalidTransition("Um Run novo deve começar no checkpoint received.")
-        kwargs["status"] = RunStatus.RECEIVED
-        kwargs["version"] = 1
-        run = super().create(**kwargs)
-        _events().append(
+    def create(cls, *, attempt: Attempt, actor: str = "pipeline") -> Run:
+        """Cria o run no checkpoint `received`, já com o primeiro evento."""
+        run = cls.objects.create(attempt=attempt, status=RunStatus.RECEIVED, version=1)
+        _run_event().append(
             run,
             event_type="transition",
             from_status="",
@@ -72,11 +88,13 @@ class RunManagement(models.Manager["Run"]):
         )
         return run
 
-    def _locked(self, run_id: Any) -> Run:
-        return self.select_for_update().get(pk=run_id)
+    @classmethod
+    def _locked(cls, run_id: Any) -> Run:
+        return cls.objects.select_for_update().get(pk=run_id)
 
+    @classmethod
     def _transition(
-        self,
+        cls,
         run: Run,
         to_status: RunStatus,
         *,
@@ -94,7 +112,7 @@ class RunManagement(models.Manager["Run"]):
             setattr(run, field, value)
         run.updated_at = timezone.now()
         run.save(update_fields=["status", "version", "updated_at", *(updates or {}).keys()])
-        _events().append(
+        _run_event().append(
             run,
             event_type="transition",
             from_status=from_status,
@@ -107,15 +125,16 @@ class RunManagement(models.Manager["Run"]):
         )
         return run
 
+    @classmethod
     @transaction.atomic
-    def claim_stage(self, run_id: Any, stage: Stage | str, task_id: str) -> Run | None:
+    def claim_stage(cls, run_id: Any, stage: Stage | str, task_id: str) -> Run | None:
         spec = STAGE_BY_NAME[Stage(stage)]
-        run = self._locked(run_id)
+        run = cls._locked(run_id)
         status = RunStatus(run.status)
 
         if status == spec.checkpoint:
             prior_claims = run.stage_claims if run.stage == spec.stage else 0
-            return self._transition(
+            return cls._transition(
                 run,
                 spec.running,
                 task_id=task_id,
@@ -136,16 +155,17 @@ class RunManagement(models.Manager["Run"]):
             return run
         return None
 
+    @classmethod
     @transaction.atomic
     def complete_stage(
-        self,
+        cls,
         run_id: Any,
         task_id: str,
         to_status: RunStatus | str,
         *,
         payload: dict[str, Any] | None = None,
     ) -> Run | None:
-        run = self._locked(run_id)
+        run = cls._locked(run_id)
         status = RunStatus(run.status)
         if status not in RUNNING or run.current_task_id != task_id:
             return None
@@ -155,7 +175,7 @@ class RunManagement(models.Manager["Run"]):
             RunStatus.WAITING_HUMAN_REVIEW,
         }:
             raise InvalidTransition(f"Destino inválido para conclusão do estágio: {target}.")
-        return self._transition(
+        return cls._transition(
             run,
             target,
             task_id=task_id,
@@ -163,9 +183,10 @@ class RunManagement(models.Manager["Run"]):
             updates={"current_task_id": None, "stage_started_at": None},
         )
 
+    @classmethod
     @transaction.atomic
     def fail_stage(
-        self,
+        cls,
         run_id: Any,
         task_id: str,
         to_status: RunStatus | str,
@@ -173,14 +194,14 @@ class RunManagement(models.Manager["Run"]):
         error: str,
         payload: dict[str, Any] | None = None,
     ) -> Run | None:
-        run = self._locked(run_id)
+        run = cls._locked(run_id)
         if RunStatus(run.status) not in RUNNING or run.current_task_id != task_id:
             return None
         target = RunStatus(to_status)
         if target not in STAGE_FAILURES:
             raise InvalidTransition(f"Destino não é uma falha de estágio: {target}.")
         event_payload = {**(payload or {}), "error": error}
-        return self._transition(
+        return cls._transition(
             run,
             target,
             task_id=task_id,
@@ -188,12 +209,13 @@ class RunManagement(models.Manager["Run"]):
             updates={"last_error": error, "current_task_id": None, "stage_started_at": None},
         )
 
+    @classmethod
     @transaction.atomic
     def record_retry(
-        self, run_id: Any, task_id: str, retry_number: int, payload: dict[str, Any]
+        cls, run_id: Any, task_id: str, retry_number: int, payload: dict[str, Any]
     ) -> None:
-        run = self._locked(run_id)
-        _events().append(
+        run = cls._locked(run_id)
+        _run_event().append(
             run,
             event_type="retry_scheduled",
             from_status=run.status,
@@ -205,16 +227,17 @@ class RunManagement(models.Manager["Run"]):
             event_key=f"{run.pk}:retry:{task_id}:{retry_number}",
         )
 
+    @classmethod
     @transaction.atomic
     def decide(
-        self,
+        cls,
         run_id: Any,
         decision: HumanDecision | str,
         *,
         actor: str,
         payload: dict[str, Any] | None = None,
     ) -> Run:
-        run = self._locked(run_id)
+        run = cls._locked(run_id)
         if RunStatus(run.status) != RunStatus.WAITING_HUMAN_REVIEW:
             raise RunConflict("O run não está aguardando revisão humana.")
         decision = HumanDecision(decision)
@@ -223,36 +246,38 @@ class RunManagement(models.Manager["Run"]):
             if decision == HumanDecision.CONTINUE
             else RunStatus.CLOSED_BY_REVIEWER
         )
-        return self._transition(
+        return cls._transition(
             run,
             target,
             actor=actor,
             payload={**(payload or {}), "decision": decision},
         )
 
+    @classmethod
     @transaction.atomic
-    def recover(self, run_id: Any, *, actor: str) -> Run:
-        run = self._locked(run_id)
+    def recover(cls, run_id: Any, *, actor: str) -> Run:
+        run = cls._locked(run_id)
         if RunStatus(run.status) not in RECOVERABLE:
             raise RunConflict("Somente runs recuperáveis podem ser reprocessados.")
         if not run.stage:
             raise RunConflict("O run não registra qual estágio deve ser retomado.")
         checkpoint = STAGE_BY_NAME[Stage(run.stage)].checkpoint
-        return self._transition(
+        return cls._transition(
             run,
             checkpoint,
             actor=actor,
             updates={"current_task_id": None, "stage_started_at": None, "last_error": ""},
         )
 
+    @classmethod
     @transaction.atomic
-    def release_stale(self, run_id: Any, *, actor: str = "reconciler") -> Run:
-        run = self._locked(run_id)
+    def release_stale(cls, run_id: Any, *, actor: str = "reconciler") -> Run:
+        run = cls._locked(run_id)
         status = RunStatus(run.status)
         if status not in RUNNING:
             raise RunConflict("Somente um estágio em execução pode ser liberado.")
         checkpoint = STAGE_BY_RUNNING_STATUS[status].checkpoint
-        return self._transition(
+        return cls._transition(
             run,
             checkpoint,
             actor=actor,
@@ -260,15 +285,16 @@ class RunManagement(models.Manager["Run"]):
             updates={"current_task_id": None, "stage_started_at": None},
         )
 
+    @classmethod
     @transaction.atomic
-    def mark_republished(self, run_id: Any, *, payload: dict[str, Any] | None = None) -> Run:
-        run = self._locked(run_id)
+    def mark_republished(cls, run_id: Any, *, payload: dict[str, Any] | None = None) -> Run:
+        run = cls._locked(run_id)
         if RunStatus(run.status) not in CHECKPOINTS:
             raise RunConflict("Somente runs em checkpoint podem ser republicados.")
         run.publish_count += 1
         run.updated_at = timezone.now()
         run.save(update_fields=["publish_count", "updated_at"])
-        _events().append(
+        _run_event().append(
             run,
             event_type="republished",
             from_status=run.status,
@@ -280,10 +306,11 @@ class RunManagement(models.Manager["Run"]):
         )
         return run
 
+    @classmethod
     @transaction.atomic
-    def supersede_other_attempts(self, article: Article, current_attempt: Attempt) -> int:
+    def supersede_other_attempts(cls, article: Article, current_attempt: Attempt) -> int:
         runs = (
-            self.select_for_update()
+            cls.objects.select_for_update()
             .filter(attempt__article=article)
             .exclude(attempt=current_attempt)
             .exclude(status__in=[status.value for status in FINAL])
@@ -291,7 +318,7 @@ class RunManagement(models.Manager["Run"]):
         )
         count = 0
         for run in runs:
-            self._transition(
+            cls._transition(
                 run,
                 RunStatus.SUPERSEDED,
                 actor="pipeline",

@@ -10,7 +10,7 @@ Avaliador de artigos científicos. Quem submete envia o PDF de um artigo e receb
 
 O sistema recomenda; não decide sozinho. Risco alto de plágio e pontos sem consenso vão para revisão humana.
 
-> **Situação (03/11/2026):** Etapas 0.1–0.3 do M0 implementadas localmente. Os testes que exigem PostgreSQL ainda precisam rodar no CI. O restante do M0 está planejado em [M0 — Fundação](planning/2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md).
+> **Situação (07/11/2026):** M0 implementado até a etapa 0.4 (pipeline com estágios stub). O restante do M0 está em [M0 — Fundação](planning/2026-11_november/1_plano_completo/04_etapas_m0_restante.md). A equipe trabalha em 4 módulos, com uma branch por etapa e PR para a `dev`: [divisão em módulos](planning/2026-11_november/2_divisao_equipe/divisao_em_modulos.html) (abra no navegador).
 
 ## Como funciona
 

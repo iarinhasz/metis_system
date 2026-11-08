@@ -29,7 +29,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
 |---|---|---|
 | `Agent` e modelos do Agno (`agno.agent`, `agno.models.*`) | só em `agents/` | Um ponto para modelos, chaves, retries, telemetria, custo e fakes |
 | `Workflow`, `Step`, `Steps`, `Parallel`, `Loop`, `Condition` | no `workflow.py` de cada app (`extraction/`, `questions/`, `integrity/`, `evaluation/`) | O fluxo de um estágio fica junto do domínio que ele implementa |
-| Executors dos passos | no app do estágio (`<app>/steps/`) | Usam os Managements de `queries/` e os services do próprio app |
+| Executors dos passos | no app do estágio (`<app>/steps/`) | Usam os Managements de `queries/<app>/` e os services do próprio app |
 | Chamada do workflow | `pipeline/stages.py` (`StageTask.execute()`) | O pipeline orquestra; o domínio não importa `pipeline` |
 
 - `agents/` não importa nenhum app de domínio. O registro de custo entra por injeção (`UsageSink`, abaixo).
@@ -257,7 +257,7 @@ Workflow(name="consolidation", telemetry=False, steps=[
 - **Entrada do workflow:** `StageContext(run_id, attempt_id, task_id, stage)`, só com ids. Cada executor lê do banco o que precisa.
 - **`session_state` não carrega dado de negócio.** No `Parallel`, ele é compartilhado entre os ramos, e uma escrita de um ramo apareceria no outro.
 - **Saídas tipadas entre passos** só para valores pequenos (ex.: o field escolhido no E2), lidas com `step_input.get_step_output("<passo>").content`. O `get_step_content` de um `Parallel` devolve strings, então não serve para saída tipada. O que importa para auditoria vai para o banco.
-- **Executors são classes chamáveis**, com as dependências no construtor (`AgentFactory`, Managements de `queries/`, clientes). Nos testes, a `FakeAgentFactory` entra no lugar da real.
+- **Executors são classes chamáveis**, com as dependências no construtor (`AgentFactory`, Managements de `queries/<app>/`, clientes). Nos testes, a `FakeAgentFactory` entra no lugar da real.
 - **Retomada.** Um retry do estágio pelo Celery executa o workflow inteiro de novo; cada passo pula o que já tem saída persistida (tabela acima). Por isso nenhum passo pode depender de um efeito que não esteja no banco.
 - **`run_id` do workflow** = id da task Celery, para cruzar os logs do Agno com o `RunEvent`.
 - **`PostgresDb` do Agno:** desligado. Se um dia for usado para inspecionar execuções, fica num schema `agno` próprio.

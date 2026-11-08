@@ -4,7 +4,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from projects.correction.attempts.models import Article, Attempt, Run
+from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
 from projects.correction.attempts.status import RunStatus, Stage
 from projects.correction.metis.celery import app
 from projects.correction.metis.config import settings
@@ -54,31 +54,34 @@ def eager_celery() -> Iterator[None]:
 
 @pytest.fixture
 def run() -> Run:
-    article = Article.objects.create(external_id="artigo-pipeline")
-    attempt = Attempt.objects.create(
-        article=article,
-        attempt_number=1,
+    article = Article.get_or_create_by_external_id("artigo-pipeline")
+    attempt, _ = Attempt.create_next(
+        article,
         file="submissions/artigo-pipeline/paper.pdf",
         original_filename="paper.pdf",
         size_bytes=128,
         sha256="a" * 64,
         submitted_by="test-service",
     )
-    return Run.objects.create(attempt=attempt)
+    return Run.create(attempt=attempt)
 
 
 def transitions(run: Run) -> list[str]:
-    return list(run.events.filter(event_type="transition").values_list("to_status", flat=True))
+    return [e.to_status for e in RunEvent.for_run(run.pk) if e.event_type == "transition"]
+
+
+def retries(run: Run) -> list[RunEvent]:
+    return [e for e in RunEvent.for_run(run.pk) if e.event_type == "retry_scheduled"]
 
 
 def test_happy_path_reaches_done(run: Run) -> None:
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.DONE
     assert transitions(run) == HAPPY_PATH
     assert run.current_task_id is None
-    assert not run.events.filter(event_type="retry_scheduled").exists()
+    assert not retries(run)
 
 
 def test_transient_error_is_retried_and_reaches_done(
@@ -94,14 +97,14 @@ def test_transient_error_is_retried_and_reaches_done(
 
     monkeypatch.setattr(ExtractionStage, "execute", flaky)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.DONE
     assert transitions(run) == HAPPY_PATH
     assert len(set(calls)) == 1, "o retry mantém o id da task e, com ele, a posse"
-    retries = run.events.filter(event_type="retry_scheduled")
-    assert retries.count() == 2
-    for event in retries:
+    retry_events = retries(run)
+    assert len(retry_events) == 2
+    for event in retry_events:
         assert event.stage == Stage.EXTRACTION
         assert event.payload["exception"] == "TransientStageError"
         assert 0 <= event.payload["wait_seconds"] <= settings.stage_retry_backoff_max_seconds
@@ -114,13 +117,13 @@ def test_exhausted_retries_end_in_error_llm(run: Run, monkeypatch: pytest.Monkey
     monkeypatch.setattr(settings, "stage_max_retries", 2)
     monkeypatch.setattr(EvaluationStage, "execute", unavailable)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.ERROR_LLM
     assert run.stage == Stage.EVALUATION
     assert run.last_error == "LLMUnavailable: 429 do provedor"
     assert run.current_task_id is None
-    assert run.events.filter(event_type="retry_scheduled").count() == 2
+    assert len(retries(run)) == 2
 
 
 def test_exhausted_transient_error_ends_in_error_external(
@@ -132,7 +135,7 @@ def test_exhausted_transient_error_ends_in_error_external(
     monkeypatch.setattr(settings, "stage_max_retries", 1)
     monkeypatch.setattr(ExtractionStage, "execute", down)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.ERROR_EXTERNAL
 
@@ -152,12 +155,12 @@ def test_invalid_submission_is_final_and_publishes_nothing(
     monkeypatch.setattr(ExtractionStage, "execute", invalid)
     monkeypatch.setattr(ProfilingStage, "execute", profile)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.REJECTED_INVALID_SUBMISSION
     assert transitions(run) == ["received", "extracting", "rejected_invalid_submission"]
     assert profiled == []
-    assert not run.events.filter(event_type="retry_scheduled").exists()
+    assert not retries(run)
 
 
 def test_setup_required_waits_for_setup(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -166,7 +169,7 @@ def test_setup_required_waits_for_setup(run: Run, monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(ProfilingStage, "execute", no_question)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.WAITING_SETUP
     assert run.stage == Stage.PROFILING
@@ -180,18 +183,18 @@ def test_unexpected_error_ends_in_error_unexpected(
 
     monkeypatch.setattr(ExtractionStage, "execute", bug)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.ERROR_UNEXPECTED
     assert run.last_error.startswith("KeyError")
-    assert not run.events.filter(event_type="retry_scheduled").exists()
+    assert not retries(run)
 
 
 def test_stage_that_lost_ownership_does_not_transition(
     run: Run, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def superseded_midway(self: ProfilingStage, ctx: StageContext) -> StageOutcome:
-        Attempt.objects.create_next(
+        Attempt.create_next(
             run.attempt.article,
             sha256="b" * 64,
             file="submissions/artigo-pipeline/paper-v2.pdf",
@@ -203,17 +206,17 @@ def test_stage_that_lost_ownership_does_not_transition(
 
     monkeypatch.setattr(ProfilingStage, "execute", superseded_midway)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.SUPERSEDED
     assert transitions(run)[-2:] == ["profiling", "superseded"]
 
 
 def test_duplicate_message_is_denied_without_effect(run: Run) -> None:
-    Run.objects.claim_stage(run.pk, Stage.EXTRACTION, "worker-original")
+    Run.claim_stage(run.pk, Stage.EXTRACTION, "worker-original")
 
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.EXTRACTING
     assert run.current_task_id == "worker-original"
@@ -226,11 +229,11 @@ def test_halt_pauses_at_human_review_gate(run: Run, monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(IntegrityStage, "execute", high_risk)
     publish_stage(str(run.pk), Stage.EXTRACTION)
-    run.refresh_from_db()
+    run = Run.get_by_id(run.pk)
 
     assert run.status == RunStatus.WAITING_HUMAN_REVIEW
     assert transitions(run)[-1] == "waiting_human_review"
-    gate = run.events.get(to_status="waiting_human_review")
+    gate = next(e for e in RunEvent.for_run(run.pk) if e.to_status == "waiting_human_review")
     assert gate.payload == {"risk": "high"}
 
 

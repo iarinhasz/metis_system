@@ -18,7 +18,7 @@ from projects.correction.attempts.status import (
     NEXT_STAGE,
     STAGE_BY_NAME,
     RunStatus,
-    Stage,  
+    Stage,
     StageSpec,
 )
 from projects.correction.metis.config import settings
@@ -73,7 +73,7 @@ class StageTask(_TaskBase):
         task_id = self.request.id
         if not task_id:
             raise RuntimeError("A task de estágio precisa de um id para registrar a posse.")
-        run = Run.objects.claim_stage(run_id, self.stage, task_id)
+        run = Run.claim_stage(run_id, self.stage, task_id)
         if run is None:
             logger.info("Claim negado: run=%s stage=%s task=%s", run_id, self.stage, task_id)
             return
@@ -98,9 +98,7 @@ class StageTask(_TaskBase):
     def _complete(self, ctx: StageContext, outcome: StageOutcome) -> None:
         target = RunStatus.WAITING_HUMAN_REVIEW if outcome.halt else self.spec.completed
         with transaction.atomic():
-            run = Run.objects.complete_stage(
-                ctx.run_id, ctx.task_id, target, payload=outcome.payload
-            )
+            run = Run.complete_stage(ctx.run_id, ctx.task_id, target, payload=outcome.payload)
             if run is None:
                 logger.info("Posse perdida antes de concluir: run=%s", ctx.run_id)
                 return
@@ -109,7 +107,7 @@ class StageTask(_TaskBase):
                 publish_stage_on_commit(ctx.run_id, next_stage)
 
     def _fail(self, ctx: StageContext, status: RunStatus, exc: BaseException) -> None:
-        Run.objects.fail_stage(
+        Run.fail_stage(
             ctx.run_id,
             ctx.task_id,
             status,
@@ -122,7 +120,7 @@ class StageTask(_TaskBase):
         if retries >= settings.stage_max_retries:
             self._fail(ctx, exc.failure_status, exc)
             return
-        if not Run.objects.is_owned_by(ctx.run_id, ctx.task_id):
+        if not Run.is_owned_by(ctx.run_id, ctx.task_id):
             logger.info("Posse perdida antes do retry: run=%s", ctx.run_id)
             return
         countdown = get_exponential_backoff_interval(
@@ -131,7 +129,7 @@ class StageTask(_TaskBase):
             maximum=settings.stage_retry_backoff_max_seconds,
             full_jitter=True,
         )
-        Run.objects.record_retry(
+        Run.record_retry(
             ctx.run_id,
             ctx.task_id,
             retries + 1,

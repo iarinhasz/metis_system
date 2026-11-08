@@ -1,4 +1,4 @@
-"""Consulta de saúde do banco, usada pelo healthcheck."""
+"""Saúde do banco, usada pelo healthcheck do container."""
 
 from django.db import DatabaseError, connection
 

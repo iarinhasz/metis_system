@@ -12,11 +12,11 @@ from ninja import File, Form, Router, Schema
 from ninja.files import UploadedFile as NinjaUploadedFile
 
 from projects.correction.attempts.models import Article, Attempt, Run
-from projects.correction.attempts.queries import database_is_available
 from projects.correction.attempts.status import Stage
 from projects.correction.metis.authentication import ServiceBearerAuth
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.publishing import publish_stage_on_commit
+from projects.correction.queries.health import database_is_available
 
 router = Router(auth=ServiceBearerAuth())
 
@@ -94,11 +94,11 @@ def submit_attempt(
     queued_run_id: str | None = None
 
     with transaction.atomic():
-        article = Article.objects.get_or_create_by_external_id(external_id)
-        attempt = Attempt.objects.find_by_sha256(article, sha256)
+        article = Article.get_or_create_by_external_id(external_id)
+        attempt = Attempt.find_by_sha256(article, sha256)
         created = attempt is None
         if attempt is None:
-            attempt, created = Attempt.objects.create_next(
+            attempt, created = Attempt.create_next(
                 article,
                 sha256=sha256,
                 file=file,
@@ -107,9 +107,9 @@ def submit_attempt(
                 submitted_by="service-api",
             )
 
-        run = Run.objects.latest_for_attempt(attempt)
+        run = Run.latest_for_attempt(attempt)
         if run is None:
-            run = Run.objects.create(attempt=attempt)
+            run = Run.create(attempt=attempt)
             queued_run_id = str(run.pk)
         elif created:
             queued_run_id = str(run.pk)
@@ -130,7 +130,7 @@ def submit_attempt(
 def get_run(request: HttpRequest, run_id: str) -> RunResponse:
     """Devolve o estado atual e a trilha de eventos em ordem cronológica."""
     del request
-    run = Run.objects.get_with_events(run_id)
+    run = Run.get_with_events(run_id)
     if run is None:
         raise Http404("Run não encontrado.")
     events = [

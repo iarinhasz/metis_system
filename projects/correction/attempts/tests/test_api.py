@@ -9,7 +9,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
-from projects.correction.attempts.models import Article, Attempt, Run
+from projects.correction.attempts.models import Article, Run
 from projects.correction.attempts.status import Stage
 from projects.correction.metis.config import settings
 
@@ -117,7 +117,7 @@ def test_new_file_creates_next_version_and_supersedes_pending_run(
     assert first.status_code == 202
     assert second.status_code == 202
     assert second.json()["attempt_number"] == 2
-    first_run = Run.objects.get(pk=first.json()["run_id"])
+    first_run = Run.get_by_id(first.json()["run_id"])
     assert first_run.status == "superseded"
 
 
@@ -132,7 +132,7 @@ def test_rejects_non_pdf(authenticated_client: Client) -> None:
     )
 
     assert response.status_code == 400
-    assert Article.objects.count() == 0
+    assert Article.find_by_external_id("artigo-1") is None
 
 
 @pytest.mark.django_db
@@ -149,7 +149,7 @@ def test_rejects_oversized_file(
     )
 
     assert response.status_code == 400
-    assert Attempt.objects.count() == 0
+    assert Article.find_by_external_id("artigo-1") is None
 
 
 @pytest.mark.django_db
@@ -158,10 +158,10 @@ def test_run_status_lists_events_in_order(authenticated_client: Client) -> None:
         "/api/attempts",
         {"external_id": "artigo-1", "file": SimpleUploadedFile("artigo.pdf", PDF_V1)},
     ).json()
-    run = Run.objects.get(pk=submitted["run_id"])
-    Run.objects.claim_stage(run.pk, Stage.EXTRACTION, "task-1")
+    run_id = submitted["run_id"]
+    Run.claim_stage(run_id, Stage.EXTRACTION, "task-1")
 
-    response = authenticated_client.get(f"/api/runs/{run.pk}")
+    response = authenticated_client.get(f"/api/runs/{run_id}")
 
     assert response.status_code == 200
     body = response.json()

@@ -8,7 +8,7 @@ from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
 
 
 class ReadOnlyModelAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
-    """Impede alterações manuais que contornariam os Managements de `queries/`."""
+    """Impede alterações manuais que contornariam os Managements de `queries/attempts/`."""
 
     def get_readonly_fields(
         self, request: HttpRequest, obj: Model | None = None
