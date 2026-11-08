@@ -1,6 +1,6 @@
 # M0 — Fundação (restante)
 
-**Situação:** etapas 0.1–0.5 implementadas, em `projects/correction/`; a 0.5 está na branch `plataforma/0.5-gate-humano`.
+**Situação:** etapas 0.1–0.6 implementadas, em `projects/correction/`; a 0.6 está na branch `feat/0.6-reconciliador`.
 **Trilha:** P
 **Referência:** [etapas originais do M0](../../2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md), [Orquestração](../../../docs/orchestration.md)
 

@@ -21,13 +21,6 @@ CaptureOnCommit = Callable[..., AbstractContextManager[list[Callable[[], Any]]]]
 
 
 @pytest.fixture
-def publisher(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    mock = Mock()
-    monkeypatch.setattr("projects.correction.pipeline.publishing.publish_stage", mock)
-    return mock
-
-
-@pytest.fixture
 def authenticated_client(monkeypatch: pytest.MonkeyPatch) -> Client:
     monkeypatch.setattr(settings, "api_token", "token-de-teste")
     return Client(headers={"Authorization": "Bearer token-de-teste"})

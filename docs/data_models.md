@@ -48,8 +48,8 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `stage` | Estágio atual, ou o último que rodou |
 | `current_task_id` | Id da task Celery dona do estágio em andamento |
 | `stage_started_at` | Início do estágio atual; o reconciliador usa para achar estágios travados |
-| `stage_claims` | Quantas vezes o estágio atual começou (retries contam) |
-| `publish_count` | Republicações do checkpoint atual |
+| `stage_claims` | Quantas vezes o estágio atual começou (retries contam); zera no "Reprocessar" |
+| `publish_count` | Republicações do checkpoint atual; zera no claim e no "Reprocessar" |
 | `version` | +1 a cada transição; compõe o `event_key` |
 | `last_error` | Último erro. O histórico fica nos eventos |
 | `extracted_document` (M1) | FK para a extração usada |

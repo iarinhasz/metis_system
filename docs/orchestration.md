@@ -94,6 +94,12 @@ Uma task do beat (`pipeline.reconcile_runs`, a cada 5 min) cobre duas situaçõe
 Por que é seguro:
 - O claim e a posse impedem processamento duplo, mesmo que a mensagem antiga ainda esteja na fila.
 - 45 min é mais que o hard limit da task (30 min). Quando o reconciliador libera um estágio, a task antiga já foi morta.
+- Cada run é tratado na própria transação, com a linha travada e a condição conferida de novo. Um run que andou entre a consulta e a ação fica como está.
+- Um run com problema não para a passada: o erro vai para o log, e a próxima passada tenta de novo.
+
+Ao desistir (`Run.abandon`), o run vai para `error_unexpected` com o motivo em `last_error`. Se estava parado num checkpoint, ele passa a registrar o estágio que deveria começar ali, para o "Reprocessar" voltar a esse mesmo checkpoint. O "Reprocessar" zera `stage_claims` e `publish_count`, porque é uma retomada decidida por alguém.
+
+O código fica em `pipeline/reconciler.py`. A task `pipeline.reconcile_runs` está no `CELERY_BEAT_SCHEDULE`, na fila `default`.
 
 ## Tempos e validação na subida
 

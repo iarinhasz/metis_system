@@ -1,11 +1,20 @@
 """Fixtures compartilhadas pelos testes do Metis."""
 
 from collections.abc import Iterator
+from unittest.mock import Mock
 
 import pytest
 
 from projects.correction.attempts.models import Article, Attempt, Run
 from projects.correction.metis.celery import app
+
+
+@pytest.fixture
+def publisher(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    """Troca o envio ao broker por um mock, para o teste ver o que seria publicado."""
+    mock = Mock()
+    monkeypatch.setattr("projects.correction.pipeline.publishing.publish_stage", mock)
+    return mock
 
 
 @pytest.fixture
