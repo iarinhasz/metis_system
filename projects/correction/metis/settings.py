@@ -86,3 +86,10 @@ CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_QUEUES = [Queue(name) for name in QUEUES]
 CELERY_TASK_ROUTES = {spec.task_name: {"queue": spec.queue} for spec in STAGES}
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "reconcile-runs": {
+        "task": "pipeline.reconcile_runs",
+        "schedule": config.reconcile_interval_seconds,
+        "options": {"queue": "default"},
+    }
+}

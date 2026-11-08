@@ -15,12 +15,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 
 from projects.correction.attempts.models import Article, Attempt, Run
-from projects.correction.attempts.status import (
-    STAGE_BY_CHECKPOINT,
-    HumanDecision,
-    RunStatus,
-    Stage,
-)
+from projects.correction.attempts.status import HumanDecision, Stage
 from projects.correction.attempts.uploads import (
     InvalidUpload,
     check_pdf,
@@ -28,7 +23,10 @@ from projects.correction.attempts.uploads import (
     sha256_of,
 )
 from projects.correction.metis.config import settings
-from projects.correction.pipeline.publishing import publish_stage_on_commit
+from projects.correction.pipeline.publishing import (
+    publish_checkpoint_stage,
+    publish_stage_on_commit,
+)
 
 
 @dataclass(frozen=True)
@@ -71,7 +69,7 @@ def decide_run(run_id: Any, decision: HumanDecision | str, *, actor: str, note: 
     """Continuar leva o run a `integrity_checked` e publica o E4; encerrar o fecha."""
     payload = {"note": note} if note else None
     run = Run.decide(run_id, decision, actor=actor, payload=payload)
-    _publish_from_checkpoint(run)
+    publish_checkpoint_stage(run)
     return run
 
 
@@ -79,11 +77,5 @@ def decide_run(run_id: Any, decision: HumanDecision | str, *, actor: str, note: 
 def recover_run(run_id: Any, *, actor: str) -> Run:
     """Volta o run ao checkpoint do estágio que falhou e publica esse estágio de novo."""
     run = Run.recover(run_id, actor=actor)
-    _publish_from_checkpoint(run)
+    publish_checkpoint_stage(run)
     return run
-
-
-def _publish_from_checkpoint(run: Run) -> None:
-    spec = STAGE_BY_CHECKPOINT.get(RunStatus(run.status))
-    if spec is not None:
-        publish_stage_on_commit(str(run.pk), spec.stage)

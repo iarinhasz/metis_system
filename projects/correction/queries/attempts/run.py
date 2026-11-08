@@ -12,6 +12,7 @@ from projects.correction.attempts.status import (
     FINAL,
     RECOVERABLE,
     RUNNING,
+    STAGE_BY_CHECKPOINT,
     STAGE_BY_NAME,
     STAGE_BY_RUNNING_STATUS,
     STAGE_FAILURES,
@@ -22,6 +23,8 @@ from projects.correction.attempts.status import (
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from django.db import models
 
     from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
@@ -39,6 +42,10 @@ def _run_event() -> type[RunEvent]:
     from projects.correction.attempts.models import RunEvent
 
     return RunEvent
+
+
+def _values(statuses: frozenset[RunStatus]) -> list[str]:
+    return sorted(status.value for status in statuses)
 
 
 class RunManagement:
@@ -72,6 +79,42 @@ class RunManagement:
     def is_owned_by(cls, run_id: Any, task_id: str) -> bool:
         """Diz se a task ainda é a dona do estágio em execução."""
         return cls.objects.filter(pk=run_id, current_task_id=task_id).exists()
+
+    @classmethod
+    def ids_stalled_at_checkpoint(cls, *, before: datetime) -> list[Any]:
+        """Runs num checkpoint sem mudança desde `before`: a publicação pode ter se perdido."""
+        return list(
+            cls.objects.filter(status__in=_values(CHECKPOINTS), updated_at__lt=before)
+            .order_by("updated_at")
+            .values_list("pk", flat=True)
+        )
+
+    @classmethod
+    def ids_with_stale_stage(cls, *, before: datetime) -> list[Any]:
+        """Runs com um estágio rodando desde antes de `before`: o worker pode ter morrido."""
+        return list(
+            cls.objects.filter(status__in=_values(RUNNING), stage_started_at__lt=before)
+            .order_by("stage_started_at")
+            .values_list("pk", flat=True)
+        )
+
+    @classmethod
+    def lock_if_stalled_at_checkpoint(cls, run_id: Any, *, before: datetime) -> Run | None:
+        """Trava o run se ele continua parado no checkpoint; se andou, devolve None."""
+        return (
+            cls.objects.select_for_update()
+            .filter(pk=run_id, status__in=_values(CHECKPOINTS), updated_at__lt=before)
+            .first()
+        )
+
+    @classmethod
+    def lock_if_stage_is_stale(cls, run_id: Any, *, before: datetime) -> Run | None:
+        """Trava o run se o estágio continua travado; se andou, devolve None."""
+        return (
+            cls.objects.select_for_update()
+            .filter(pk=run_id, status__in=_values(RUNNING), stage_started_at__lt=before)
+            .first()
+        )
 
     @classmethod
     @transaction.atomic
@@ -256,6 +299,10 @@ class RunManagement:
     @classmethod
     @transaction.atomic
     def recover(cls, run_id: Any, *, actor: str) -> Run:
+        """Volta ao checkpoint do estágio que falhou.
+
+        É uma retomada decidida por alguém, então os contadores do reconciliador recomeçam.
+        """
         run = cls._locked(run_id)
         if RunStatus(run.status) not in RECOVERABLE:
             raise RunConflict("Somente runs recuperáveis podem ser reprocessados.")
@@ -266,7 +313,43 @@ class RunManagement:
             run,
             checkpoint,
             actor=actor,
-            updates={"current_task_id": None, "stage_started_at": None, "last_error": ""},
+            updates={
+                "current_task_id": None,
+                "stage_started_at": None,
+                "last_error": "",
+                "stage_claims": 0,
+                "publish_count": 0,
+            },
+        )
+
+    @classmethod
+    @transaction.atomic
+    def abandon(cls, run_id: Any, *, error: str, actor: str = "reconciler") -> Run:
+        """Leva a `error_unexpected` um run que o reconciliador desistiu de retomar.
+
+        Parado num checkpoint, o run passa a registrar o estágio que deveria começar ali,
+        para o "Reprocessar" voltar a esse mesmo checkpoint.
+        """
+        run = cls._locked(run_id)
+        status = RunStatus(run.status)
+        updates: dict[str, Any] = {
+            "last_error": error,
+            "current_task_id": None,
+            "stage_started_at": None,
+        }
+        if status in CHECKPOINTS:
+            next_stage = STAGE_BY_CHECKPOINT[status].stage
+            if run.stage != next_stage:
+                updates.update({"stage": next_stage, "stage_claims": 0})
+        elif status not in RUNNING:
+            raise RunConflict("Só um run parado num checkpoint ou num estágio pode ser abandonado.")
+        return cls._transition(
+            run,
+            RunStatus.ERROR_UNEXPECTED,
+            actor=actor,
+            task_id=run.current_task_id or "",
+            payload={"error": error},
+            updates=updates,
         )
 
     @classmethod
