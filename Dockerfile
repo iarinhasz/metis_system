@@ -3,7 +3,7 @@
 # Imagem única do Metis: a API (web) e os workers Celery rodam dela; só o command muda.
 FROM python:3.14-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.14 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /bin/uv
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
