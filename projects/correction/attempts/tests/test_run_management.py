@@ -4,7 +4,11 @@ import pytest
 
 from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
 from projects.correction.attempts.status import STAGES, HumanDecision, RunStatus, Stage
+from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.models import Extraction
 from projects.correction.queries.attempts.run import InvalidTransition, RunConflict
+
+ARTICLE = ExtractedArticle(title="A", authors=(), language="pt", model="m", sections=())
 
 
 def events(run: Run, event_type: str | None = None) -> list[RunEvent]:
@@ -72,6 +76,18 @@ def test_complete_requires_ownership(run: Run) -> None:
     assert completed is not None
     assert completed.status == RunStatus.EXTRACTED
     assert completed.current_task_id is None
+
+
+@pytest.mark.django_db
+def test_extraction_is_attached_only_by_the_owner_of_the_stage(run: Run) -> None:
+    extraction = Extraction.store("a" * 64, "v1", ARTICLE)
+
+    assert not Run.attach_extraction(run.pk, "task-1", extraction)  # ainda no checkpoint
+    Run.claim_stage(run.pk, Stage.EXTRACTION, "task-1")
+    assert not Run.attach_extraction(run.pk, "task-2", extraction)
+    assert Run.attach_extraction(run.pk, "task-1", extraction)
+
+    assert Run.get_by_id(run.pk).extraction == extraction
 
 
 @pytest.mark.django_db

@@ -43,6 +43,10 @@ class MetisSettings(BaseSettings):
     max_republish: int = 3
     max_stage_claims: int = 8
 
+    # Chave da API do Gemini, lida do .env sem o prefixo METIS_.
+    gemini_key: str = Field(default="", validation_alias="GEMINI_KEY")
+    llm_timeout_seconds: int = 600
+
     @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
     @classmethod
     def split_csv_values(cls, value: object) -> object:
@@ -62,6 +66,7 @@ class MetisSettings(BaseSettings):
         "stale_stage_after_seconds",
         "max_republish",
         "max_stage_claims",
+        "llm_timeout_seconds",
     )
     @classmethod
     def values_must_be_positive(cls, value: int) -> int:
@@ -81,6 +86,8 @@ class MetisSettings(BaseSettings):
             raise ValueError("O prazo de estágio travado deve exceder o limite hard da task.")
         if not self.max_stage_claims > self.stage_max_retries + 1:
             raise ValueError("O máximo de claims deve exceder retries + 1.")
+        if not self.llm_timeout_seconds < self.stage_soft_time_limit_seconds:
+            raise ValueError("O timeout da chamada ao modelo deve ser menor que o limite soft.")
         return self
 
 

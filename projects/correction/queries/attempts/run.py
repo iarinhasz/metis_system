@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from django.db import models
 
     from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
+    from projects.correction.extractor.models import Extraction
 
 
 class InvalidTransition(ValueError):
@@ -74,6 +75,14 @@ class RunManagement:
     @classmethod
     def latest_for_attempt(cls, attempt: Attempt) -> Run | None:
         return cls.objects.filter(attempt=attempt).order_by("-created_at", "-pk").first()
+
+    @classmethod
+    def attach_extraction(cls, run_id: Any, task_id: str, extraction: Extraction) -> bool:
+        """Liga a extração ao run, só se o E1 ainda está com esta task (posse)."""
+        updated = cls.objects.filter(
+            pk=run_id, current_task_id=task_id, status=RunStatus.EXTRACTING
+        ).update(extraction=extraction, updated_at=timezone.now())
+        return updated == 1
 
     @classmethod
     def is_owned_by(cls, run_id: Any, task_id: str) -> bool:

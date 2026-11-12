@@ -30,12 +30,11 @@ E1 extração ──▶ E2 perfil ──▶ E3 integridade ──┬── risco
 
 ## 1. E1 — Extração
 
-Entrada: o PDF. Saída: o `ExtractedDocument`, o contrato que todos os estágios seguintes leem.
-- O GROBID extrai seções, abstract, referências e a ligação entre cada citação no texto e sua referência.
-- O Docling acha figuras (inclusive gráficos vetoriais), tabelas e fórmulas.
-- Cada figura é recortada e descrita por um modelo de visão, que recebe também a legenda e os parágrafos que a citam.
-- O scan de texto oculto procura instruções escondidas para revisores IA.
-- Sem texto, sem abstract ou sem referências → `rejected_invalid_submission`.
+Entrada: o PDF. Saída: a `Extraction`, o artigo dividido em seções que os estágios seguintes leem.
+- Uma chamada ao modelo (Gemini) mapeia os títulos das seções; sem abstract ou sem referências → `rejected_invalid_submission`.
+- Uma chamada por seção, em paralelo, copia o texto de cada uma. O código confere a resposta contra o texto do PDF e refaz a seção que veio incompleta ou com texto de outra.
+- Um run novo do mesmo PDF reaproveita a extração guardada.
+- Em aberto: descrição de figuras, texto oculto e a ligação de cada citação à sua referência.
 
 Detalhe: [Extração](extraction.md).
 

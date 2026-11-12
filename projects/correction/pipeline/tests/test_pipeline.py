@@ -1,5 +1,7 @@
 """Testes do ciclo dos estágios com Celery em modo eager e transações reais."""
 
+import json
+
 import pytest
 
 from projects.correction.attempts.models import Attempt, Run, RunEvent
@@ -55,6 +57,10 @@ def test_happy_path_reaches_done(run: Run) -> None:
     assert transitions(run) == HAPPY_PATH
     assert run.current_task_id is None
     assert not retries(run)
+    assert run.extraction is not None
+    [extracted] = [e for e in RunEvent.for_run(run.pk) if e.to_status == "extracted"]
+    assert extracted.payload["extraction_id"] == str(run.extraction.pk)
+    assert "text" not in json.dumps(extracted.payload)
 
 
 def test_transient_error_is_retried_and_reaches_done(

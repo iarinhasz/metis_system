@@ -34,7 +34,7 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `a
 |---|---|---|
 | Factory | `ModelFactory(ModelSpec)` → modelo Agno; `AgentFactory` → profiler, describer, evaluator, judge, meta-revisor, adjudicadores | Único ponto que instancia o Agno; nos testes devolve fakes |
 | Registry + Factory | Método de avaliação → `EvaluationConfig` | Um método novo entra registrando o config, sem mexer no pipeline |
-| Builder | `ExtractedDocumentBuilder`, `EvaluationContextBuilder`, `RevisionPromptBuilder` | Objetos montados de várias fontes, validados no `build()` |
+| Builder | `EvaluationContextBuilder`, `RevisionPromptBuilder` | Objetos montados de várias fontes, validados no `build()` |
 | Strategy | `CandidateSource` (interno, citadas, S2, arXiv, OpenAlex), `SimilarityDetector` (léxico, semântico), modo de avaliação (`sectioned`, `whole_document`) | Várias implementações reais desde o início; os dois modos de avaliação são necessários para o A/B |
 | Chain of Responsibility | Validadores antes do juiz; fallback da Question | Ordem explícita, cada elo testável |
 | Template Method | `StageTask` | Claim, persistência e eventos iguais em todo estágio |

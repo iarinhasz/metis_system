@@ -43,7 +43,7 @@ Do mais barato ao mais caro:
    | arXiv | Busca e PDF | 1 requisição a cada 3 s |
    | OpenAlex (busca) | Artigos relacionados | **Paga desde 2026**: US$ 1 por mil buscas; a chave grátis dá US$ 1/dia → orçamento por run |
 
-   O full text em acesso aberto vem do arXiv, do Unpaywall (`best_oa_location`) ou do `openAccessPdf` do Semantic Scholar. Ele passa pelo mesmo GROBID, é dividido em chunks e ganha embeddings, num cache (`SourceChunk`) que cresce a cada submissão.
+   O full text em acesso aberto vem do arXiv, do Unpaywall (`best_oa_location`) ou do `openAccessPdf` do Semantic Scholar. Ele tem o texto lido (como o E1 lê o PDF, ou pelo texto que a própria fonte entrega), é dividido em chunks e ganha embeddings, num cache (`SourceChunk`) que cresce a cada submissão.
 2. **Léxico, sem LLM.**
    - MinHash-LSH (`datasketch` 2.0, MIT), sobre shingles de palavras, acha os parágrafos candidatos.
    - *Winnowing* localiza os trechos idênticos, com offsets: guarda o menor hash de cada janela de k-gramas, com hash estável (blake2b). Qualquer trecho comum com pelo menos `w + k − 1` palavras é detectado.
@@ -53,7 +53,7 @@ Do mais barato ao mais caro:
    - O **SPECTER2** não serve aqui: só funciona em inglês e compara artigos inteiros.
    - Os limiares são calibrados com abstracts bilíngues do SciELO e com o plágio sintético do PeerRead. Não existe benchmark público PT↔EN para modelos atuais.
 4. **Filtro por citação.** Para cada par suspeito:
-   - a fonte está citada nesse trecho (pelas citações ligadas pelo GROBID)?
+   - a fonte está citada nesse trecho? Depende da ligação de cada citação à sua referência, que ficou em aberto quando o GROBID foi descartado (ver [Extração](extraction.md#limitações-conhecidas));
    - o trecho está entre aspas?
    - é boilerplate (descrição padrão de método, definição)?
    - é o mesmo trabalho, como o preprint do próprio autor (título e autores batem)?

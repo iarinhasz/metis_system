@@ -16,6 +16,7 @@ CSRF_TRUSTED_ORIGINS = config.csrf_trusted_origins
 INSTALLED_APPS = [
     "projects.correction.attempts.apps.AttemptsConfig",
     "projects.correction.pipeline.apps.PipelineConfig",
+    "projects.correction.extractor.apps.ExtractorAppConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

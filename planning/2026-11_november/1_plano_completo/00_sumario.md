@@ -1,6 +1,6 @@
 # Metis: plano completo do projeto
 
-**Situação:** M0 implementado (etapas 0.1–0.7, [04](04_etapas_m0_restante.md)), com a verificação manual do I1 passando no `docker compose` em 11/11. O código fica em `projects/correction/`. Próximo passo da trilha P: a fase 2 ([03](03_roteiro_e_trilhas.md#fases))
+**Situação:** M0 implementado (etapas 0.1–0.7, [04](04_etapas_m0_restante.md)). Na fase 2, a 1.5 está implementada: o E1 divide o artigo com chamadas ao Gemini, conferidas contra o PDF, e o GROBID foi descartado em 11/11 ([05](05_etapas_m1_extracao.md)). O código fica em `projects/correction/`
 **Data:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)
 **Fluxo no Agno:** [docs/agents.md](../../../docs/agents.md); em diagramas, com as entidades e as ligações: [docs/flow_graph.md](../../../docs/flow_graph.md)
@@ -56,7 +56,7 @@ Continua o que estava fora no desenho inicial: detector de texto gerado por IA, 
 | [02_fluxo_agno.md](02_fluxo_agno.md) | O fluxo no Agno do ponto de vista da construção: qual etapa cria cada peça, e em que ordem |
 | [03_roteiro_e_trilhas.md](03_roteiro_e_trilhas.md) | Marcos M0–M6, dependências, 3 trilhas e pontos de integração |
 | [04_etapas_m0_restante.md](04_etapas_m0_restante.md) | Pendências da 0.3 e etapas 0.4–0.7 |
-| [05_etapas_m1_extracao.md](05_etapas_m1_extracao.md) | M1: contrato, spike do Agno, `agents/`, `LLMCall`, GROBID, Docling, figuras, E1 |
+| [05_etapas_m1_extracao.md](05_etapas_m1_extracao.md) | M1: contrato, spike do Agno, `agents/`, `LLMCall`, divisão do artigo pelo modelo (1.5, feita), figuras, E1 |
 | [06_etapas_m2_perfil.md](06_etapas_m2_perfil.md) | M2: taxonomia, critérios, profiler, papéis das seções, curadoria |
 | [07_etapas_m3_avaliacao.md](07_etapas_m3_avaliacao.md) | M3: avaliadores, validadores, juiz, revisão, E5, rubric check, A/B |
 | [08_etapas_m4_integridade_fase1.md](08_etapas_m4_integridade_fase1.md) | M4: `scholarly/`, referências, corpus, funil de similaridade, regras, gate |

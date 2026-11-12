@@ -58,7 +58,7 @@ Caminhos relativos a `projects/correction/`.
 ## Etapa 4.4 — Fontes de candidatos
 
 **O que fazer**
-- Strategy `CandidateSource`: corpus interno, obras citadas (abstract + full text em acesso aberto, passando pelo GROBID), S2 `/paper/search`, arXiv, OpenAlex (busca paga).
+- Strategy `CandidateSource`: corpus interno, obras citadas (abstract + full text em acesso aberto, com o texto lido como no E1), S2 `/paper/search`, arXiv, OpenAlex (busca paga).
 - Orçamento por run para as buscas pagas; o que ficar de fora vai para o `coverage`.
 
 **Teste** (`integrity/tests/test_candidates.py`): orçamento estourado para a busca e registra; cada fonte devolve candidatos no mesmo formato.
@@ -95,7 +95,7 @@ Caminhos relativos a `projects/correction/`.
 ## Etapa 4.7 — Filtro por citação e adjudicador
 
 **O que fazer**
-- `integrity/citation_filter.py`: a fonte está citada no trecho (citações ligadas pelo GROBID)? Entre aspas? Boilerplate? Mesmo trabalho (título e autores)?
+- `integrity/citation_filter.py`: a fonte está citada no trecho (ligação citação ↔ referência da 1.10, em aberto)? Entre aspas? Boilerplate? Mesmo trabalho (título e autores)?
 - Agente `plagiarism_adjudicator()` nos top-N pares, via `bounded_map`, com o veredito de [Checagem de integridade](../../../docs/integrity_check.md#fase-1--similaridade-em-funil).
 
 **Teste** (`integrity/tests/test_adjudication.py`, fakes)

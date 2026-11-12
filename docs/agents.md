@@ -28,11 +28,12 @@ task do estágio                      <app>/workflow.py monta o Workflow
 | O quê | Onde | Por quê |
 |---|---|---|
 | `Agent` e modelos do Agno (`agno.agent`, `agno.models.*`) | só em `agents/` | Um ponto para modelos, chaves, retries, telemetria, custo e fakes |
-| `Workflow`, `Step`, `Steps`, `Parallel`, `Loop`, `Condition` | no `workflow.py` de cada app (`extraction/`, `questions/`, `integrity/`, `evaluation/`) | O fluxo de um estágio fica junto do domínio que ele implementa |
+| `Workflow`, `Step`, `Steps`, `Parallel`, `Loop`, `Condition` | no `workflow.py` de cada app (`questions/`, `integrity/`, `evaluation/`; o E1 não usa Workflow) | O fluxo de um estágio fica junto do domínio que ele implementa |
 | Executors dos passos | no app do estágio (`<app>/steps/`) | Usam os Managements de `queries/<app>/` e os services do próprio app |
 | Chamada do workflow | `pipeline/stages.py` (`StageTask.execute()`) | O pipeline orquestra; o domínio não importa `pipeline` |
 
 - `agents/` não importa nenhum app de domínio. O registro de custo entra por injeção (`UsageSink`, abaixo).
+- **Exceção provisória:** o E1 (`extractor/session.py`) cria o `Agent` e o modelo Gemini direto, porque o `agents/` ainda não existe. Quando a 1.3 entrar, a sessão passa a pedir o agente à `AgentFactory`.
 - **Teste de fronteira** (`agents/tests/test_import_boundaries.py`): falha se `agno.agent` ou `agno.models` for importado fora de `agents/`, ou se `agents/` importar um app de domínio.
 
 ## O pacote `agents/`
@@ -103,26 +104,21 @@ Regras comuns a todos os prompts:
 
 Os esboços abaixo mostram a forma; os nomes finais saem do spike e da implementação. Todo `Step` usa `max_retries=0` (ver [Retries](#erros-e-retries)).
 
-### E1 — Extração (`extraction/workflow.py`)
+### E1 — Extração (`extractor/`)
+
+O E1 não usa `Workflow`. O `ExtractionStage` chama `extract_attempt()`, que reaproveita a `Extraction` guardada para o mesmo PDF e a mesma versão do extractor ou divide o artigo agora:
 
 ```python
-# Antes do workflow, em código: se já existe ExtractedDocument para (sha256, versões dos parsers), liga ao run e retorna.
-Workflow(name="extraction", telemetry=False, steps=[
-    Parallel(
-        Step(name="grobid", executor=GrobidStep(deps)),            # TEI → seções, refs, citações, coords.
-        Step(name="docling", executor=DoclingStep(deps)),          # figuras, tabelas, fórmulas, recortes
-        Step(name="hidden_text", executor=HiddenTextStep(deps)),   # pdfplumber
-        name="parse"),
-    Step(name="merge", executor=MergeByBboxStep(deps)),
-    Step(name="quality_gate", executor=QualityGateStep(deps)),     # InvalidSubmission
-    Step(name="describe_figures", executor=DescribeFiguresStep(deps)),  # pool com limite + cache pelo hash da imagem
-    Step(name="build", executor=BuildAndPersistStep(deps)),        # ExtractedDocumentBuilder.build()
-])
+scan = session.ask(config.scan_prompt, HeadingScan)          # chamada 1: o mapa das seções
+section_map = build_section_map(scan, config)                 # dict sec_1, sec_2…; gate: abstract e referências
+answers = {sid: ask_section(session, config, prompt(sid), local_text[sid])   # chamada 2, uma por seção,
+           for sid in section_map}                            # em paralelo (ThreadPoolExecutor), conferida
+                                                              # contra o PDF e refeita com dica se reprovada
 ```
 
-- **O gate de qualidade vem antes da descrição das figuras** (D21): um PDF sem texto, abstract ou referências é rejeitado sem gastar chamadas de visão.
-- **Saídas intermediárias** (TEI, saída do Docling) ficam em arquivo no storage, com chave pelo sha256. Os passos seguintes leem de lá, não do `session_state`.
-- **Falha numa figura** deixa a figura sem descrição e o estágio segue. Se todas falham por `LLMUnavailable`, o erro sobe e vira retry do estágio.
+- **Uma chamada por seção, em paralelo** (até `max_parallel_calls`): respostas curtas, e o modelo pula menos texto que numa resposta com o artigo inteiro.
+- **Sem retry no Agno** (`retries=0`): uma falha vira `ModelUnavailable`, e quem tenta de novo é o Celery.
+- O detalhe (config, conferência, cache, falhas) está em [Extração](extraction.md).
 
 ### E2 — Perfil (`questions/workflow.py`)
 
