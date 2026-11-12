@@ -24,7 +24,7 @@ As etapas 0.4–0.7 seguem o [plano de outubro](../../2026-10_october/1_desenho_
 
 Como no plano de outubro, com estes ajustes:
 - **`pipeline/publishing.py`:** `publish_stage(run_id, stage)` substitui `attempts/publishing.py`. A fila e o nome da task vêm do `STAGES`. O `attempts/api.py` passa a importar daqui, pela borda (a API pode importar `pipeline`).
-- **`pipeline/stages.py`:** o `StageTask.execute()` recebe um `StageContext(run_id, attempt_id, task_id, stage)`. Nos stubs, ele não usa o Agno. A partir da 1.9, cada estágio troca o stub por `build_<estágio>_workflow(ctx, deps).run(...)` (ver [docs/agents.md](../../../docs/agents.md#visão-geral)).
+- **`pipeline/stages.py`:** o `StageTask.execute()` recebe um `StageContext(run_id, attempt_id, task_id, stage)`. Nos stubs, ele não usa o Agno. A partir da 1.9, cada estágio troca o stub por `build_<estágio>_workflow(ctx, deps).run(...)` (ver [docs/agents.md](../../../docs/agents.md#visão-geral)). O E1 trocou o stub já na 1.5, sem Workflow: chama `extract_attempt()`.
 - **`pipeline/errors.py`:** as quatro exceções. O `LLMUnavailable` também é reexportado por `agents/errors.py` (1.3).
 - **`metis/celery.py`:** app Celery, `acks_late`, `task_reject_on_worker_lost`, `prefetch_multiplier=1`, filas e rotas.
 

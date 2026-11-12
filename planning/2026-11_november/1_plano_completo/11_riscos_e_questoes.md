@@ -43,5 +43,5 @@ Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../20
 | Q13 | Checagens entre seções da primeira versão | Aberta; proposta: promessas × resultados, método × pergunta, figuras × texto | 3.4 |
 | Q14 | Papéis por `paper_type` cobrem os artigos reais? | Aberta | 2.4, 2.7 |
 | Q15 | **Nova.** Quem fica em cada trilha (P, A, I)? | **Parcialmente decidido (07/11):** as trilhas viraram 4 módulos ([divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html)); Plataforma e Extração fica com Iara Yasmin. Faltam os nomes de Agentes, Perfil e Relatório, de Avaliação e de Integridade | Início da fase 1 |
-| Q16 | **Nova (11/11).** Figuras, tabelas e fórmulas: Docling (pesado) ou chamada de visão do modelo sobre as páginas? | Aberta | 1.6 |
-| Q17 | **Nova (11/11).** Sem o GROBID, como ligar cada citação no texto à sua referência: código sobre o texto das seções ou chamada ao modelo? | Aberta | 1.10, 4.4, 4.7 |
+| Q16 | **Nova (11/11).** Figuras, tabelas e fórmulas: Docling (pesado) ou chamada de visão do modelo sobre as páginas? | **Decidido (12/11):** o Gemini, como na 1.5 (lista conferida + uma chamada por figura); recorte adiado; a 1.8 foi incorporada à 1.6 | — |
+| Q17 | **Nova (11/11).** Sem o GROBID, como ligar cada citação no texto à sua referência: código sobre o texto das seções ou chamada ao modelo? | **Decidido (12/11):** híbrido; o modelo separa as referências em campos, e o código acha e liga as chamadas (1.10, antes da 1.6) | — |

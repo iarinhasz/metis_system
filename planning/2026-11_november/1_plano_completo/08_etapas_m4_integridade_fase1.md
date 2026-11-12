@@ -95,7 +95,7 @@ Caminhos relativos a `projects/correction/`.
 ## Etapa 4.7 — Filtro por citação e adjudicador
 
 **O que fazer**
-- `integrity/citation_filter.py`: a fonte está citada no trecho (ligação citação ↔ referência da 1.10, em aberto)? Entre aspas? Boilerplate? Mesmo trabalho (título e autores)?
+- `integrity/citation_filter.py`: a fonte está citada no trecho (`citations[]` da extração, 1.10)? Entre aspas? Boilerplate? Mesmo trabalho (título e autores)?
 - Agente `plagiarism_adjudicator()` nos top-N pares, via `bounded_map`, com o veredito de [Checagem de integridade](../../../docs/integrity_check.md#fase-1--similaridade-em-funil).
 
 **Teste** (`integrity/tests/test_adjudication.py`, fakes)

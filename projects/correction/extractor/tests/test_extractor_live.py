@@ -19,3 +19,6 @@ def test_divides_a_generated_article() -> None:
     assert references is not None and "Pereira" in references.text
     assert any("Resultados" in section.title for section in article.sections)
     assert article.language == "pt"
+    [reference] = article.references
+    assert "Pereira" in reference.raw and reference.year == "2020"
+    assert [c.reference_id for c in article.citations] == [reference.id]

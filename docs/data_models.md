@@ -95,7 +95,9 @@ Os critérios não são model: ficam em código (`EvaluationConfig`), ver [Perfi
 | Model | Campos principais |
 |---|---|
 | `Extraction` | `sha256`, `version` (hash da config e dos prompts do extractor), `content` (o `ExtractedArticle` em JSON, descrito em [Extração](extraction.md#o-resultado)). Único por (sha256, versão) |
-| `Figure` (em aberto: 1.6) | `document`, `figure_id`, `page`, `bbox`, `kind`, `caption`, `image` (recorte), `image_sha256`, `description` (`FigureDescription`) |
+| `ExtractionStep` | `sha256`, `version`, `key` (hash do prompt, do schema e de `with_document`), `answer` (a resposta do modelo em JSON). Único por (sha256, versão, chave). Guarda as respostas enquanto a extração não termina, para o retry do estágio retomar delas; apagado quando a `Extraction` é guardada ([Extração](extraction.md#retomada)) |
+
+As figuras e as descrições ficam dentro do `content` da `Extraction` (1.6 e 1.8); o recorte da imagem foi adiado.
 
 ## `integrity`
 

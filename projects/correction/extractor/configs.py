@@ -22,6 +22,9 @@ ARTICLE_CONFIG: Final = DocumentConfig(
     model="gemini-2.5-flash",
     scan_prompt=load_prompt("scan_headings"),
     extraction_prompt=load_prompt("extract_section"),
+    references_prompt=load_prompt("parse_references"),
+    figures_prompt=load_prompt("scan_figures"),
+    describe_figure_prompt=load_prompt("describe_figure"),
     required_sections=(
         SectionDefinition(key="abstract", labels=("Abstract", "Resumo", "Resumen")),
         SectionDefinition(

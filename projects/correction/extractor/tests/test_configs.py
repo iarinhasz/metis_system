@@ -2,6 +2,7 @@
 
 from projects.correction.extractor.config import (
     EXTRACTION_MARKERS,
+    REFERENCES_MARKER,
     InputStrategy,
     normalize_label,
 )
@@ -29,6 +30,10 @@ def test_article_accepts_portuguese_and_english_titles() -> None:
 def test_article_prompts_are_loaded() -> None:
     assert "títulos das seções" in ARTICLE_CONFIG.scan_prompt
     assert all(marker in ARTICLE_CONFIG.extraction_prompt for marker in EXTRACTION_MARKERS)
+    assert REFERENCES_MARKER in ARTICLE_CONFIG.references_prompt
+    assert "figuras e tabelas" in ARTICLE_CONFIG.figures_prompt
+    assert "<<mentions>>" in ARTICLE_CONFIG.describe_figure_prompt
+    assert ARTICLE_CONFIG.describe_figures is True
     assert "literalmente" in ARTICLE_CONFIG.extraction_prompt
 
 

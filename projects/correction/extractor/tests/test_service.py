@@ -3,15 +3,23 @@ contra o texto de um PDF gerado no teste."""
 
 import pytest
 
+from projects.correction.extractor.article import Citation
 from projects.correction.extractor.configs import ARTICLE_CONFIG
 from projects.correction.extractor.errors import (
     InvalidModelAnswer,
     MissingRequiredSections,
     ModelUnavailable,
 )
-from projects.correction.extractor.schemas import HeadingScan, ScannedHeading, SectionContent
+from projects.correction.extractor.schemas import (
+    FigureScan,
+    HeadingScan,
+    ParsedReferences,
+    ScannedFigure,
+    ScannedHeading,
+    SectionContent,
+)
 from projects.correction.extractor.service import extract_article
-from projects.correction.extractor.tests.fakes import FakeSession
+from projects.correction.extractor.tests.fakes import FakeSession, raw_entry
 from projects.correction.extractor.tests.pdfs import make_pdf
 
 ABSTRACT = "Este artigo mede o tempo de resposta de filas de mensagens sob carga constante."
@@ -80,7 +88,7 @@ def test_asks_each_section_and_checks_its_coverage() -> None:
         # A referência não tem prosa para a cobertura, mas a fidelidade confere.
         ("sec_4", "references", None, REFERENCE, None, 1.0),
     ]
-    assert len(session.prompts) == 1 + 4
+    assert len(session.prompts) == 1 + 4 + 1 + 1  # mapa, seções, referências e figuras
 
 
 def test_each_prompt_names_the_section_and_where_it_ends() -> None:
@@ -189,3 +197,67 @@ def test_pdf_without_local_text_is_not_verified() -> None:
     article = extract_article(blank, opener=FakeSession(SCAN, complete()).opener())
 
     assert [s.coverage for s in article.sections] == [None, None, None, None]
+
+
+def test_parses_the_references_and_links_the_calls() -> None:
+    sections = complete()
+    cited = INTRO_1.replace("distribuidos.", "distribuidos [1].")
+    sections["1 Introducao"] = [content(cited, INTRO_2)]
+    references = ParsedReferences(
+        references=(raw_entry(REFERENCE, marker="[1]", authors=("C. Pereira",), year="2020"),)
+    )
+    session = FakeSession(SCAN, sections, references=[references])
+
+    article = extract_article(PDF, opener=session.opener())
+
+    [reference] = article.references
+    assert (reference.id, reference.marker, reference.authors) == ("ref_1", "[1]", ("C. Pereira",))
+    intro = article.sections[1].text
+    start = intro.index("[1]")
+    assert article.citations == (
+        Citation(
+            reference_id="ref_1",
+            marker="[1]",
+            sentence=cited,
+            section_id="sec_2",
+            start=start,
+            end=start + 3,
+        ),
+    )
+    assert len(session.without_document) == 1
+
+
+def test_lists_the_figures_and_finds_the_sentences_that_cite_them() -> None:
+    caption = "Figure 1: Tempo de resposta das filas de mensagens sob carga constante."
+    cited = "Como mostra a Figure 1, o tempo de resposta cresce pouco com a carga constante."
+    pdf = make_pdf(["Resumo", ABSTRACT, "1 Introducao", cited, caption, "Referencias", REFERENCE])
+    scan = SCAN.model_copy(
+        update={"headings": (SCAN.headings[0], SCAN.headings[1], SCAN.headings[3])}
+    )
+    sections = {
+        "Resumo": [content(ABSTRACT)],
+        "1 Introducao": [content(cited)],
+        "Referencias": [content(REFERENCE)],
+    }
+    figures = FigureScan(
+        figures=(
+            ScannedFigure.model_validate(
+                {"label": "Figure 1", "kind": "figure", "page": 1, "caption": caption}
+            ),
+        )
+    )
+    session = FakeSession(scan, sections, figures=[figures])
+
+    article = extract_article(pdf, opener=session.opener())
+
+    [figure] = article.figures
+    assert (figure.id, figure.label, figure.number, figure.fidelity) == (
+        "fig_1",
+        "Figure 1",
+        "1",
+        1.0,
+    )
+    [mention] = article.figure_mentions
+    assert (mention.figure_id, mention.marker, mention.sentence) == ("fig_1", "Figure 1", cited)
+    assert figure.description is not None
+    assert session.described == ["Figure 1"]
