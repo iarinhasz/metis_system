@@ -56,6 +56,10 @@ O Agno 3 é recente (R8), e o Python 3.14 não está confirmado (R15). Tudo que 
 
 ## Etapa 1.3 — Pacote `agents/`
 
+**Situação (12/11/2026):** implementada. O catálogo tem padrões de desenvolvimento substituíveis por papel no ambiente, conforme decisão da equipe. Entraram `ModelSpec`, fábricas, runner com medição, prompts e exemplos gerados dos schemas, limiter compartilhado, fakes e a fronteira de imports. A sessão do E1 usa a fábrica preservando a `DocumentConfig` e zero retries; seus pools de seções e figuras usam `bounded_map`. Os contratos definitivos de M2–M5 continuam em suas etapas; o catálogo usa `PendingOutput` onde ainda não há schema real.
+
+**Verificação:** **412 testes passaram**, com 5 casos `llm` excluídos, em Linux com Python 3.14.10 e PostgreSQL 18. Passaram também lock/sync com `--locked`, Ruff (137 arquivos), mypy (135 arquivos) e `manage.py check`. Os testes de concorrência verificam conexões reais fechadas inclusive quando uma tarefa falha. Detalhe e configuração em [docs/agents.md](../../../docs/agents.md#implementação-da-etapa-13). A validação com chaves válidas da 1.2 continua pendente; `LLMCall`, preços de produção e persistência de uso ficam na 1.4.
+
 **O que fazer**
 - `specs.py`, `models.py`, `factory.py`, `runner.py`, `prompts/`, `schemas/`, `usage.py`, `pricing.py`, `limits.py`, `errors.py` e `fakes.py`, como em [docs/agents.md](../../../docs/agents.md#o-pacote-agents).
 - **Configuração** em `MetisSettings`:
