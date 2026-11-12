@@ -83,7 +83,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
 | Chamada do workflow | `pipeline/stages.py` (`StageTask.execute()`) | O pipeline orquestra; o domínio não importa `pipeline` |
 
 - `agents/` não importa nenhum app de domínio. O registro de custo entra por injeção (`UsageSink`, abaixo).
-- **Exceção provisória:** o E1 (`extractor/session.py`) cria o `Agent` e o modelo Gemini direto, porque o `agents/` ainda não existe. Quando a 1.3 entrar, a sessão passa a pedir o agente à `AgentFactory`.
+- O E1 (`extractor/session.py`) pede o runner à `AgentFactory`, preservando o modelo da `DocumentConfig`, o envio do PDF/texto e `retries=0`. Os pools de seções e figuras usam `bounded_map`.
 - **Teste de fronteira** (`agents/tests/test_import_boundaries.py`): falha se `agno.agent` ou `agno.models` for importado fora de `agents/`, ou se `agents/` importar um app de domínio.
 
 ## O pacote `agents/`
@@ -104,6 +104,38 @@ task do estágio                      <app>/workflow.py monta o Workflow
 
 O `UsageSink` real fica no pipeline (`pipeline/usage.py`) e grava um `LLMCall` por chamada, ligado ao run e ao estágio.
 
+### Implementação da etapa 1.3
+
+`MetisSettings` traz os nove specs com padrões de desenvolvimento, conforme a decisão da equipe. Todos podem ser substituídos pelo ambiente; o catálogo é validado na subida, inclusive famílias dos avaliadores A/B e dos juízes, parâmetros de geração, concorrência e timeout menor que o soft limit. Uma configuração explícita nula ou inválida falha antes de construir clientes. As chaves são exigidas somente quando um cliente real é construído.
+
+| Papéis | Modelo padrão de desenvolvimento |
+|---|---|
+| `evaluator_a`, `judge_openai`, `meta_reviewer` | `gpt-5.6-terra` |
+| `evaluator_c` | `gpt-5.6-luna` |
+| `evaluator_b`, `judge_google`, `adjudicator` | `gemini-3.8-flash` |
+| `vision`, `fast` | `gemini-3.5-flash-lite` |
+
+Os IDs e o suporte a saídas estruturadas foram conferidos na documentação oficial de [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna), [Gemini 3.8 Flash](https://aistudio.google.com/docs/models/gemini-3.8-flash) e [Gemini 3.5 Flash-Lite](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite). São padrões configuráveis, sem calibração ou chamada real nesta etapa; o acesso depende da conta. A escolha de produção continua na Q1. O E1 mantém o modelo já configurado na `DocumentConfig`.
+
+Exemplos de substituição no `.env`:
+
+```dotenv
+METIS_EVALUATOR_A__MODEL_ID=gpt-5.6-terra
+METIS_FAST__TIMEOUT_SECONDS=60
+METIS_EVALUATOR_C={"provider":"google","family":"gemini","model_id":"gemini-3.5-flash-lite"}
+METIS_LLM_MAX_CONCURRENCY=4
+```
+
+`METIS_OPENAI_API_KEY` e `METIS_GOOGLE_API_KEY` são passadas explicitamente aos clientes. `GEMINI_KEY` continua aceita pelo E1 e como alternativa para o Google. A fábrica desliga o retry das SDKs e permite um retry do modelo; o E1 mantém zero. Cada execução cria seu próprio agente e modelo, sem banco Agno, histórico compartilhado, mídia persistida ou telemetria. Erros de provedor e respostas inválidas são registrados sem texto do manuscrito no log.
+
+Os métodos do catálogo aceitam `output_schema=MeuSchema`. Enquanto o contrato do domínio não entra em sua etapa, usam `PendingOutput(summary)`, o mínimo para testar o catálogo. `build(nome_do_prompt, Role.FAST, MeuSchema)` preserva o tipo no `AgentRunner[MeuSchema]`. Os prompts por seção estão em `prompts/sections/`; são bases com checklist, a serem completadas pelos critérios de M2/M3. `render()` gera e valida o exemplo a partir do schema e calcula o SHA-256 das instruções; o artigo fica em `AgentPayload`, fora desse hash e no início da mensagem de entrada.
+
+`FakeAgentFactory` herda a mesma interface e aceita `scripts` por nome de prompt ou por `Role`: `InvalidFor(n)` devolve conteúdo fora do schema N vezes, uma exceção `LLMUnavailable` simula indisponibilidade, e respostas pydantic ou dicts fornecem casos específicos. `QuoteNotInDocument(path=...)` e `MissingElsewhere(path=...)` alteram um campo de um exemplo válido para exercitar validadores semânticos. Depois do roteiro, o fake volta a gerar respostas do schema. `MemoryUsageSink` guarda uma medição por execução, inclusive nas falhas.
+
+`pricing.py` calcula o custo com uma tabela injetada; modelo sem preço produz `cost_usd=None` e alerta. A tabela de produção, o model `LLMCall` e o sink persistente pertencem à etapa 1.4. O E1 usa por enquanto o sink nulo. A reexportação de `pipeline.errors.LLMUnavailable` em `agents/errors.py` é a única dependência permitida do pacote no pipeline: preserva a classe que o Celery já reconhece.
+
+**Verificação da 1.3 (12/11):** em Linux com Python 3.14.10 e PostgreSQL 18, **412 testes passaram em 88,75 s**, com 5 casos `llm` excluídos. Passaram `uv lock --check`, `uv sync --locked --all-groups`, Ruff (137 arquivos), mypy (135 arquivos) e `manage.py check`. O lock permaneceu idêntico. A suíte cobre os dois SDKs por HTTP local, timeout e retry sem multiplicação, uso nas falhas, todos os métodos da fábrica falsa, o slot C nas duas famílias, a fronteira de imports e conexões reais fechadas nas threads, em sucesso e falha. O catálogo não recebeu chamadas externas nem calibração de produção nesta etapa.
+
 ## Modelos e papéis
 
 Hoje a equipe tem chave da **OpenAI** e do **Google**. A decisão é a D14.
@@ -121,7 +153,7 @@ Hoje a equipe tem chave da **OpenAI** e do **Google**. A decisão é a D14.
 | `adjudicator` | Médio ou forte | Veredito de plágio e alinhamento citação ↔ afirmação |
 
 - **Juiz cruzado.** `judge_for(spec)` devolve o juiz da **outra** família: GPT é julgado pelo Gemini, e Gemini pelo GPT. O slot C segue a regra da família dele. Assim nenhum avaliador é julgado por um modelo da mesma família (viés de autopreferência).
-- **Ids exatos dos modelos** ficam no `.env` (questão aberta Q1). O Run grava um snapshot dos specs usados.
+- **Specs por papel** têm padrões de desenvolvimento e aceitam substituição no `.env`; a escolha de produção continua na Q1. O snapshot dos specs usados integra o `config_snapshot` do Run nas etapas seguintes.
 - **Com duas famílias, os erros ficam mais correlacionados** (risco R13). O A/B do M3 mede a concordância, e um 3º provedor entra no slot C sem mudar código.
 
 ## Catálogo de agentes
@@ -316,7 +348,7 @@ Workflow(name="consolidation", telemetry=False, steps=[
 - **Onde há threads:**
   - os ramos de um `Parallel` (um thread por ramo, sem limite);
   - os pools dentro de um passo (N figuras, N passes por seção, N pares de plágio).
-- **Pools com limite.** `metis/concurrency.py` expõe `bounded_map(fn, items, max_workers)`, que roda num `ThreadPoolExecutor` e fecha a conexão do Django ao fim de cada tarefa (`close_old_connections()`), para não vazar conexões do Postgres (D20).
+- **Pools com limite.** `metis/concurrency.py` expõe `bounded_map(fn, items, max_workers)`, com fila limitada pelo `buffersize` do Python 3.14. Preserva a ordem, cancela tarefas ainda não iniciadas numa falha e espera a limpeza das que já começaram. Chama `close_old_connections()` no início e `connections.close_all()` no fim de cada tarefa: somente `close_old_connections()` manteria conexões saudáveis abertas (D20).
 - **Limite por provedor.** O `ProviderLimiter` segura a concorrência somada: 3 avaliadores em `Parallel`, cada um com um pool de passes, não passam de `METIS_LLM_MAX_CONCURRENCY` chamadas simultâneas por provedor.
 - **Agentes por thread.** Cada ramo e cada tarefa do pool pede o próprio `Agent` à fábrica; o Agno não copia agentes entre ramos.
 - **Testes com threads** usam `pytest.mark.django_db(transaction=True)`, porque uma thread não enxerga a transação do teste.
