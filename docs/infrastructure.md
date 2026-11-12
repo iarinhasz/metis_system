@@ -4,28 +4,31 @@
 
 | Serviço | Imagem e comando | Papel | Porta no host |
 |---|---|---|---|
-| `web` | Imagem do projeto: `migrate` + `collectstatic` + gunicorn | API, admin, healthcheck | `${METIS_WEB_PORT:-8100}` |
-| `worker-extraction` | `celery worker -Q extraction`, concorrência 1–2, limite de memória | E1 | — |
+| `web` | Imagem do projeto: `migrate` + gunicorn (o `collectstatic` roda no build) | API, admin, healthcheck | `${METIS_WEB_PORT:-8100}` |
+| `worker-extraction` | `celery worker -Q extraction`, concorrência 1–2 (começa em 1), limite de memória (`mem_limit: 2g`) | E1 | — |
 | `worker-integrity` | `celery worker -Q integrity` | E3 | — |
 | `worker-evaluation` | `celery worker -Q evaluation,default` | E2, E4, E5 e reconciliador | — |
-| `beat` | `celery beat` | Agenda o reconciliador | — |
-| `flower` | `celery flower` (imagem com o extra `flower`) | Monitoramento das filas | `127.0.0.1:${METIS_FLOWER_PORT:-5556}` |
+| `beat` | `celery beat`, com o arquivo de agenda em `/tmp` | Agenda o reconciliador | — |
+| `flower` | `celery flower` (imagem própria, com o extra `flower`) | Monitoramento das filas | `127.0.0.1:${METIS_FLOWER_PORT:-5556}` |
 | `postgres` | `pgvector/pgvector:pg18` | Banco e vetores | `127.0.0.1:${METIS_POSTGRES_PUBLISHED_PORT:-5440}` |
 | `redis` | `redis:7-alpine` | Broker do Celery | — (só na rede interna) |
 | `grobid` (M1) | `grobid/grobid:0.9.1-crf` | Parse estrutural do PDF | — |
 
 - **Mesma imagem para `web` e workers**; só o `command` muda.
-- **Variáveis comuns** num único bloco `x-common-env` (YAML anchor), em vez de repetidas por serviço.
+- **Configuração:** todos os serviços do projeto leem o `.env` (`env_file`). O bloco `x-common-env` (YAML anchor) troca só o que muda dentro da rede do compose: banco em `postgres:5432`, broker em `redis://redis:6379/0` e `METIS_MEDIA_ROOT=/data/media`.
+- **Ordem de subida:** o `web` espera o Postgres e o Redis saudáveis e aplica as migrações antes do gunicorn. Workers, beat e flower esperam o `web` saudável, de modo que nunca rodam sobre um banco sem migração.
 - **Volumes:**
   - `pgdata`, montado em `/var/lib/postgresql`: o Postgres 18 mudou o layout do `PGDATA` na imagem oficial;
-  - `media`, com PDFs e recortes, compartilhado entre `web` e workers.
+  - `media`, montado em `/data/media`, com PDFs e recortes, compartilhado entre `web` e workers.
 - **Portas:** as padrão evitam colisão com portas comuns em máquinas de desenvolvimento (8000, 5432/5433, 5555). Todas são configuráveis no `.env`.
 
 ## A imagem
 
-- `python:3.14-slim` + `uv` com versão fixa; usuário não-root; venv em `/opt/venv`; `uv sync --frozen`.
+- `python:3.14-slim` + `uv` com versão fixa; usuário não-root (`app`); venv em `/opt/venv`; `uv sync --frozen --no-dev`. O flower monta a mesma receita com o build arg `UV_SYNC_ARGS="--extra flower"`.
+- O `.dockerignore` é uma lista de permissão: entram só `pyproject.toml`, `uv.lock`, `.python-version`, `manage.py` e `projects/` (sem `media/` e sem caches). O `.env`, o `.git`, o `dataset_project/` e os docs ficam de fora.
 - O build falha se um `.env` escapar para o contexto de build.
-- `HEALTHCHECK` em `/health/` (testa o banco). Workers, beat e flower desligam o healthcheck.
+- O `collectstatic` roda no build; o WhiteNoise serve os estáticos.
+- `HEALTHCHECK` em `/health/` (testa o banco), pelo `127.0.0.1`, que precisa estar em `METIS_ALLOWED_HOSTS`. Workers, beat e flower desligam o healthcheck.
 - Pendências do M1:
   - os modelos do Docling vão para a imagem de extração ou são baixados na primeira execução?
   - Docling/torch têm wheels para Python 3.14? Se não, a imagem de extração usa 3.13.
@@ -44,6 +47,7 @@ Toda configuração passa por `metis/config.py` (pydantic-settings, prefixo `MET
 | `METIS_STAGE_MAX_RETRIES`, `METIS_STAGE_RETRY_BACKOFF_SECONDS`, `METIS_STAGE_RETRY_BACKOFF_MAX_SECONDS` | Retries | M0 |
 | `METIS_STAGE_SOFT_TIME_LIMIT_SECONDS`, `METIS_STAGE_TIME_LIMIT_SECONDS`, `METIS_BROKER_VISIBILITY_TIMEOUT_SECONDS` | Limites de tempo | M0 |
 | `METIS_RECONCILE_INTERVAL_SECONDS`, `METIS_REPUBLISH_AFTER_SECONDS`, `METIS_STALE_STAGE_AFTER_SECONDS`, `METIS_MAX_REPUBLISH`, `METIS_MAX_STAGE_CLAIMS` | Reconciliador | M0 |
+| `METIS_WEB_PORT`, `METIS_FLOWER_PORT`, `METIS_POSTGRES_PUBLISHED_PORT` | Portas publicadas no host; lidas só pelo compose, não pelo `config.py` | M0 |
 | `METIS_GROBID_URL` | GROBID | M1 |
 | `METIS_OPENAI_API_KEY`, `METIS_GOOGLE_API_KEY` | Provedores de LLM, passados explicitamente pela `ModelFactory`. Um 3º provedor (para o slot C) entra com a própria chave | M1 |
 | `ModelSpec` por papel (`evaluator_a`, `evaluator_b`, `evaluator_c`, `judge_openai`, `judge_google`, `meta_reviewer`, `vision`, `fast`, `adjudicator`) | Qual modelo cumpre cada papel (ver [Agentes e workflows](agents.md#modelos-e-papéis)) | M1–M3 |
@@ -71,12 +75,13 @@ Os valores iniciais e as regras de validação dos tempos estão em [Orquestraç
 - **Celery em modo eager** nos testes, sem Redis no CI.
 - **A partir do M1**, um serviço `grobid` para os testes de integração da extração.
 
-## Operação (comandos previstos)
+## Operação
 
 ```bash
 cp .env.example .env                       # preencher os segredos
 docker compose up -d --build
 docker compose exec web python manage.py createsuperuser
 docker compose logs -f worker-evaluation
+docker compose up -d postgres              # só o banco, para o pytest no host (127.0.0.1:5440)
 # Admin: http://localhost:8100/admin/   Flower: http://127.0.0.1:5556
 ```
