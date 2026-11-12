@@ -4,7 +4,57 @@ Como o Metis usa o Agno 3 dentro dos estágios: o pacote `agents/`, o catálogo 
 
 Os caminhos de código são relativos a `projects/correction/`. A versão em diagramas, com as entidades que cada passo lê e grava, está em [Grafo do fluxo](flow_graph.md).
 
-> **A confirmar no spike da etapa 1.2** ([planejamento](../planning/2026-11_november/1_plano_completo/05_etapas_m1_extracao.md#etapa-12--spike-do-agno-3-em-python-314)). As assinaturas citadas aqui (`Step`, `StepOutput`, `Parallel`, `Loop`, `Condition`, métricas e exceções do provedor) vêm da pesquisa de 25/10. O spike confere cada uma contra o `agno` instalado e atualiza este documento.
+> **Spike 1.2, verificação local em 12/11/2026:** Agno **3.1.12**, Python **3.14.5**, `openai` **3.49.0** e `google-genai` **1.75.0** instalados. Workflows e clientes dos dois provedores foram exercitados com executors sintéticos e HTTP local. A validação de respostas dos provedores com chaves válidas continua **pendente**, por decisão de seguir com os testes locais. O resultado e as correções dos esboços estão abaixo.
+
+## Resultado do spike 1.2
+
+O lock fixa as versões verificadas; a dependência do Agno fica em `>=3.1.12,<4`. Não foi necessário usar Python 3.13. Os testes ficam em `projects/correction/agents/tests/`: `test_workflow_contract.py` (sem rede externa), `test_provider_contract.py` (HTTP local, com SDKs reais) e `test_agno_contract.py` (provedores reais, marcado com `llm`). Só usam entradas sintéticas.
+
+| Item | Comportamento observado em 3.1.12 | Consequência para a implementação |
+|---|---|---|
+| Executor de `Step` | Instância chamável recebe `StepInput` e devolve `StepOutput`; o `content` preserva o objeto pydantic | Executors por classe continuam válidos |
+| Retry e erro de `Step` | `max_retries` é **3** por padrão. `Step.execute()` com 0 propaga a exceção, mas o `Workflow` usa **`HumanReview.on_error=skip`** por padrão e pode terminar `completed` após pular a falha | Todo `Step` e `Condition` de estágio precisa de `human_review=HumanReview(on_error=OnError.fail)`; com essa política, o workflow propaga a exceção original ao chamador |
+| `Parallel` | Os ramos rodam em threads; a saída guarda `steps[]` na ordem declarada. Um ramo que falha **não cancela os irmãos**; o container volta com `success=False`, mas o workflow pode continuar e terminar `completed` | O executor que recebe o container deve conferir seus ramos e levantar o erro do estágio antes de continuar. `on_error=fail` nos filhos não basta |
+| Saídas do paralelo | `get_step_output("ramo").content` preserva o pydantic; a busca pelo nome é recursiva | Usar `get_step_output`, com conferência de `None` e de `success`; não usar o texto agregado como contrato |
+| `Condition` | `evaluator(step_input: StepInput) -> bool`; pode conter um `Loop` | Sem pendência, nenhuma revisão roda; configurar a política de erro também na condição |
+| `Loop` | `end_condition(outputs: list[StepOutput]) -> bool` recebe **só a iteração atual**, depois de todos os seus passos; `max_iterations=2` limita a duas revisões | A forma `revise → validate → judge` continua correta. A condição consulta os dados persistidos; não depende de efeitos somente em memória |
+| `output_schema` | Ambos os clientes enviam o schema aninhado com `Literal` e devolvem o pydantic. JSON cortado ou enum inválido pode voltar como **`str`, com status `completed`** | Conferir o tipo de `content` mesmo quando o status indica sucesso; saída fora do schema vira `valid=False` |
+| Métricas | `run.metrics.input_tokens`, `output_tokens`, **`cache_read_tokens`**, `cache_write_tokens` e **`duration` em segundos** | `LLMCall.cached_tokens` vem de `cache_read_tokens`; converter duração para milissegundos. O teste local confere 20/5 tokens e 4 de cache em cada SDK |
+| Erros dos provedores | `model.invoke()` levanta `agno.exceptions.ModelProviderError`, com `status_code` e causa da SDK. Já **`Agent.run()` captura a falha e devolve `RunOutput(status=RunStatus.error)`** | O runner precisa conferir `run.status` antes do schema. Apenas `except ModelProviderError` ao redor de `Agent.run()` não trata a indisponibilidade |
+| Retries do modelo | Com SDK sem retry, 429/503 são retentados e 401 não é. O modelo também pode retentar timeout/conexão, não apenas HTTP 429/5xx | OpenAI: `max_retries=0` na SDK; Google: `http_options.retry_options.attempts=1`. Configurar um único retry do modelo, além do retry do estágio |
+| Timeout | `timeout` do modelo é em segundos; o Gemini converte para milissegundos na SDK. Se `client_params.http_options` for passado, ele substitui as opções montadas pelo modelo | Ao fornecer opções explícitas do Google, incluir também `timeout` em ms e as opções de retry |
+| `run_id` e telemetria | Agent e Workflow preservam o `run_id` recebido. `telemetry=False` funciona nos dois; `AGNO_TELEMETRY=false` é aplicado **na execução**, não ao construir o objeto. `store_media=False` é aceito no Agent | Passar o id da task a `.run(run_id=...)`, desligar telemetria nos construtores e no ambiente; banco Agno desligado |
+
+As causas observadas em `model.invoke()` foram `AuthenticationError` (OpenAI 401), `RateLimitError` (429), `InternalServerError` (503), `ClientError` (Google 4xx), `ServerError` (Google 5xx), `APITimeoutError` (OpenAI) e `ReadTimeout` (Google). São contratos exercitados pela rede local, não uma medição de disponibilidade dos serviços. A anotação de `Parallel.__init__(*args)` nesta versão declara listas onde a execução espera passos variádicos; os testes usam `type: ignore[arg-type]` pontual, com a construção real coberta pelo contrato.
+
+### Configuração dos esboços
+
+Nos workflows abaixo, `stage_step` representa esta configuração explícita do `Step`:
+
+```python
+from agno.workflow import Step
+from agno.workflow.types import HumanReview, OnError
+
+def stage_step(name, executor):
+    return Step(name=name, executor=executor, max_retries=0,
+                human_review=HumanReview(on_error=OnError.fail))
+```
+
+`HumanReview` aqui só configura a política de erro, sem habilitar pausa ou confirmação humana. O gate continua no banco e no Celery. Toda `Condition` usa a mesma política. Depois de um `Parallel`, o passo seguinte confere `success` e os resultados de cada ramo; uma falha é levantada antes de validar, agregar ou persistir o checkpoint.
+
+### Reprodução e pendência dos provedores
+
+```bash
+uv sync --locked --group dev
+uv run pytest projects/correction/agents/tests -m "not llm"
+uv run pytest projects/correction/agents/tests/test_agno_contract.py -m llm -rs
+```
+
+O último comando fica fora do CI. Com `METIS_OPENAI_API_KEY` e `GEMINI_KEY` no `.env`, ele confere respostas reais com schema aninhado, enums e métricas. Sem uma chave, o teste daquele provedor é pulado explicitamente; isso **não** conta como validação bem-sucedida. Os modelos do spike são configuráveis por `METIS_AGNO_CONTRACT_OPENAI_MODEL` e `METIS_AGNO_CONTRACT_GOOGLE_MODEL`; não definem os slots da etapa 1.3. O arquivo também oferece testes de chave deliberadamente inválida, sem exigir segredo válido.
+
+**Verificação desta entrega (12/11):** `pytest projects/correction -m "not django_db and not llm"` passou com **227 testes**, incluindo os contratos novos; 78 casos com banco ou provedores foram excluídos. `ruff check`, `ruff format --check`, `mypy projects/correction` (113 arquivos) e `python manage.py check` passaram. A suíte com PostgreSQL não foi executada: o Docker Desktop estava parado. Os dois testes de chave deliberadamente inválida também passaram; os dois de resposta com chave válida foram pulados e continuam pendentes.
+
+Referência para o schema do cliente OpenAI: [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs). O comportamento do Agno descrito nesta seção vem dos testes contra o pacote instalado, não de uma suposição sobre a SDK.
 
 ## Visão geral
 
