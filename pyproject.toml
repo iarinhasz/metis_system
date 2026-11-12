@@ -74,7 +74,7 @@ pythonpath = ["."]
 python_files = ["test_*.py"]
 addopts = "-ra -m 'not llm'"
 markers = [
-    "llm: chama o modelo de verdade com a GEMINI_KEY do .env; rode com `pytest -m llm`",
+    "llm: chama provedores reais com GEMINI_KEY/METIS_OPENAI_API_KEY; rode com `pytest -m llm`",
 ]
 filterwarnings = [
     # O STATIC_ROOT só existe depois do collectstatic (na imagem Docker); nos testes, não.
