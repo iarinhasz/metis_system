@@ -48,9 +48,9 @@ Toda configuração passa por `metis/config.py` (pydantic-settings, prefixo `MET
 | `METIS_WEB_PORT`, `METIS_FLOWER_PORT`, `METIS_POSTGRES_PUBLISHED_PORT` | Portas publicadas no host; lidas só pelo compose, não pelo `config.py` | M0 |
 | `GEMINI_KEY` | Chave do Gemini, lida sem o prefixo `METIS_`. Usada pelo E1 | M1 |
 | `METIS_LLM_TIMEOUT_SECONDS` | Timeout de cada chamada ao modelo; menor que o soft limit da task | M1 |
-| `METIS_OPENAI_API_KEY` | Contrato OpenAI do spike; depois, os slots com GPT. Um 3º provedor entra com a própria chave | M1/M3 |
+| `METIS_OPENAI_API_KEY`, `METIS_GOOGLE_API_KEY` | Chaves explícitas das fábricas; `GEMINI_KEY` continua aceita como alternativa para Google | M1/M3 |
 | `METIS_AGNO_CONTRACT_OPENAI_MODEL`, `METIS_AGNO_CONTRACT_GOOGLE_MODEL` | Modelos dos contratos ao vivo da etapa 1.2; não definem os slots de produção | M1 |
-| `ModelSpec` por papel (`evaluator_a`, `evaluator_b`, `evaluator_c`, `judge_openai`, `judge_google`, `meta_reviewer`, `vision`, `fast`, `adjudicator`) | Qual modelo cumpre cada papel (ver [Agentes e workflows](agents.md#modelos-e-papéis)) | M1–M3 |
+| `METIS_<PAPEL>` (JSON) ou `METIS_<PAPEL>__MODEL_ID`, `__TIMEOUT_SECONDS`, `__PARAMS` | Nove `ModelSpec`s com padrões de desenvolvimento; substituição por papel, validada na subida (ver [Agentes e workflows](agents.md#implementação-da-etapa-13)) | M1–M3 |
 | `METIS_LLM_MAX_CONCURRENCY` | Chamadas simultâneas por provedor, por worker (`ProviderLimiter`) | M1 |
 | `METIS_CROSSREF_MAILTO`, `METIS_OPENALEX_API_KEY`, `METIS_SEMANTIC_SCHOLAR_API_KEY`, `METIS_UNPAYWALL_EMAIL` | APIs acadêmicas | M4–M5 |
 | Orçamento por run (tokens, buscas pagas) | Limite de custo | M3–M4 |
