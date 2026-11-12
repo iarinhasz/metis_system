@@ -93,7 +93,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
 | `specs.py` | `ModelSpec(provider, model_id, family, params, timeout_seconds)`, pydantic congelado. `Role` (enum dos papéis de modelo) e o mapa papel → spec, lido do `MetisSettings` |
 | `models.py` | `ModelFactory.build(spec)`: devolve o modelo Agno do provedor, com a chave passada explicitamente, `retries` e `exponential_backoff=True` (só para 429/5xx) e o timeout do spec. `judge_for(spec)` escolhe o juiz |
 | `factory.py` | `AgentFactory(run_id, stage, usage_sink, limiter)`: um método por papel do catálogo. Cria um `Agent` novo por chamada, com instruções renderizadas, `output_schema`, `telemetry=False` e `store_media=False` |
-| `runner.py` | Protocolo `AgentRunner` (`run(payload) -> AgentResult`). A implementação real envolve o `Agent`: pega o limiter, roda, mede, chama o `UsageSink` e traduz os erros do provedor para `LLMUnavailable`. Se o `content` voltar como `str` (o parse do schema falhou), devolve `AgentResult(valid=False, raw=...)` |
+| `runner.py` | Protocolo `AgentRunner` (`run(payload) -> AgentResult`). A implementação real envolve o `Agent`: pega o limiter, roda, mede e chama o `UsageSink`, inclusive nas falhas. Confere primeiro `run.status`: em `error`, levanta `LLMUnavailable`. Em sucesso, se `content` não for o schema pedido, devolve `AgentResult(valid=False, raw=...)`. O `Agent.run()` não propaga normalmente o `ModelProviderError` |
 | `prompts/` | Arquivos `.md` com marcadores `<<nome>>`. O `render()` falha se sobrar marcador, a versão é o hash do conteúdo renderizado sem o artigo, e o exemplo JSON é gerado do `output_schema`. Um prompt por papel de seção em `prompts/sections/<papel>.md` |
 | `schemas/` | Os `output_schema` de cada papel (pydantic). Os enums fechados (vereditos, categorias, notas) vêm de código compartilhado, nunca de strings soltas |
 | `usage.py` | Protocolo `UsageSink.record(call: LLMUsage)`. `LLMUsage` traz papel, provedor, modelo, versão do prompt, tokens (entrada, saída, cache), latência, sucesso e erro |
@@ -152,7 +152,7 @@ Regras comuns a todos os prompts:
 
 ## Workflow por estágio
 
-Os esboços abaixo mostram a forma; os nomes finais saem do spike e da implementação. Todo `Step` usa `max_retries=0` (ver [Retries](#erros-e-retries)).
+Os esboços abaixo mostram a forma; os nomes finais saem da implementação. `stage_step` usa `max_retries=0` e `on_error=fail`, como em [Configuração dos esboços](#configuração-dos-esboços).
 
 ### E1 — Extração (`extractor/`)
 
@@ -175,14 +175,14 @@ answers = {sid: ask_section(session, config, prompt(sid), local_text[sid])   # c
 
 ```python
 Workflow(name="profiling", telemetry=False, steps=[
-    Step(name="classify_field", executor=ClassifyFieldStep(deps)),     # profiler_field
-    Step(name="classify_topic", executor=ClassifyTopicStep(deps)),     # profiler_topic, enum dos filhos do field
-    Step(name="resolve_question", executor=ResolveQuestionStep(deps)), # cadeia de fallback; SetupRequired
-    Step(name="section_roles", executor=RuleBasedRolesStep(deps)),     # dicionário PT/EN
-    Condition(name="ambiguous_roles", evaluator=has_ambiguous_sections(ctx),
-              steps=[Step(name="classify_roles", executor=ClassifyRolesStep(deps))]),
-    Step(name="document_map", executor=DocumentMapStep(deps)),         # código, sem LLM
-    Step(name="persist", executor=PersistProfileStep(deps)),           # Run.profile, Run.question, snapshot
+    stage_step(name="classify_field", executor=ClassifyFieldStep(deps)),     # profiler_field
+    stage_step(name="classify_topic", executor=ClassifyTopicStep(deps)),     # profiler_topic, enum dos filhos do field
+    stage_step(name="resolve_question", executor=ResolveQuestionStep(deps)), # cadeia de fallback; SetupRequired
+    stage_step(name="section_roles", executor=RuleBasedRolesStep(deps)),     # dicionário PT/EN
+    Condition(name="ambiguous_roles", human_review=HumanReview(on_error=OnError.fail), evaluator=has_ambiguous_sections(ctx),
+              steps=[stage_step(name="classify_roles", executor=ClassifyRolesStep(deps))]),
+    stage_step(name="document_map", executor=DocumentMapStep(deps)),         # código, sem LLM
+    stage_step(name="persist", executor=PersistProfileStep(deps)),           # Run.profile, Run.question, snapshot
 ])
 ```
 
@@ -195,27 +195,28 @@ Do M0 ao M3, o E3 é um passo só, *pass-through*: risco baixo, relatório vazio
 
 ```python
 Workflow(name="integrity", telemetry=False, steps=[
-    Step(name="hidden_text", executor=HiddenTextFindingsStep(deps)),   # Fase 0, achados do E1
-    Step(name="resolve_references", executor=ResolveReferencesStep(deps)),  # scholarly/, cache por DOI
+    stage_step(name="hidden_text", executor=HiddenTextFindingsStep(deps)),   # Fase 0, achados do E1
+    stage_step(name="resolve_references", executor=ResolveReferencesStep(deps)),  # scholarly/, cache por DOI
     Parallel(
         Steps(name="phase1", steps=[                                   # entra no M4
-            Step(name="candidates", executor=CandidatesStep(deps)),    # Strategy + orçamento
-            Step(name="lexical", executor=LexicalStep(deps)),          # MinHash-LSH + winnowing
-            Step(name="semantic", executor=SemanticStep(deps)),        # BGE-M3 local + PT↔EN
-            Step(name="citation_filter", executor=CitationFilterStep(deps)),
-            Step(name="adjudicate", executor=AdjudicatePairsStep(deps)),  # plagiarism_adjudicator, top-N
+            stage_step(name="candidates", executor=CandidatesStep(deps)),    # Strategy + orçamento
+            stage_step(name="lexical", executor=LexicalStep(deps)),          # MinHash-LSH + winnowing
+            stage_step(name="semantic", executor=SemanticStep(deps)),        # BGE-M3 local + PT↔EN
+            stage_step(name="citation_filter", executor=CitationFilterStep(deps)),
+            stage_step(name="adjudicate", executor=AdjudicatePairsStep(deps)),  # plagiarism_adjudicator, top-N
         ]),
         Steps(name="phase2", steps=[                                   # entra no M5
-            Step(name="existence", executor=ExistenceStep(deps)),      # reference_adjudicator nos duvidosos
-            Step(name="retraction", executor=RetractionStep(deps)),
-            Step(name="consistency", executor=ConsistencyStep(deps)),
-            Step(name="alignment", executor=AlignmentStep(deps)),      # citation_alignment_judge, amostra de K
+            stage_step(name="existence", executor=ExistenceStep(deps)),      # reference_adjudicator nos duvidosos
+            stage_step(name="retraction", executor=RetractionStep(deps)),
+            stage_step(name="consistency", executor=ConsistencyStep(deps)),
+            stage_step(name="alignment", executor=AlignmentStep(deps)),      # citation_alignment_judge, amostra de K
         ]),
         name="phases"),
-    Step(name="cross_phases", executor=CrossPhasesStep(deps)),
-    Step(name="risk_rules", executor=RiskRulesStep(deps)),             # integrity/rules.py, código
-    Step(name="narrative", executor=NarrativeStep(deps)),              # integrity_narrator
-    Step(name="persist", executor=PersistReportStep(deps)),            # IntegrityReport → StageOutcome(halt=risco alto)
+    stage_step(name="check_phases", executor=CheckParallelStep("phases", deps)),  # não ignorar ramo falho
+    stage_step(name="cross_phases", executor=CrossPhasesStep(deps)),
+    stage_step(name="risk_rules", executor=RiskRulesStep(deps)),             # integrity/rules.py, código
+    stage_step(name="narrative", executor=NarrativeStep(deps)),              # integrity_narrator
+    stage_step(name="persist", executor=PersistReportStep(deps)),            # IntegrityReport → StageOutcome(halt=risco alto)
 ])
 ```
 
@@ -229,29 +230,30 @@ Workflow(name="integrity", telemetry=False, steps=[
 def evaluator_steps(slot, mode):                 # Strategy escolhida na montagem
     if mode is Mode.SECTIONED:
         return Steps(name=f"evaluator_{slot}", steps=[
-            Step(name=f"sections_{slot}", executor=SectionPassStep(slot, deps)),   # pool com limite
-            Step(name=f"cross_checks_{slot}", executor=CrossCheckStep(slot, deps)),
-            Step(name=f"synthesis_{slot}", executor=SynthesisStep(slot, deps)),
+            stage_step(name=f"sections_{slot}", executor=SectionPassStep(slot, deps)),   # pool com limite
+            stage_step(name=f"cross_checks_{slot}", executor=CrossCheckStep(slot, deps)),
+            stage_step(name=f"synthesis_{slot}", executor=SynthesisStep(slot, deps)),
         ])
     return Steps(name=f"evaluator_{slot}", steps=[
-        Step(name=f"whole_{slot}", executor=WholeDocumentStep(slot, deps)),
+        stage_step(name=f"whole_{slot}", executor=WholeDocumentStep(slot, deps)),
     ])
 
 Workflow(name="evaluation", telemetry=False, steps=[
     Parallel(*[evaluator_steps(s, ctx.mode) for s in ctx.slots], name="evaluators"),
-    Step(name="validate_1", executor=ValidateStep(deps)),              # validadores em cadeia, sem LLM
-    Step(name="judge_1", executor=JudgeStep(deps)),                    # uma chamada por avaliador
-    Condition(name="needs_revision", evaluator=has_pending_items(ctx), steps=[
+    stage_step(name="check_evaluators", executor=CheckParallelStep("evaluators", deps)),
+    stage_step(name="validate_1", executor=ValidateStep(deps)),              # validadores em cadeia, sem LLM
+    stage_step(name="judge_1", executor=JudgeStep(deps)),                    # uma chamada por avaliador
+    Condition(name="needs_revision", human_review=HumanReview(on_error=OnError.fail), evaluator=has_pending_items(ctx), steps=[
         Loop(name="revision_loop",
              max_iterations=settings.max_revision_rounds,              # 2
              end_condition=no_pending_items(ctx),                      # consulta o banco, não os outputs
              steps=[
-                 Step(name="revise", executor=RevisionStep(deps)),     # só os itens inválidos
-                 Step(name="validate", executor=ValidateStep(deps)),
-                 Step(name="judge", executor=JudgeStep(deps)),         # só os itens revisados
+                 stage_step(name="revise", executor=RevisionStep(deps)),     # só os itens inválidos
+                 stage_step(name="validate", executor=ValidateStep(deps)),
+                 stage_step(name="judge", executor=JudgeStep(deps)),         # só os itens revisados
              ]),
     ]),
-    Step(name="mark_unresolved", executor=MarkUnresolvedStep(deps)),
+    stage_step(name="mark_unresolved", executor=MarkUnresolvedStep(deps)),
 ])
 ```
 
@@ -279,10 +281,10 @@ Workflow(name="evaluation", telemetry=False, steps=[
 
 ```python
 Workflow(name="consolidation", telemetry=False, steps=[
-    Step(name="aggregate", executor=AggregateStep(deps)),             # mediana, dispersão, total, faixa → recomendação
-    Step(name="meta_review", executor=MetaReviewStep(deps)),          # meta_reviewer; não altera notas
-    Step(name="validate_meta_review", executor=ValidateMetaReviewStep(deps)),  # só cita ids que existem
-    Step(name="build_report", executor=BuildFinalReportStep(deps)),   # FinalReport (JSON) + render Markdown
+    stage_step(name="aggregate", executor=AggregateStep(deps)),             # mediana, dispersão, total, faixa → recomendação
+    stage_step(name="meta_review", executor=MetaReviewStep(deps)),          # meta_reviewer; não altera notas
+    stage_step(name="validate_meta_review", executor=ValidateMetaReviewStep(deps)),  # só cita ids que existem
+    stage_step(name="build_report", executor=BuildFinalReportStep(deps)),   # FinalReport (JSON) + render Markdown
 ])
 ```
 
@@ -328,12 +330,12 @@ Workflow(name="consolidation", telemetry=False, steps=[
 
 | Nível | Quem faz | Como |
 |---|---|---|
-| Uma chamada de modelo | O modelo Agno | `retries` + `exponential_backoff=True`, só para 429/5xx |
-| Um passo do workflow | Ninguém | `Step(max_retries=0)`: o retry de step do Agno não tem backoff |
+| Uma chamada de modelo | O modelo Agno | `retries` + `exponential_backoff=True` para falhas transitórias, inclusive timeout; o retry da SDK fica desligado |
+| Um passo do workflow | Ninguém | `Step(max_retries=0, human_review=HumanReview(on_error=OnError.fail))`: sem a política explícita, o workflow pode pular a falha |
 | O estágio inteiro | O Celery | `LLMUnavailable` ou `TransientStageError` → retry com backoff e jitter; esgotou → `error_llm` ou `error_external` |
 | Saída fora do schema | O validador do passo | `AgentResult(valid=False)` → nova tentativa com o motivo, até o limite do passo; depois, o item fica inválido (E4) ou o estágio falha (E2) |
 
-- O `runner.py` traduz as exceções de provedor do Agno (rate limit, 5xx, timeout) para `LLMUnavailable`. Qualquer outra exceção sobe como está e termina em `error_unexpected`.
+- O `runner.py` trata o `RunStatus.error` devolvido pelo Agent e levanta `LLMUnavailable`, além de tratar exceções de provedor que escaparem. Erros de programação que forem efetivamente levantados sobem como estão e terminam em `error_unexpected`. Depois de um `Parallel`, o executor de junção também confere os ramos: o status global `completed` não comprova que todos deram certo.
 
 ## Custo
 
