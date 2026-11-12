@@ -1,8 +1,10 @@
 """Uma seção conferida contra o PDF: nova tentativa com dica e a melhor resposta no fim."""
 
+import pytest
 from pydantic import BaseModel
 
 from projects.correction.extractor.configs import ARTICLE_CONFIG
+from projects.correction.extractor.errors import InvalidModelAnswer
 from projects.correction.extractor.schemas import SectionContent
 from projects.correction.extractor.section_answer import ask_section
 
@@ -16,13 +18,19 @@ PROMPT = 'Seção: "1 Introducao"'
 class ScriptedSession:
     """Devolve as respostas na ordem; a última se repete."""
 
-    def __init__(self, *texts: str) -> None:
-        self._answers = [SectionContent(text=text, has_footnotes=False) for text in texts]
+    def __init__(self, *texts: str | None) -> None:
+        # None: a tentativa devolve uma resposta inválida.
+        self._answers = [
+            None if text is None else SectionContent(text=text, has_footnotes=False)
+            for text in texts
+        ]
         self.prompts: list[str] = []
 
-    def ask[T: BaseModel](self, prompt: str, output: type[T]) -> T:
+    def ask[T: BaseModel](self, prompt: str, output: type[T], *, with_document: bool = True) -> T:
         self.prompts.append(prompt)
         answer = self._answers.pop(0) if len(self._answers) > 1 else self._answers[0]
+        if answer is None:
+            raise InvalidModelAnswer("resposta fora do schema")
         assert isinstance(answer, output)
         return answer
 
@@ -93,3 +101,21 @@ def test_unverifiable_section_is_accepted_as_is() -> None:
 
     assert (answer.content.text, answer.coverage, answer.fidelity) == (FOREIGN, None, None)
     assert len(session.prompts) == 1
+
+
+def test_an_invalid_answer_counts_as_a_failed_try() -> None:
+    session = ScriptedSession(None, f"{FIRST}\n\n{SECOND}")
+
+    answer = ask_section(session, ARTICLE_CONFIG, PROMPT, LOCAL)
+
+    assert answer.coverage == 1.0
+    assert len(session.prompts) == 2
+
+
+def test_invalid_answers_in_every_try_fail_the_section() -> None:
+    session = ScriptedSession(None)
+
+    with pytest.raises(InvalidModelAnswer):
+        ask_section(session, ARTICLE_CONFIG, PROMPT, LOCAL)
+
+    assert len(session.prompts) == 1 + ARTICLE_CONFIG.check_retries

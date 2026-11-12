@@ -43,7 +43,7 @@ def test_extracts_the_pdf_from_storage_and_stores_it(attempt: Attempt, media_roo
         extraction_version(ARTICLE_CONFIG),
     )
     assert extraction.article.section("abstract") is not None
-    assert len(session.prompts) == 1 + 4
+    assert len(session.prompts) == 1 + 4 + 1  # mapa, seções e referências
 
 
 def test_same_pdf_reuses_the_stored_extraction(attempt: Attempt) -> None:
@@ -85,4 +85,7 @@ def test_event_payload_has_counts_and_ids_but_no_text(attempt: Attempt) -> None:
         "model": "google/gemini-2.5-flash",
         "sections": 4,
         "below_check": ["sec_2"],
+        "references": 1,
+        "citations": 0,
+        "unlinked_citations": 0,
     }

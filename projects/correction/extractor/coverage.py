@@ -102,6 +102,28 @@ def fidelity(local: str | None, extracted: str) -> float | None:
     return len(produced & _grams(local)) / len(produced)
 
 
+def text_coverage(expected: str, produced: str) -> float | None:
+    """Fração do texto esperado que está no produzido, sem o filtro de prosa (para listas,
+    como a de referências); None quando o esperado não tem o que comparar."""
+    grams = _grams(expected)
+    if not grams:
+        return None
+    return len(grams & _grams(produced)) / len(grams)
+
+
+def uncovered_paragraphs(text: str, produced: str, limit: int) -> list[str]:
+    """Os primeiros parágrafos de `text` que não estão em `produced`."""
+    grams_produced = _grams(produced)
+    missing = []
+    for paragraph in (p.strip() for p in text.split("\n\n")):
+        grams = _grams(paragraph)
+        if grams and len(grams & grams_produced) < SENTENCE_FOUND_SHARE * len(grams):
+            missing.append(paragraph)
+            if len(missing) == limit:
+                break
+    return missing
+
+
 def missing_sentences(local: str | None, extracted: str, limit: int) -> list[str]:
     """As primeiras frases de prosa do trecho local que não vieram na resposta."""
     if local is None:

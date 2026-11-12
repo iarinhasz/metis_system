@@ -22,6 +22,7 @@ def config(**overrides: Any) -> DocumentConfig:
         "model": "modelo-x",
         "scan_prompt": "Liste os títulos.",
         "extraction_prompt": "Seção: <<title>>, termina <<end>>. Notas: <<footnotes>>",
+        "references_prompt": "Separe: <<references>>",
         "required_sections": (SectionDefinition(key="abstract", labels=("Abstract", "Resumo")),),
         "optional_sections": (SectionDefinition(key="appendix", labels=("Apêndice",)),),
     }
@@ -101,3 +102,8 @@ def test_config_is_frozen() -> None:
 
 def test_normalizes_labels_for_comparison() -> None:
     assert normalize_label("  Referências   Bibliográficas ") == "referencias bibliograficas"
+
+
+def test_references_prompt_needs_its_marker() -> None:
+    with pytest.raises(ValidationError, match="<<references>>"):
+        config(references_prompt="Separe a lista.")

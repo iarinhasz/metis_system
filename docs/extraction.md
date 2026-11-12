@@ -30,6 +30,12 @@ PDF ─▶ chamada 1: mapa das seções ─▶ gate: tem abstract e referências
           └─ não ────▶ refaz só aquela seção, com uma dica do que deu errado (até check_retries)
           │            e fica com a melhor resposta
           ▼
+       lista de referências separada em campos (uma chamada, só com o texto da seção)
+          │
+          ▼
+       chamadas no texto ([3], "Silva et al. (2020)") achadas e ligadas às referências (código)
+          │
+          ▼
        ExtractedArticle ─▶ Extraction (banco) ─▶ Run.extraction
 ```
 
@@ -43,8 +49,14 @@ PDF ─▶ chamada 1: mapa das seções ─▶ gate: tem abstract e referências
    - **fidelidade:** fração da resposta que está nesse trecho (o modelo trouxe texto de outra seção ou inventou?);
    - a comparação usa trechos de 20 caracteres do texto só com letras e dígitos, sem acento e sem caixa. Espaço, hifenização e palavra grudada não contam como diferença, e uma nota que o pypdf colou no meio de uma frase só derruba os trechos em volta dela;
    - título não achado no texto local deixa a seção sem verificação (`None`).
-6. **Nova tentativa** (`section_answer.py`). Abaixo de `min_coverage` ou de `min_fidelity`, a chamada daquela seção é refeita com uma dica: as frases do PDF que faltaram ou o começo do texto que não é da seção. Repetir o mesmo pedido com temperatura 0 dá a mesma resposta, por isso a dica. Fica a melhor resposta. Uma seção sem prosa no PDF que, mesmo assim, recebe texto de fora fica vazia: o texto é de outra seção e estaria duplicado.
-7. **Resultado.** Seção obrigatória vazia é resposta inválida (`InvalidModelAnswer`, o estágio tenta de novo). O resto vira um `ExtractedArticle`, guardado como `Extraction` e ligado ao run.
+6. **Nova tentativa** (`section_answer.py`). Abaixo de `min_coverage` ou de `min_fidelity`, a chamada daquela seção é refeita com uma dica: as frases do PDF que faltaram ou o começo do texto que não é da seção. Repetir o mesmo pedido com temperatura 0 dá a mesma resposta, por isso a dica. Fica a melhor resposta. Uma resposta vazia ou fora do schema conta como tentativa falha daquela seção, sem derrubar a extração inteira. Uma seção sem prosa no PDF que, mesmo assim, recebe texto de fora fica vazia: o texto é de outra seção e estaria duplicado.
+7. **Referências em campos** (`references.py`, `prompts/parse_references.md`). Uma chamada só com o texto da seção de referências, sem o PDF. O modelo devolve cada entrada com o texto cru (`raw`), a marca da lista (`[3]`, `3.`), autores, título, ano (com o sufixo, `2020a`), venue, DOI e arXiv. O código confere: entrada cujo `raw` não está no texto é descartada, e o conjunto precisa cobrir o texto; reprovada, a chamada é refeita com uma dica (as entradas que não estão na lista ou as que faltaram). Ids `ref_1`, `ref_2`… na ordem.
+8. **Chamadas no texto** (`citations.py`, só código), em todas as seções menos a de referências:
+   - **numérico:** `[3]`, `[1, 4]`, `[2–5]` (o intervalo é expandido); a ligação é pela marca da entrada ou, se a lista não é numerada, pela posição;
+   - **autor-ano:** "Silva (2020)", "Silva et al. (2020a)", "Silva e Souza (2020)" e, entre parênteses, "(e.g., Silva, 2020; Souza et al., 2019)"; a ligação é pelo sobrenome do primeiro autor (sem acento e caixa) e pelo ano. Duas entradas com o mesmo primeiro autor e ano são desempatadas pelo segundo autor ("Agić e Ljubešić (2015)"), pelo "et al." (três ou mais autores) ou, sem nenhum dos dois, pela entrada de autor único;
+   - o estilo é decidido uma vez por artigo: numérico se a lista é numerada ou se as chamadas numéricas válidas são maioria. Assim um intervalo "[0, 1]" num artigo autor-ano não vira citação, e colchete com 0 nunca é citação;
+   - sem entrada correspondente, ou com mais de uma, a citação fica com `reference_id` nulo (a 5.3 usa: citação sem entrada na lista). "Palavra (2020)" sem entrada é descartada, porque pode não ser citação; "(Silva, 2020)" e "Silva et al. (2020)" ficam.
+9. **Resultado.** Seção obrigatória vazia é resposta inválida (`InvalidModelAnswer`, o estágio tenta de novo), e também uma lista de referências sem nenhuma entrada conferida. O resto vira um `ExtractedArticle`, guardado como `Extraction` e ligado ao run.
 
 ## A config (`DocumentConfig`)
 
@@ -59,7 +71,8 @@ Tipagem congelada em `config.py`; a do artigo científico é a `ARTICLE_CONFIG` 
 | `ignore_footnotes` | `true`: o texto das notas e as marcas de chamada ficam fora, e cada seção só diz se tinha nota; `false`: as notas vêm no fim da seção que as chama | `true` |
 | `max_parallel_calls` | Chamadas por seção ao mesmo tempo | 4 |
 | `min_coverage`, `min_fidelity` | Limites da conferência | 0,8 e 0,8 |
-| `check_retries` | Novas tentativas de uma seção reprovada | 1 |
+| `check_retries` | Novas tentativas de uma seção (ou da lista de referências) reprovada | 1 |
+| `references_prompt` | Prompt da chamada que separa as referências em campos (com o marcador `<<references>>`) | `prompts/parse_references.md` |
 
 Os papéis das seções (introdução, método, resultados…) não ficam aqui: são do E2.
 
@@ -67,13 +80,15 @@ Os papéis das seções (introdução, método, resultados…) não ficam aqui: 
 
 `ExtractedArticle` (`article.py`): `title`, `authors`, `language`, `model` (provedor/modelo) e `sections[]`. Cada `ExtractedSection` tem `id`, `title`, `level`, `parent_id`, `key`, `text`, `has_footnotes`, `coverage` e `fidelity`. Uma seção que só tem subseções vem com o texto vazio.
 
+Desde a 1.10, também `references[]` (cada `Reference` com `id`, `raw`, `marker`, `authors`, `title`, `year`, `venue`, `doi`, `arxiv_id`) e `citations[]` (cada `Citation` com `reference_id` ou nulo, `marker`, `sentence`, `section_id` e `start`/`end`, offsets do `marker` no texto da seção). As extrações anteriores continuam válidas, com as duas listas vazias.
+
 O contrato `ExtractedDocument` da 1.1 (módulo Avaliação) ainda não existe; quando existir, é montado a partir deste resultado.
 
 ## Cache e ligação ao run
 
 - **`Extraction`** (`models.py`): o `ExtractedArticle` em JSON, único por (sha256 do PDF, versão). A versão é o hash da config inteira e de todos os prompts: mudar o modelo, um limite ou um prompt força uma extração nova. Um run novo do mesmo PDF reaproveita a guardada, sem chamar o modelo.
 - **`Run.extraction`**: o E1 liga a extração ao run pelo `RunManagement.attach_extraction`, só se o estágio ainda é da task (posse).
-- **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções e as seções abaixo dos limites (`below_check`). Nunca texto do manuscrito.
+- **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções, as seções abaixo dos limites (`below_check`) e o número de referências, de citações e de citações sem ligação. Nunca texto do manuscrito.
 
 ## Falhas
 
@@ -99,10 +114,12 @@ O Agno não refaz chamadas (`retries=0`): quem tenta de novo, com backoff, é o 
 - **Símbolos:** letras gregas podem mudar ("α" virou "a" num teste), e fórmulas vêm como texto corrido.
 - **Ruído na conferência:** tabelas e notas que o pypdf cola no meio do texto baixam a cobertura de seções que vieram certas (a 3.1 do ICLR 410 fica em 76%). Por isso os limites ficam em 0,8.
 - **Custo:** o PDF vai em cada chamada. O Agno manda o texto do prompt antes do PDF, então o cache implícito do Gemini não reaproveita o PDF entre as chamadas.
-- **Ainda não feito:** as referências em campos e a ligação de cada citação à sua referência (1.10, decidida em 12/11: o modelo separa a lista, o código liga as chamadas), as figuras e tabelas (1.6, decidida: pelo Gemini, com o recorte adiado) e o texto oculto (1.7, Integridade).
+- **Citações:** chamada em número sobrescrito ("…doença¹⁻³", comum na área da saúde) não é reconhecida; num artigo numérico, um intervalo como "[1, 2]" no meio de uma fórmula vira citação; no autor-ano, "Silva (2020)" com duas entradas de Silva 2020 que nem o segundo autor nem o "et al." desempatam fica sem ligação.
+- **Ainda não feito:** as figuras e tabelas (1.6, decidida: pelo Gemini, com o recorte adiado) e o texto oculto (1.7, Integridade).
 
 ## Como testar
 
-- `extractor/tests/`: a config, o mapa, a conferência, a nova tentativa e o caso de uso, com uma sessão falsa e PDFs gerados no teste; a sessão do Agno contra um servidor HTTP local no lugar do Google; o E1 por attempt com banco real e PDF no storage.
+- `extractor/tests/`: a config, o mapa, a conferência, a nova tentativa, as referências (`test_references.py`), as citações (`test_citations.py`), a medição (`test_citation_bench.py`) e o caso de uso, com uma sessão falsa e PDFs gerados no teste; a sessão do Agno contra um servidor HTTP local no lugar do Google; o E1 por attempt com banco real e PDF no storage.
 - `pytest -m llm`: divide um artigo inventado com o Gemini de verdade (usa a `GEMINI_KEY` do `.env`; fica fora do `pytest` padrão e do CI).
 - Calibração (11/11): dois artigos do ICLR 2017 (PeerRead) divididos de ponta a ponta. No 410 (13 páginas), 18 de 19 seções passaram nas duas medidas, com 21 chamadas em 30 s; no 304 (20 páginas), as 3 reprovadas eram de pseudocódigo, com 39 chamadas em 68 s.
+- **Medição da ligação citação ↔ referência (12/11)**, com `python manage.py bench_citation_links --execute` (em dry-run só lista os artigos; `--rescore <pasta>` recalcula a partir dos artigos salvos, sem o modelo): 10 artigos do PeerRead (ICLR 2017, ACL 2017, CoNLL 2016), comparados com o gabarito do science-parse. Contra o gabarito bruto, recall de 80% e precisão de 71%. O gabarito erra muito: 134 das 406 chamadas dele não batem com o próprio texto (o sobrenome e o ano da chamada não são os da referência ligada) ou têm os offsets fora do lugar; sem elas, **recall de 93% (244 de 263) e precisão de 92% (244 de 264)**, com 98% das referências casadas pelo título. Na conferência manual, as 20 citações contadas como erradas estavam certas (o gabarito não as tinha naquela frase); das 19 chamadas não achadas, 7 estão em tabelas, legendas ou notas (fora do texto por desenho), 3 em frases que o modelo pulou na cópia e o resto é desacordo de recorte do gabarito. Os relatórios ficam em `dataset_project/processed/bench_citation_links/`.

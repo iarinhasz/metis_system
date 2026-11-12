@@ -1,6 +1,6 @@
 # Metis: plano completo do projeto
 
-**Situação:** M0 implementado (etapas 0.1–0.7, [04](04_etapas_m0_restante.md)). Na fase 2, a 1.5 está implementada: o E1 divide o artigo com chamadas ao Gemini, conferidas contra o PDF, e o GROBID foi descartado em 11/11 ([05](05_etapas_m1_extracao.md)). O código fica em `projects/correction/`
+**Situação:** M0 implementado (etapas 0.1–0.7, [04](04_etapas_m0_restante.md)). Na fase 2, a 1.5 e a 1.10 estão implementadas: o E1 divide o artigo com chamadas ao Gemini, conferidas contra o PDF (o GROBID foi descartado em 11/11), separa as referências em campos e liga as citações (recall de 93% e precisão de 92% no PeerRead) ([05](05_etapas_m1_extracao.md)). A próxima da Plataforma é a 1.6 (figuras e tabelas). O código fica em `projects/correction/`
 **Data:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)
 **Fluxo no Agno:** [docs/agents.md](../../../docs/agents.md); em diagramas, com as entidades e as ligações: [docs/flow_graph.md](../../../docs/flow_graph.md)

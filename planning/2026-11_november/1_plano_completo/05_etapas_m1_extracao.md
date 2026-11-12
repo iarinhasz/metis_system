@@ -189,6 +189,10 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 **Decidido (12/11, Q17):** híbrido. O modelo separa a lista de referências em campos; o código acha as chamadas no texto das seções e liga cada uma à sua referência. Vem **antes da 1.6**: destrava a 4.2, a 4.4, a 4.7 e a 5.x da Integridade.
 
+**Situação:** implementada em 12/11/2026. **Meta inicial, medida no PeerRead:** recall de 93% e precisão de 92% na ligação citação ↔ referência, sobre as chamadas válidas do gabarito (10 artigos; contra o gabarito bruto, 80% e 71%). Detalhe da medição e da conferência manual em [Extração](../../../docs/extraction.md#como-testar).
+
+**Como ficou:** `extractor/references.py` (lista em campos, conferida e refeita com dica), `citations.py` (numérico e autor-ano, com desempate pelo segundo autor e pelo "et al."), `ExtractedArticle.references[]` e `citations[]`, o evento do E1 com as contagens, e o comando `bench_citation_links` (`citation_bench.py`), com `--papers` e `--rescore`. Uma resposta inválida numa seção passou a contar como tentativa falha dela, sem derrubar a extração (um dos 10 artigos tinha falhado por isso).
+
 **O que fazer**
 - **Referências em campos** (uma chamada a mais por artigo, só com texto, `prompts/parse_references.md`): o texto da seção de referências, já extraído na 1.5, vai ao modelo. A resposta (`ParsedReferences`) traz, para cada entrada, o texto cru (`raw`), a marca da lista quando houver (`[3]`, `3.`), autores, título, ano (com o sufixo, `2020a`), venue, DOI e arXiv.
   - Conferência como na 1.5: cada `raw` precisa estar no texto da seção (fidelidade), e a cobertura da seção pelas entradas mostra se faltou referência; abaixo do limite, a chamada é refeita com uma dica.
@@ -217,6 +221,6 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 - 3–5 PDFs reais divididos com cobertura e fidelidade dentro dos limites (dois do ICLR 2017 já calibrados em 11/11).
 - Num artigo com gráfico vetorial, todas as figuras e tabelas são listadas e descritas (o recorte ficou para depois, 1.6); um texto oculto plantado é detectado (1.7).
-- A ligação citação ↔ referência foi medida no PeerRead (1.10).
+- A ligação citação ↔ referência foi medida no PeerRead (1.10): recall de 93% e precisão de 92% (12/11).
 - Cada chamada de visão aparece em `LLMCall`, com custo.
 - A verificação manual de [12](12_testes_e_verificacao.md#i2--extração-real) passa.

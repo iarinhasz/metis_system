@@ -30,8 +30,9 @@ ERROR_DETAIL_CHARS: Final = 200
 
 
 class DocumentSession(Protocol):
-    def ask[T: BaseModel](self, prompt: str, output: type[T]) -> T:
-        """Pergunta sobre o documento e devolve a resposta já validada no schema pedido."""
+    def ask[T: BaseModel](self, prompt: str, output: type[T], *, with_document: bool = True) -> T:
+        """Pergunta sobre o documento e devolve a resposta já validada no schema pedido.
+        Com `with_document=False`, o prompt vai sozinho (ele já traz o texto que importa)."""
         ...
 
 
@@ -63,9 +64,11 @@ class AgnoSession:
         else:
             self._file, self._text = None, read_pdf_text(pdf)
 
-    def ask[T: BaseModel](self, prompt: str, output: type[T]) -> T:
+    def ask[T: BaseModel](self, prompt: str, output: type[T], *, with_document: bool = True) -> T:
         agent = Agent(model=self._model, output_schema=output, telemetry=False)
-        if self._file is not None:
+        if not with_document:
+            run = agent.run(prompt)
+        elif self._file is not None:
             run = agent.run(prompt, files=[self._file])
         else:
             # O artigo vem primeiro, entre delimitadores, marcado como dado.

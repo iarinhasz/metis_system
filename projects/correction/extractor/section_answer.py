@@ -11,6 +11,7 @@ from typing import Final
 
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.coverage import coverage, fidelity, missing_sentences
+from projects.correction.extractor.errors import InvalidModelAnswer
 from projects.correction.extractor.prompts import load_prompt, render_prompt
 from projects.correction.extractor.schemas import SectionContent
 from projects.correction.extractor.session import DocumentSession
@@ -41,8 +42,15 @@ def ask_section(
 ) -> SectionAnswer:
     best: SectionAnswer | None = None
     hint = ""
+    invalid: InvalidModelAnswer | None = None
     for _ in range(config.check_retries + 1):
-        content = session.ask(prompt + hint, SectionContent)
+        try:
+            content = session.ask(prompt + hint, SectionContent)
+        except InvalidModelAnswer as exc:
+            # Resposta vazia ou fora do schema numa seção conta como tentativa falha dela,
+            # sem derrubar a extração inteira (o retry do estágio refaria todas as seções).
+            invalid = exc
+            continue
         answer = SectionAnswer(
             content, coverage(local_text, content.text), fidelity(local_text, content.text)
         )
@@ -51,7 +59,9 @@ def ask_section(
         if best is None or answer.score > best.score:
             best = answer
         hint = _retry_hint(answer, local_text, config)
-    assert best is not None
+    if best is None:
+        assert invalid is not None
+        raise invalid
     return _without_foreign_text(best, config)
 
 

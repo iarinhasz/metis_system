@@ -5,7 +5,12 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from projects.correction.extractor.schemas import HeadingScan, ScannedHeading, SectionContent
+from projects.correction.extractor.schemas import (
+    HeadingScan,
+    ParsedReferences,
+    ScannedHeading,
+    SectionContent,
+)
 
 
 def objects_in(schema: dict[str, Any]) -> list[dict[str, Any]]:
@@ -13,7 +18,7 @@ def objects_in(schema: dict[str, Any]) -> list[dict[str, Any]]:
     return [node for node in found if node.get("type") == "object"]
 
 
-@pytest.mark.parametrize("model", [HeadingScan, SectionContent])
+@pytest.mark.parametrize("model", [HeadingScan, SectionContent, ParsedReferences])
 def test_every_field_is_required_and_nothing_else_is_accepted(model: type[BaseModel]) -> None:
     for node in objects_in(model.model_json_schema()):
         assert node["additionalProperties"] is False

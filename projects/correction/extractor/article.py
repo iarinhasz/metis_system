@@ -20,6 +20,36 @@ class ExtractedSection(BaseModel):
     fidelity: float | None
 
 
+class Reference(BaseModel):
+    """Uma entrada da lista de referências: como o autor escreveu (`raw`) e já separada."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    raw: str
+    marker: str | None
+    authors: tuple[str, ...]
+    title: str | None
+    year: str | None
+    venue: str | None
+    doi: str | None
+    arxiv_id: str | None
+
+
+class Citation(BaseModel):
+    """Uma chamada no texto de uma seção. `start` e `end` são offsets do `marker` no texto da
+    seção; `reference_id` é None quando nenhuma entrada da lista (ou mais de uma) corresponde."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    reference_id: str | None
+    marker: str
+    sentence: str
+    section_id: str
+    start: int
+    end: int
+
+
 class ExtractedArticle(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -29,6 +59,9 @@ class ExtractedArticle(BaseModel):
     # Quem dividiu o artigo (provedor/modelo), para saber de onde veio cada versão.
     model: str
     sections: tuple[ExtractedSection, ...]
+    # Vazias nas extrações feitas antes da 1.10.
+    references: tuple[Reference, ...] = ()
+    citations: tuple[Citation, ...] = ()
 
     @property
     def has_footnotes(self) -> bool:

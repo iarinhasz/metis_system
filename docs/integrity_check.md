@@ -53,7 +53,7 @@ Do mais barato ao mais caro:
    - O **SPECTER2** não serve aqui: só funciona em inglês e compara artigos inteiros.
    - Os limiares são calibrados com abstracts bilíngues do SciELO e com o plágio sintético do PeerRead. Não existe benchmark público PT↔EN para modelos atuais.
 4. **Filtro por citação.** Para cada par suspeito:
-   - a fonte está citada nesse trecho? Depende da ligação de cada citação à sua referência, que ficou em aberto quando o GROBID foi descartado (ver [Extração](extraction.md#limitações-conhecidas));
+   - a fonte está citada nesse trecho? Pela ligação de cada citação à sua referência, que o E1 entrega em `citations[]` (ver [Extração](extraction.md#passo-a-passo));
    - o trecho está entre aspas?
    - é boilerplate (descrição padrão de método, definição)?
    - é o mesmo trabalho, como o preprint do próprio autor (título e autores batem)?

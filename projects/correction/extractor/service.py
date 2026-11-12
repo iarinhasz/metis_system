@@ -1,9 +1,12 @@
 """Divide o artigo: a chamada 1 mapeia as seções, e a chamada 2, feita uma vez por seção e em
-paralelo, traz o texto de cada uma, conferido contra o texto do PDF (ver section_answer.py)."""
+paralelo, traz o texto de cada uma, conferido contra o texto do PDF (ver section_answer.py).
+Depois, uma chamada separa a lista de referências em campos (references.py), e o código liga
+as chamadas no texto a ela (citations.py)."""
 
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
+from projects.correction.extractor.citations import find_citations
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.configs import ARTICLE_CONFIG
 from projects.correction.extractor.coverage import local_sections, reference_text
@@ -14,6 +17,7 @@ from projects.correction.extractor.errors import (
 )
 from projects.correction.extractor.pdf_text import read_pdf_pages
 from projects.correction.extractor.prompts import load_prompt, render_prompt
+from projects.correction.extractor.references import parse_references
 from projects.correction.extractor.schemas import HeadingScan
 from projects.correction.extractor.section_answer import SectionAnswer, ask_section
 from projects.correction.extractor.section_map import (
@@ -49,21 +53,27 @@ def extract_article(
     if empty:
         raise InvalidModelAnswer(f"Seções obrigatórias voltaram vazias: {', '.join(empty)}.")
 
+    sections = tuple(
+        ExtractedSection(
+            **mapped.model_dump(),
+            text=answers[mapped.id].content.text.strip(),
+            has_footnotes=answers[mapped.id].content.has_footnotes,
+            coverage=answers[mapped.id].coverage,
+            fidelity=answers[mapped.id].fidelity,
+        )
+        for mapped in section_map.values()
+    )
+    references_text = "\n\n".join(s.text for s in sections if s.key == "references")
+    references = parse_references(session, config, references_text)
+
     return ExtractedArticle(
         title=scan.title.strip(),
         authors=tuple(name.strip() for name in scan.authors if name.strip()),
         language=scan.language.strip().lower(),
         model=f"{config.provider}/{config.model}",
-        sections=tuple(
-            ExtractedSection(
-                **mapped.model_dump(),
-                text=answers[mapped.id].content.text.strip(),
-                has_footnotes=answers[mapped.id].content.has_footnotes,
-                coverage=answers[mapped.id].coverage,
-                fidelity=answers[mapped.id].fidelity,
-            )
-            for mapped in section_map.values()
-        ),
+        sections=sections,
+        references=references,
+        citations=find_citations(sections, references),
     )
 
 

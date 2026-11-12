@@ -10,7 +10,7 @@ Avaliador de artigos científicos. Quem submete envia o PDF de um artigo e receb
 
 O sistema recomenda; não decide sozinho. Risco alto de plágio e pontos sem consenso vão para revisão humana.
 
-> **Situação (11/11/2026):** M0 implementado (etapas 0.1–0.7), com os estágios ainda em stub e a [verificação manual do I1](planning/2026-11_november/1_plano_completo/12_testes_e_verificacao.md#i1--m0) passando no `docker compose`. Na fase 2 do [roteiro](planning/2026-11_november/1_plano_completo/03_roteiro_e_trilhas.md), o E1 já divide o artigo de verdade, com chamadas ao Gemini conferidas contra o PDF ([Extração](docs/extraction.md)); os demais estágios seguem em stub. A equipe trabalha em 4 módulos, com uma branch por etapa e PR para a `dev`: [divisão em módulos](planning/2026-11_november/2_divisao_equipe/divisao_em_modulos.html) (abra no navegador).
+> **Situação (12/11/2026):** M0 implementado (etapas 0.1–0.7), com os estágios ainda em stub e a [verificação manual do I1](planning/2026-11_november/1_plano_completo/12_testes_e_verificacao.md#i1--m0) passando no `docker compose`. Na fase 2 do [roteiro](planning/2026-11_november/1_plano_completo/03_roteiro_e_trilhas.md), o E1 já divide o artigo de verdade, com chamadas ao Gemini conferidas contra o PDF, separa as referências em campos e liga cada citação à sua referência ([Extração](docs/extraction.md)); os demais estágios seguem em stub. A equipe trabalha em 4 módulos, com uma branch por etapa e PR para a `dev`: [divisão em módulos](planning/2026-11_november/2_divisao_equipe/divisao_em_modulos.html) (abra no navegador).
 
 ## Como funciona
 

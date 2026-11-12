@@ -52,4 +52,7 @@ def extraction_payload(
         "model": article.model,
         "sections": len(article.sections),
         "below_check": below,
+        "references": len(article.references),
+        "citations": len(article.citations),
+        "unlinked_citations": sum(c.reference_id is None for c in article.citations),
     }

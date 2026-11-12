@@ -32,3 +32,26 @@ class SectionContent(_Output):
 
     text: str = Field(description="O texto da seção, copiado literalmente do documento.")
     has_footnotes: bool = Field(description="Se a seção chama alguma nota de rodapé.")
+
+
+class ParsedReference(_Output):
+    raw: str = Field(description="A entrada inteira, copiada literalmente da lista.")
+    marker: str | None = Field(description="A marca da entrada na lista, se houver: [3], 3. ou 3.")
+    authors: tuple[str, ...] = Field(
+        description="Os autores na ordem, como escritos na entrada ('Silva, A.' ou 'Ana Silva')."
+    )
+    title: str | None = Field(description="O título da obra citada.")
+    year: str | None = Field(description="O ano, com o sufixo quando houver: 2020 ou 2020a.")
+    venue: str | None = Field(
+        description="Onde saiu: revista, conferência, editora ou repositório."
+    )
+    doi: str | None = Field(description="O DOI, sem o prefixo https://doi.org/.")
+    arxiv_id: str | None = Field(
+        description="O identificador do arXiv, quando houver (ex.: 1602.03218)."
+    )
+
+
+class ParsedReferences(_Output):
+    """Resposta da chamada que separa a lista de referências em campos."""
+
+    references: tuple[ParsedReference, ...]
