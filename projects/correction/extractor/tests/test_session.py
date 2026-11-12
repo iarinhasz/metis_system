@@ -98,7 +98,7 @@ def test_provider_failure_is_transient(stub_server: StubServer, status: int, cod
     error = {"error": {"code": status, "message": "falhou", "status": code}}
     stub_server.queue(StubResponse.json(error, status=status))
 
-    with pytest.raises(ModelUnavailable, match=code):
+    with pytest.raises(ModelUnavailable, match="indisponível"):
         session(stub_server, make_pdf(ARTICLE_LINES)).ask("Liste.", HeadingScan)
 
 
@@ -123,6 +123,7 @@ def test_answer_that_is_not_the_schema_is_invalid(
 
 def test_needs_the_gemini_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "gemini_key", "")
+    monkeypatch.setattr(settings, "google_api_key", "")
 
     with pytest.raises(MissingModelKey, match="GEMINI_KEY"):
         AgnoSession(ARTICLE_CONFIG, make_pdf(ARTICLE_LINES))
