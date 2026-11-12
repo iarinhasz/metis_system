@@ -99,7 +99,7 @@ O Agno não refaz chamadas (`retries=0`): quem tenta de novo, com backoff, é o 
 - **Símbolos:** letras gregas podem mudar ("α" virou "a" num teste), e fórmulas vêm como texto corrido.
 - **Ruído na conferência:** tabelas e notas que o pypdf cola no meio do texto baixam a cobertura de seções que vieram certas (a 3.1 do ICLR 410 fica em 76%). Por isso os limites ficam em 0,8.
 - **Custo:** o PDF vai em cada chamada. O Agno manda o texto do prompt antes do PDF, então o cache implícito do Gemini não reaproveita o PDF entre as chamadas.
-- **Ainda não feito:** descrição de figuras, tabelas e fórmulas (1.6 e 1.8, em aberto), texto oculto (1.7, Integridade) e a ligação de cada citação no texto à sua referência, que o GROBID faria (as etapas 4.4 e 4.7 da Integridade dependiam dela).
+- **Ainda não feito:** as referências em campos e a ligação de cada citação à sua referência (1.10, decidida em 12/11: o modelo separa a lista, o código liga as chamadas), as figuras e tabelas (1.6, decidida: pelo Gemini, com o recorte adiado) e o texto oculto (1.7, Integridade).
 
 ## Como testar
 

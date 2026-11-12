@@ -119,21 +119,27 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ---
 
-## Etapa 1.6 — Docling, junção e Figure
+## Etapa 1.6 — Figuras e tabelas pelo modelo (incorpora a 1.8)
 
-**Em aberto (11/11):** sem o GROBID, a junção por bbox não se aplica, e o Docling é pesado (modelos do torch). Antes de começar, decidir se as figuras vêm do Docling (medindo imagem e memória) ou de uma chamada de visão do modelo sobre as páginas do PDF.
+**Decidido (12/11, Q16):** o próprio Gemini, como na 1.5, sem Docling (pesado: torch e modelos). O recorte da imagem fica para quando o admin ou o relatório precisarem mostrar a figura. Vem **depois da 1.10**.
 
-**O que fazer** (plano original)
-- `extraction/docling.py`: com as opções de [Extração](../../../docs/extraction.md#ferramentas); figuras com bbox, classe e recorte; tabelas em markdown; fórmulas em LaTeX.
-- Junção GROBID ↔ Docling por página + sobreposição de bbox (`to_top_left_origin()` no Docling).
-- Model `Figure` (recorte no storage, `image_sha256`).
-- Imagem e worker de extração: decidir se os modelos do Docling vão na imagem ou são baixados na primeira execução; conferir as wheels de Docling/torch em Python 3.14 (R15).
+**O que fazer**
+- **Lista** (uma chamada, `prompts/scan_figures.md`): figuras e tabelas com o rótulo ("Figure 3", "Tabela 2"), o tipo (`figure` ou `table`), a página e a legenda literal. A legenda é conferida contra o texto do PDF (fidelidade, como nas seções); abaixo do limite, a chamada é refeita com uma dica.
+- **Onde cada uma é citada** (código): as frases das seções que mencionam o rótulo nas várias grafias ("Fig. 3", "Figura 3", "Table 2"), com a seção e os offsets.
+- **Descrição** (uma chamada por figura ou tabela, em paralelo, `prompts/describe_figure.md`): o PDF, o rótulo, a página, a legenda e as frases que a citam. A resposta (`FigureDescription`) traz a classe (gráfico de linhas, de barras, diagrama, foto…), a descrição, os dados legíveis, se a figura sustenta o que o texto afirma sobre ela (com o motivo) e os problemas (eixo sem unidade, legenda que não bate com o desenho). Para tabela, também o markdown.
+- **Falhas:** uma figura que falha fica sem descrição, marcada, e o estágio segue; todas falhando com `ModelUnavailable` → retry do estágio.
+- **No resultado:** `ExtractedArticle.figures[]` (id, rótulo, tipo, página, legenda, frases que citam, descrição ou nula), com valor padrão vazio para as extrações antigas continuarem válidas.
+- **`DocumentConfig`:** `figures_prompt`, `describe_figure_prompt` e `describe_figures`.
+- **Fora daqui:** o recorte (pypdfium2 + a caixa devolvida pelo Gemini + Pillow, leve, quando precisar), fórmulas em LaTeX (ficam no texto como o modelo copiou) e o custo em `LLMCall` (1.4).
 
-**Teste** (`extraction/tests/test_docling.py`)
-- Um PDF com gráfico vetorial → figura detectada e recortada inteira.
-- A figura 3 do texto liga ao recorte certo e aos parágrafos que a citam.
+**Teste**
+- `extractor/tests/test_figures.py` (sessão falsa): lista conferida; legenda inventada refeita; frases que citam achadas pelo rótulo nas várias grafias; falha isolada não derruba o estágio; todas falhando sobem.
+- `pytest -m llm`: o ICLR 633 (30 figuras, gráficos vetoriais).
+- Conferência manual: as figuras de 2 artigos comparadas com o PDF.
 
-**Commit sugerido:** `feat: detect and crop figures with Docling`
+**Pronto quando:** num artigo com gráfico vetorial, todas as figuras e tabelas são listadas com a legenda certa e descritas, e uma falha isolada deixa só aquela sem descrição.
+
+**Commit sugerido:** `feat: describe figures and tables with Gemini`
 
 ---
 
@@ -154,17 +160,7 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ## Etapa 1.8 — Descrição das figuras
 
-**O que fazer**
-- Agente `figure_describer(kind)`, papel `vision`, `output_schema` `FigureDescription`; um prompt por grupo de classes (gráfico, diagrama, foto, tabela em imagem).
-- Executor `DescribeFiguresStep`: `bounded_map` sobre as figuras, cache pelo hash da imagem, e uma figura sem descrição marcada no documento quando a chamada falha.
-
-**Teste** (`extraction/tests/test_describe_figures.py`, `FakeAgentFactory`)
-- Cada figura recebe uma descrição; uma falha isolada deixa só aquela sem descrição.
-- Todas falhando com `LLMUnavailable` → o erro sobe.
-- Mesmo hash de imagem → nenhuma chamada nova.
-- Cada chamada gera um `LLMCall`.
-
-**Commit sugerido:** `feat: describe figures with a vision agent`
+**Incorporada à 1.6 (12/11).** A descrição vem na mesma etapa que a lista das figuras, pelo Gemini, sem esperar a 1.3 e a 1.4.
 
 ---
 
@@ -189,24 +185,38 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ---
 
-## Etapa 1.10 — Medição da ligação citação ↔ referência
+## Etapa 1.10 — Referências em campos e ligação das citações
 
-**Em aberto (11/11):** sem o GROBID, ninguém liga as chamadas no texto às referências. Antes de medir, decidir como ligar: código sobre o texto das seções (`[3]`, "(Silva, 2020)") ou uma chamada ao modelo. A medição contra os `referenceMentions` do PeerRead continua valendo. As etapas 4.4 e 4.7 da Integridade dependem disso.
+**Decidido (12/11, Q17):** híbrido. O modelo separa a lista de referências em campos; o código acha as chamadas no texto das seções e liga cada uma à sua referência. Vem **antes da 1.6**: destrava a 4.2, a 4.4, a 4.7 e a 5.x da Integridade.
 
 **O que fazer**
-- Comando `bench_citation_links` em `evals/`: roda o GROBID em PDFs do PeerRead e compara com os `referenceMentions` (precisão e recall da ligação).
-- Registrar o primeiro número no planejamento; ele vira a meta.
+- **Referências em campos** (uma chamada a mais por artigo, só com texto, `prompts/parse_references.md`): o texto da seção de referências, já extraído na 1.5, vai ao modelo. A resposta (`ParsedReferences`) traz, para cada entrada, o texto cru (`raw`), a marca da lista quando houver (`[3]`, `3.`), autores, título, ano (com o sufixo, `2020a`), venue, DOI e arXiv.
+  - Conferência como na 1.5: cada `raw` precisa estar no texto da seção (fidelidade), e a cobertura da seção pelas entradas mostra se faltou referência; abaixo do limite, a chamada é refeita com uma dica.
+  - Ids `ref_1`, `ref_2`… na ordem da lista.
+- **Chamadas no texto** (código, `citations.py`), sobre o texto de cada seção, menos a de referências:
+  - estilo numérico: `[3]`, `[1, 4]`, `[2–5]` (o intervalo é expandido);
+  - estilo autor-ano: "Silva (2020)", "(Silva, 2020; Souza et al., 2019a)", "Silva e Souza (2020)", "Silva et al. (2020)";
+  - o estilo do artigo sai da própria lista (numerada ou não) e das chamadas que aparecem.
+- **Ligação** (código): no numérico, pela marca ou pela posição na lista; no autor-ano, pelo sobrenome do primeiro autor (sem acento e sem caixa) e pelo ano com o sufixo. Sem candidato ou com mais de um, `reference_id` fica nulo, o que a 5.3 usa (citação sem entrada na lista).
+- **No resultado:** `ExtractedArticle.references[]` (id, `raw` e campos) e `citations[]` (id da referência ou nulo, marca, frase, seção e offsets no texto da seção), com valor padrão vazio para as extrações antigas continuarem válidas. O prompt novo muda a versão do extractor e força uma extração nova para os próximos PDFs. O evento do E1 passa a trazer o número de referências e de citações sem ligação.
+- **`DocumentConfig`:** `references_prompt`. A seção lida é a obrigatória `references`.
+- **Medição** (comando `bench_citation_links` no app `extractor`; em dry-run lista o que rodaria e só chama o modelo com `--execute`): roda o E1 em 10–20 PDFs do PeerRead que têm `parsed_pdfs` (ICLR, ACL, CoNLL) e compara com os `referenceMentions` do science-parse. Para cada chamada do gabarito, a nossa aponta para a mesma referência (casadas pelo título)? Saem a precisão e o recall da ligação; o primeiro número vai para o planejamento e vira a meta. O gabarito também erra, então os desacordos são conferidos à mão numa amostra.
 
-**Pronto quando:** o número está registrado.
+**Teste**
+- `extractor/tests/test_citations.py`: cada forma de chamada (numérica com lista e intervalo; autor-ano com "et al.", dois autores, sufixo de ano e acento); estilo misturado; chamada sem referência; ambiguidade → nulo; offsets batem com a frase.
+- `extractor/tests/test_references.py` (sessão falsa): entradas conferidas contra o texto; entrada inventada refeita ou descartada; ids na ordem.
+- `pytest -m llm`: um artigo inventado com as duas formas de chamada.
 
-**Commit sugerido:** `feat: measure citation linking against PeerRead`
+**Pronto quando:** a ligação foi medida no PeerRead e o número está registrado, e a Integridade consegue ler `references[]` e `citations[]` de uma `Extraction`.
+
+**Commit sugerido:** `feat: parse references and link citations`
 
 ---
 
 ## Pronto do M1 (I2)
 
 - 3–5 PDFs reais divididos com cobertura e fidelidade dentro dos limites (dois do ICLR 2017 já calibrados em 11/11).
-- Um gráfico vetorial é detectado e recortado inteiro; um texto oculto plantado é detectado.
-- A ligação citação ↔ referência foi medida (depende da decisão da 1.10).
+- Num artigo com gráfico vetorial, todas as figuras e tabelas são listadas e descritas (o recorte ficou para depois, 1.6); um texto oculto plantado é detectado (1.7).
+- A ligação citação ↔ referência foi medida no PeerRead (1.10).
 - Cada chamada de visão aparece em `LLMCall`, com custo.
 - A verificação manual de [12](12_testes_e_verificacao.md#i2--extração-real) passa.
