@@ -4,6 +4,8 @@ Os campos viram o JSON schema que o modelo é obrigado a seguir (saída estrutur
 todos são obrigatórios e nada além deles é aceito.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -55,3 +57,18 @@ class ParsedReferences(_Output):
     """Resposta da chamada que separa a lista de referências em campos."""
 
     references: tuple[ParsedReference, ...]
+
+
+class ScannedFigure(_Output):
+    label: str = Field(description="O rótulo como está no documento: 'Figure 3', 'Tabela 2'.")
+    kind: Literal["figure", "table"] = Field(
+        description="figure para figura, gráfico, diagrama ou foto; table para tabela."
+    )
+    page: int = Field(ge=1, description="A página do PDF em que ela está; a primeira é a 1.")
+    caption: str = Field(description="A legenda inteira, copiada literalmente, com o rótulo.")
+
+
+class FigureScan(_Output):
+    """Resposta da chamada que lista as figuras e as tabelas do artigo."""
+
+    figures: tuple[ScannedFigure, ...]

@@ -1,5 +1,7 @@
 """O artigo dividido em seções: o que o extractor entrega."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -50,6 +52,36 @@ class Citation(BaseModel):
     end: int
 
 
+class Figure(BaseModel):
+    """Uma figura ou tabela, com a legenda conferida contra o texto do PDF."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    kind: Literal["figure", "table"]
+    label: str
+    # O número do rótulo ("3", "A.1"), que liga as chamadas no texto à figura.
+    number: str | None
+    page: int
+    caption: str
+    # Fração da legenda que está no texto do PDF; None quando não deu para verificar.
+    fidelity: float | None
+
+
+class FigureMention(BaseModel):
+    """Uma chamada a uma figura ou tabela no texto de uma seção ("Fig. 3", "Tabela 2"),
+    com offsets no texto da seção; `figure_id` é None quando o rótulo não está na lista."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    figure_id: str | None
+    marker: str
+    sentence: str
+    section_id: str
+    start: int
+    end: int
+
+
 class ExtractedArticle(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -62,6 +94,9 @@ class ExtractedArticle(BaseModel):
     # Vazias nas extrações feitas antes da 1.10.
     references: tuple[Reference, ...] = ()
     citations: tuple[Citation, ...] = ()
+    # Vazias nas extrações feitas antes da 1.6.
+    figures: tuple[Figure, ...] = ()
+    figure_mentions: tuple[FigureMention, ...] = ()
 
     @property
     def has_footnotes(self) -> bool:

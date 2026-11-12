@@ -23,6 +23,7 @@ ARTICLE_CONFIG: Final = DocumentConfig(
     scan_prompt=load_prompt("scan_headings"),
     extraction_prompt=load_prompt("extract_section"),
     references_prompt=load_prompt("parse_references"),
+    figures_prompt=load_prompt("scan_figures"),
     required_sections=(
         SectionDefinition(key="abstract", labels=("Abstract", "Resumo", "Resumen")),
         SectionDefinition(

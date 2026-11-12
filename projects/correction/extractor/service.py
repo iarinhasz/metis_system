@@ -1,7 +1,8 @@
 """Divide o artigo: a chamada 1 mapeia as seções, e a chamada 2, feita uma vez por seção e em
 paralelo, traz o texto de cada uma, conferido contra o texto do PDF (ver section_answer.py).
 Depois, uma chamada separa a lista de referências em campos (references.py), e o código liga
-as chamadas no texto a ela (citations.py)."""
+as chamadas no texto a ela (citations.py). Por fim, uma chamada lista as figuras e as tabelas
+(figures.py), e o código acha as frases que as citam (figure_mentions.py)."""
 
 from concurrent.futures import Future, ThreadPoolExecutor
 
@@ -15,6 +16,8 @@ from projects.correction.extractor.errors import (
     MissingRequiredSections,
     UnreadablePdf,
 )
+from projects.correction.extractor.figure_mentions import find_figure_mentions
+from projects.correction.extractor.figures import scan_figures
 from projects.correction.extractor.pdf_text import read_pdf_pages
 from projects.correction.extractor.prompts import load_prompt, render_prompt
 from projects.correction.extractor.references import parse_references
@@ -42,7 +45,11 @@ def extract_article(
     if missing := missing_required(section_map, config):
         raise MissingRequiredSections(f"Sem as seções obrigatórias: {', '.join(missing)}.")
 
-    answers = _extract_sections(session, config, section_map, _local_texts(pdf, section_map))
+    reference = _reference_text(pdf)
+    local_texts = (
+        local_sections(reference, section_map) if reference else dict.fromkeys(section_map)
+    )
+    answers = _extract_sections(session, config, section_map, local_texts)
 
     required = {d.key for d in config.required_sections}
     empty = [
@@ -65,6 +72,7 @@ def extract_article(
     )
     references_text = "\n\n".join(s.text for s in sections if s.key == "references")
     references = parse_references(session, config, references_text)
+    figures = scan_figures(session, config, reference)
 
     return ExtractedArticle(
         title=scan.title.strip(),
@@ -74,6 +82,8 @@ def extract_article(
         sections=sections,
         references=references,
         citations=find_citations(sections, references),
+        figures=figures,
+        figure_mentions=find_figure_mentions(sections, figures),
     )
 
 
@@ -110,11 +120,10 @@ def _extract_sections(
             raise
 
 
-def _local_texts(pdf: bytes, section_map: SectionMap) -> dict[str, str | None]:
-    """O texto de cada seção lido localmente, a referência da cobertura. Se o pypdf não acha
-    texto no PDF (escaneado), nenhuma seção é verificada: o modelo ainda consegue lê-lo."""
+def _reference_text(pdf: bytes) -> str | None:
+    """O texto do PDF lido aqui, a referência das conferências. Se o pypdf não acha texto no
+    PDF (escaneado), nada é verificado: o modelo ainda consegue lê-lo."""
     try:
-        pages = read_pdf_pages(pdf)
+        return reference_text(read_pdf_pages(pdf))
     except UnreadablePdf:
-        return dict.fromkeys(section_map)
-    return local_sections(reference_text(pages), section_map)
+        return None

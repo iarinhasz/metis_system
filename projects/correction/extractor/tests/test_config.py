@@ -23,6 +23,7 @@ def config(**overrides: Any) -> DocumentConfig:
         "scan_prompt": "Liste os títulos.",
         "extraction_prompt": "Seção: <<title>>, termina <<end>>. Notas: <<footnotes>>",
         "references_prompt": "Separe: <<references>>",
+        "figures_prompt": "Liste as figuras.",
         "required_sections": (SectionDefinition(key="abstract", labels=("Abstract", "Resumo")),),
         "optional_sections": (SectionDefinition(key="appendix", labels=("Apêndice",)),),
     }

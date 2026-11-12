@@ -119,27 +119,21 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ---
 
-## Etapa 1.6 — Figuras e tabelas pelo modelo (incorpora a 1.8)
+## Etapa 1.6 — Lista de figuras e tabelas
 
-**Decidido (12/11, Q16):** o próprio Gemini, como na 1.5, sem Docling (pesado: torch e modelos). O recorte da imagem fica para quando o admin ou o relatório precisarem mostrar a figura. Vem **depois da 1.10**.
+**Decidido (12/11, Q16):** o próprio Gemini, como na 1.5, sem Docling (pesado: torch e modelos). O recorte da imagem fica para quando o admin ou o relatório precisarem mostrar a figura. A descrição de cada figura é a 1.8, num commit à parte, na mesma branch.
 
-**O que fazer**
-- **Lista** (uma chamada, `prompts/scan_figures.md`): figuras e tabelas com o rótulo ("Figure 3", "Tabela 2"), o tipo (`figure` ou `table`), a página e a legenda literal. A legenda é conferida contra o texto do PDF (fidelidade, como nas seções); abaixo do limite, a chamada é refeita com uma dica.
-- **Onde cada uma é citada** (código): as frases das seções que mencionam o rótulo nas várias grafias ("Fig. 3", "Figura 3", "Table 2"), com a seção e os offsets.
-- **Descrição** (uma chamada por figura ou tabela, em paralelo, `prompts/describe_figure.md`): o PDF, o rótulo, a página, a legenda e as frases que a citam. A resposta (`FigureDescription`) traz a classe (gráfico de linhas, de barras, diagrama, foto…), a descrição, os dados legíveis, se a figura sustenta o que o texto afirma sobre ela (com o motivo) e os problemas (eixo sem unidade, legenda que não bate com o desenho). Para tabela, também o markdown.
-- **Falhas:** uma figura que falha fica sem descrição, marcada, e o estágio segue; todas falhando com `ModelUnavailable` → retry do estágio.
-- **No resultado:** `ExtractedArticle.figures[]` (id, rótulo, tipo, página, legenda, frases que citam, descrição ou nula), com valor padrão vazio para as extrações antigas continuarem válidas.
-- **`DocumentConfig`:** `figures_prompt`, `describe_figure_prompt` e `describe_figures`.
-- **Fora daqui:** o recorte (pypdfium2 + a caixa devolvida pelo Gemini + Pillow, leve, quando precisar), fórmulas em LaTeX (ficam no texto como o modelo copiou) e o custo em `LLMCall` (1.4).
+**Situação:** implementada em 12/11/2026.
 
-**Teste**
-- `extractor/tests/test_figures.py` (sessão falsa): lista conferida; legenda inventada refeita; frases que citam achadas pelo rótulo nas várias grafias; falha isolada não derruba o estágio; todas falhando sobem.
-- `pytest -m llm`: o ICLR 633 (30 figuras, gráficos vetoriais).
-- Conferência manual: as figuras de 2 artigos comparadas com o PDF.
+**Como ficou** (detalhe em [Extração](../../../docs/extraction.md)):
+- **Lista** (`extractor/figures.py`, `prompts/scan_figures.md`): uma chamada com o PDF devolve rótulo, tipo (`figure` ou `table`), página e legenda literal de cada figura e tabela, sem algoritmos, quadros de código e equações. A legenda é conferida contra o texto do PDF (fidelidade); as linhas que começam como legenda no texto do PDF ("Figure 3:", "Table 2.") dizem se faltou alguma, e a falta volta como dica numa nova tentativa. Ids `fig_1`, `fig_2`… pela ordem das páginas.
+- **Chamadas no texto** (`figure_mentions.py`, só código): "Fig. 3", "Figure 3a", "Figura 2", "Figures 2 and 3", "Figs. 2–4", "Table 1", "Tabela A.1", ligadas pelo tipo e pelo número do rótulo.
+- **No resultado:** `ExtractedArticle.figures[]` e `figure_mentions[]`, com valor padrão vazio; o evento do E1 conta as figuras.
+- **`DocumentConfig`:** `figures_prompt`.
 
-**Pronto quando:** num artigo com gráfico vetorial, todas as figuras e tabelas são listadas com a legenda certa e descritas, e uma falha isolada deixa só aquela sem descrição.
+**Teste:** `test_figures.py` (sessão falsa: lista conferida, legenda inventada e figura faltando refeitas, sem texto do PDF, ordem por página) e `test_figure_mentions.py` (cada forma de chamada, intervalos, rótulo fora da lista). Com o Gemini: no ICLR 410, 12 tabelas e 1 figura com as legendas idênticas às do PDF e as 17 chamadas ligadas; no ICLR 304, 2 figuras e 4 tabelas.
 
-**Commit sugerido:** `feat: describe figures and tables with Gemini`
+**Commit sugerido:** `feat: list figures and tables with their captions and mentions`
 
 ---
 
@@ -158,9 +152,19 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ---
 
-## Etapa 1.8 — Descrição das figuras
+## Etapa 1.8 — Descrição das figuras e tabelas
 
-**Incorporada à 1.6 (12/11).** A descrição vem na mesma etapa que a lista das figuras, pelo Gemini, sem esperar a 1.3 e a 1.4.
+**Decidido (12/11):** pelo Gemini, sem esperar a 1.3 e a 1.4 (a mesma exceção da 1.5: o Agno direto no `extractor/`). Vem depois da 1.6, na mesma branch.
+
+**O que fazer**
+- **Uma chamada por figura ou tabela, em paralelo** (`prompts/describe_figure.md`): o PDF, o rótulo, a página, a legenda e as frases que a citam (da 1.6). A resposta (`FigureDescription`) traz a classe (gráfico de linhas, de barras, diagrama, foto…), a descrição, os dados legíveis, se a figura sustenta o que o texto afirma sobre ela (com o motivo) e os problemas (eixo sem unidade, legenda que não bate com o desenho). Para tabela, também o markdown.
+- **Falhas:** uma figura que falha fica sem descrição e o estágio segue; todas falhando com `ModelUnavailable` → retry do estágio.
+- **No resultado:** a descrição em cada `Figure` (ou nula).
+- **`DocumentConfig`:** `describe_figure_prompt` e `describe_figures` (desligar a descrição).
+
+**Teste:** sessão falsa (cada figura descrita; falha isolada deixa só aquela sem descrição; todas falhando sobem; `describe_figures=False` não chama); com o Gemini, as figuras e tabelas de 2 artigos comparadas com o PDF.
+
+**Commit sugerido:** `feat: describe figures and tables with Gemini`
 
 ---
 
@@ -179,7 +183,9 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 - Segundo run da mesma attempt → reaproveita a extração, sem chamar GROBID nem agente.
 - Retry do estágio no meio → os passos já persistidos não rodam de novo.
 
-**Como ficou (11/11):** o cache (`Extraction` por sha256 + versão do extractor), o gate de abstract e referências e o E1 real no `StageTask` entraram na 1.5, sem Workflow do Agno. Falta montar o `ExtractedDocument` da 1.1 a partir do `ExtractedArticle` e juntar as figuras (1.6 e 1.8) e o texto oculto (1.7).
+**Como ficou (11/11):** o cache (`Extraction` por sha256 + versão do extractor), o gate de abstract e referências e o E1 real no `StageTask` entraram na 1.5, sem Workflow do Agno; as figuras entram na 1.6 e na 1.8.
+
+**Escopo agora (12/11), na mesma branch da 1.6 e da 1.8:** a retomada dos passos. Um retry do estágio hoje refaz todas as chamadas (umas 25 a 40 por artigo); com os passos já respondidos guardados no storage (chave pelo sha256 e pela versão do extractor), o retry só refaz o que faltou. Teste: "retry do estágio no meio → os passos já guardados não rodam de novo". Ficam para quando as outras etapas existirem: montar o `ExtractedDocument` da 1.1 (Avaliação) a partir do `ExtractedArticle` e juntar o texto oculto da 1.7 (Integridade).
 
 **Commit sugerido:** `feat: run real extraction stage as an Agno workflow`
 

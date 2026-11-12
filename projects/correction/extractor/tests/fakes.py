@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.schemas import (
+    FigureScan,
     HeadingScan,
     ParsedReference,
     ParsedReferences,
@@ -44,11 +45,13 @@ class FakeSession:
         sections: dict[str, list[SectionContent]],
         *,
         references: list[ParsedReferences] | None = None,
+        figures: list[FigureScan] | None = None,
         delay_seconds: float = 0.0,
     ) -> None:
         self._scan = scan
         self._sections = {title: list(answers) for title, answers in sections.items()}
         self._references = list(references or [])
+        self._figures = list(figures or [FigureScan(figures=())])
         self._delay_seconds = delay_seconds
         self._lock = threading.Lock()
         self._running = 0
@@ -84,6 +87,9 @@ class FakeSession:
             answer = self._scan
         elif output is ParsedReferences:
             answer = self._references_answer(prompt)
+        elif output is FigureScan:
+            with self._lock:
+                answer = self._figures.pop(0) if len(self._figures) > 1 else self._figures[0]
         else:
             match = ASKED_TITLE.search(prompt)
             assert match is not None, "o prompt da chamada 2 não diz qual seção quer"

@@ -78,6 +78,8 @@ class DocumentConfig(BaseModel):
     extraction_prompt: str
     # Chamada que separa a lista de referências em campos (só com o texto, sem o PDF).
     references_prompt: str
+    # Chamada que lista as figuras e as tabelas, com a legenda.
+    figures_prompt: str
     # Sem uma delas, o documento não pode ser avaliado e é rejeitado.
     required_sections: tuple[SectionDefinition, ...] = ()
     # Procuradas pelo nome quando existem; a falta não rejeita o documento.
@@ -96,7 +98,9 @@ class DocumentConfig(BaseModel):
     # Quantas vezes refazer a chamada de uma seção reprovada; fica a melhor resposta.
     check_retries: int = Field(default=1, ge=0)
 
-    @field_validator("name", "model", "scan_prompt", "extraction_prompt", "references_prompt")
+    @field_validator(
+        "name", "model", "scan_prompt", "extraction_prompt", "references_prompt", "figures_prompt"
+    )
     @classmethod
     def _not_blank(cls, value: str) -> str:
         if not value.strip():

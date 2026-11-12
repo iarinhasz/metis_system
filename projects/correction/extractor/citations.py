@@ -95,7 +95,7 @@ def find_citations(
             )
             if ids is None:
                 continue
-            sentence = _sentence_around(section.text, found.start, found.end)
+            sentence = sentence_around(section.text, found.start, found.end)
             citations.extend(
                 Citation(
                     reference_id=reference_id,
@@ -324,7 +324,7 @@ def fold_name(text: str) -> str:
 # --- frase da chamada -------------------------------------------------------------------------
 
 
-def _sentence_around(text: str, start: int, end: int) -> str:
+def sentence_around(text: str, start: int, end: int) -> str:
     sentence_start, sentence_end = 0, len(text)
     for boundary in SENTENCE_BREAK.finditer(text):
         before = text[max(0, boundary.start() - 5) : boundary.start()].casefold()

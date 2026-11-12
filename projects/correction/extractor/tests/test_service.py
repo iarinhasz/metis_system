@@ -11,8 +11,10 @@ from projects.correction.extractor.errors import (
     ModelUnavailable,
 )
 from projects.correction.extractor.schemas import (
+    FigureScan,
     HeadingScan,
     ParsedReferences,
+    ScannedFigure,
     ScannedHeading,
     SectionContent,
 )
@@ -86,7 +88,7 @@ def test_asks_each_section_and_checks_its_coverage() -> None:
         # A referência não tem prosa para a cobertura, mas a fidelidade confere.
         ("sec_4", "references", None, REFERENCE, None, 1.0),
     ]
-    assert len(session.prompts) == 1 + 4 + 1  # mapa, seções e referências
+    assert len(session.prompts) == 1 + 4 + 1 + 1  # mapa, seções, referências e figuras
 
 
 def test_each_prompt_names_the_section_and_where_it_ends() -> None:
@@ -223,3 +225,37 @@ def test_parses_the_references_and_links_the_calls() -> None:
         ),
     )
     assert len(session.without_document) == 1
+
+
+def test_lists_the_figures_and_finds_the_sentences_that_cite_them() -> None:
+    caption = "Figure 1: Tempo de resposta das filas de mensagens sob carga constante."
+    cited = "Como mostra a Figure 1, o tempo de resposta cresce pouco com a carga constante."
+    pdf = make_pdf(["Resumo", ABSTRACT, "1 Introducao", cited, caption, "Referencias", REFERENCE])
+    scan = SCAN.model_copy(
+        update={"headings": (SCAN.headings[0], SCAN.headings[1], SCAN.headings[3])}
+    )
+    sections = {
+        "Resumo": [content(ABSTRACT)],
+        "1 Introducao": [content(cited)],
+        "Referencias": [content(REFERENCE)],
+    }
+    figures = FigureScan(
+        figures=(
+            ScannedFigure.model_validate(
+                {"label": "Figure 1", "kind": "figure", "page": 1, "caption": caption}
+            ),
+        )
+    )
+    session = FakeSession(scan, sections, figures=[figures])
+
+    article = extract_article(pdf, opener=session.opener())
+
+    [figure] = article.figures
+    assert (figure.id, figure.label, figure.number, figure.fidelity) == (
+        "fig_1",
+        "Figure 1",
+        "1",
+        1.0,
+    )
+    [mention] = article.figure_mentions
+    assert (mention.figure_id, mention.marker, mention.sentence) == ("fig_1", "Figure 1", cited)
