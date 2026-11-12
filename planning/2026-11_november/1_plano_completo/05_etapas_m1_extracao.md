@@ -35,6 +35,8 @@ O contrato é o que E2–E5 leem. Com ele e as fixtures, as trilhas A e I começ
 
 ## Etapa 1.2 — Spike do Agno 3 em Python 3.14
 
+**Situação (12/11/2026):** dependências e testes de contrato implementados. Python 3.14.5 e Agno 3.1.12 conferidos localmente com as SDKs OpenAI e Google. O [resultado do spike](../../../docs/agents.md#resultado-do-spike-12) registra as políticas de erro de `Step`/`Condition`, falhas de `Parallel`, schemas, métricas, retries e telemetria. A validação com respostas reais e chaves válidas permanece pendente; a equipe optou por seguir com os testes locais. Não marcar a etapa como totalmente concluída antes dessa validação.
+
 **O que fazer**
 - Adicionar `agno>=3.1,<4`, `openai` e `google-genai` ao `pyproject.toml` e conferir a instalação em Python 3.14.
 - Escrever `agents/tests/test_agno_contract.py`, marcado para rodar fora do CI (precisa de chave), conferindo cada item de [O que confirmar no Agno 3](01_diagnostico.md#o-que-confirmar-no-agno-3):
