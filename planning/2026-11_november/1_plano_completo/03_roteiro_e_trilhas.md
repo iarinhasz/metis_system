@@ -41,7 +41,7 @@ Quem fica em cada trilha é a questão aberta Q15.
 | Fase | Trilha P | Trilha A | Trilha I | Fecha |
 |---|---|---|---|---|
 | 1 | CI da 0.3 com Postgres; 0.4 pipeline; 0.5 gate; 0.6 reconciliador; 0.7 Docker | 1.1 contrato + fixtures; 1.2 spike do Agno; 1.3 `agents/` | 4.1 clientes do `scholarly/`; 4.3 corpus + BGE-M3 + `load_peerread`; 4.5 MinHash + winnowing | **I1** |
-| 2 | 1.4 `LLMCall` (com a A); 1.5 divisão do artigo pelo modelo (feita); 1.10 referências e citações; 1.6 figuras e tabelas (com a 1.8); 1.7 texto oculto; 1.9 E1 | 2.1–2.7 (M2 inteiro, sobre as fixtures) | 4.2 resolução de referências; 4.6 semântico + PT↔EN | **I2** (M1) |
+| 2 | 1.4 `LLMCall` (com a A); 1.5 divisão do artigo pelo modelo (feita); 1.10 referências e citações; 1.6 figuras e tabelas (com a 1.8); 1.7 texto oculto; 1.9 retomada do E1; 1.11 `ExtractedDocument` (espera a 1.1 e a 1.7) | 2.1–2.7 (M2 inteiro, sobre as fixtures) | 4.2 resolução de referências; 4.6 semântico + PT↔EN | **I2** (M1) |
 | 3 | 3.11 E5 + `FinalReport` + `GET /report` | 3.1–3.10 (E4) | 4.4 candidatos; 4.7 filtro + adjudicador; 4.8 regras + relatório + workflow; 4.9 gate no admin; 4.10 benchmark | **I3** (M2 + M3 sem A/B), **I4** (M4) |
 | 4 | 5.1–5.3 (com a I) | 3.12 rubric check; 3.13 A/B | 5.4 alinhamento; 5.5 cruzamento + regras v2; 5.6 benchmarks | **I5** (M3 completo, M5) |
 | 5 | 6.2 custo no admin; 6.3 endurecimento | 6.1 evals de avaliação e juiz | 6.1 evals de integridade | **I6** (M6) |

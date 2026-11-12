@@ -118,7 +118,7 @@ answers = {sid: ask_section(session, config, prompt(sid), local_text[sid])   # c
 
 - **Uma chamada por seção, em paralelo** (até `max_parallel_calls`): respostas curtas, e o modelo pula menos texto que numa resposta com o artigo inteiro.
 - **Depois das seções:** uma chamada separa as referências em campos, uma lista as figuras e tabelas e uma por figura, em paralelo, descreve cada uma (`describe_figures`). As citações e as chamadas às figuras são achadas em código.
-- **Sem retry no Agno** (`retries=0`): uma falha vira `ModelUnavailable`, e quem tenta de novo é o Celery.
+- **Sem retry no Agno** (`retries=0`): uma falha vira `ModelUnavailable`, e quem tenta de novo é o Celery. A sessão guarda cada resposta (`ResumableSession`), e o retry só chama o modelo a partir de onde parou.
 - O detalhe (config, conferência, cache, falhas) está em [Extração](extraction.md).
 
 ### E2 — Perfil (`questions/workflow.py`)

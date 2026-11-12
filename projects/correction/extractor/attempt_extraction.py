@@ -1,5 +1,8 @@
 """O E1 para uma attempt: reaproveita a extração já guardada do mesmo PDF e da mesma versão do
-extractor ou divide o artigo agora e guarda o resultado."""
+extractor ou divide o artigo agora e guarda o resultado.
+
+Cada resposta do modelo fica guardada enquanto a extração não termina (resumable_session.py):
+se o modelo cai no meio, o retry do estágio só chama o modelo a partir de onde parou."""
 
 import hashlib
 from typing import Any
@@ -7,8 +10,10 @@ from typing import Any
 from projects.correction.attempts.models import Attempt
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.configs import ARTICLE_CONFIG
-from projects.correction.extractor.models import Extraction
+from projects.correction.extractor.errors import InvalidModelAnswer
+from projects.correction.extractor.models import Extraction, ExtractionStep
 from projects.correction.extractor.prompts import fingerprint
+from projects.correction.extractor.resumable_session import resumable
 from projects.correction.extractor.service import extract_article
 from projects.correction.extractor.session import AgnoSession, SessionOpener
 
@@ -31,8 +36,15 @@ def extract_attempt(
         return stored, True
     with attempt.file.open("rb") as file:
         pdf = file.read()
-    article = extract_article(pdf, config, opener)
-    return Extraction.store(attempt.sha256, version, article), False
+    try:
+        article = extract_article(pdf, config, resumable(opener, attempt.sha256, version))
+    except InvalidModelAnswer:
+        # As respostas guardadas levariam à mesma falha no retry: ele começa do zero.
+        ExtractionStep.forget(attempt.sha256, version)
+        raise
+    extraction = Extraction.store(attempt.sha256, version, article)
+    ExtractionStep.forget(attempt.sha256, version)
+    return extraction, False
 
 
 def extraction_payload(

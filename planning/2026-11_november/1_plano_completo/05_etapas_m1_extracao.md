@@ -171,26 +171,22 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ---
 
-## Etapa 1.9 — Builder, cache, gate e workflow do E1
+## Etapa 1.9 — Retomada dos passos do E1
 
-**O que fazer**
-- `ExtractedDocumentBuilder`: junta GROBID, Docling e texto oculto; valida no `build()`.
-- Model `ExtractedDocument` (único por sha256 + versões dos parsers) e `Run.extracted_document`.
-- `extraction/workflow.py`: o workflow do E1 de [docs/agents.md](../../../docs/agents.md#e1--extração-extractionworkflowpy), com o gate de qualidade antes das figuras (D21).
-- O cache é checado em código antes do workflow.
-- O stub do E1 no `StageTask` vira o workflow real.
+**Decidido (12/11):** o que o plano antigo pedia aqui já entrou na 1.5 (o cache por sha256 + versão do extractor, o gate de abstract e referências antes das chamadas caras, que cumpre a D21, e o E1 real no `StageTask`), e o Workflow do Agno foi descartado no E1. Sobra a retomada. O builder do `ExtractedDocument` e o texto oculto passam para a 1.11.
 
-**Teste** (`extraction/tests/test_workflow.py`, eager, fakes)
-- PDF real → `extracted`, com o `ExtractedDocument` ligado ao run.
-- PDF sem abstract → `rejected_invalid_submission`, sem nenhuma chamada de visão.
-- Segundo run da mesma attempt → reaproveita a extração, sem chamar GROBID nem agente.
-- Retry do estágio no meio → os passos já persistidos não rodam de novo.
+**Situação:** implementada em 12/11/2026.
 
-**Como ficou (11/11):** o cache (`Extraction` por sha256 + versão do extractor), o gate de abstract e referências e o E1 real no `StageTask` entraram na 1.5, sem Workflow do Agno; as figuras entram na 1.6 e na 1.8.
+**Como ficou** (detalhe em [Extração](../../../docs/extraction.md#retomada)):
+- **O problema:** um retry do estágio refazia todas as chamadas (umas 37 no ICLR 410 e 48 no 304), cada uma com o PDF.
+- **`ResumableSession`** (`extractor/resumable_session.py`): envolve a sessão do Agno, com a mesma interface. Cada resposta válida é guardada no banco assim que chega; no retry, as guardadas voltam sem chamar o modelo. O retry segue o mesmo caminho, porque cada prompt depende só das respostas anteriores. Chave: hash do prompt, do schema pedido e de `with_document`.
+- **No banco** (decidido em 12/11, no lugar do storage): model `ExtractionStep` (`sha256`, `version`, `key`, `answer`), único pelos três primeiros, com o acesso em `queries/extractor/extraction_step.py`. As respostas guardadas são lidas uma vez, na thread principal; cada thread das chamadas em paralelo grava a sua e fecha a própria conexão.
+- **Ciclo de vida:** os passos são apagados quando a `Extraction` é guardada e quando o estágio falha com `InvalidModelAnswer` (senão o retry repetiria a mesma falha). Os de um run que terminou em `error_llm` ficam, e reprocessar no gate retoma deles; a limpeza das sobras entra na retenção da 6.4.
+- **Descrição das figuras** (decidido em 12/11): o modelo fora do ar numa figura agora sobe para o retry do estágio, como nos outros passos, em vez de deixar a figura sem descrição para sempre na `Extraction`. As descrições que já tinham dado certo voltam guardadas.
 
-**Escopo agora (12/11), na mesma branch da 1.6 e da 1.8:** a retomada dos passos. Um retry do estágio hoje refaz todas as chamadas (umas 25 a 40 por artigo); com os passos já respondidos guardados no storage (chave pelo sha256 e pela versão do extractor), o retry só refaz o que faltou. Teste: "retry do estágio no meio → os passos já guardados não rodam de novo". Ficam para quando as outras etapas existirem: montar o `ExtractedDocument` da 1.1 (Avaliação) a partir do `ExtractedArticle` e juntar o texto oculto da 1.7 (Integridade).
+**Teste:** `test_resumable_session.py` (a resposta guardada volta sem chamar o modelo; tuplas e nulos voltam iguais; outro PDF ou outra versão chamam o modelo; prompt, schema e `with_document` dão chaves diferentes; `forget` só apaga aquele PDF e versão) e `test_attempt_extraction.py` (retry do estágio no meio → o mapa e as seções não são pedidos de novo, e os passos somem depois da extração guardada; `InvalidModelAnswer` apaga os passos).
 
-**Commit sugerido:** `feat: run real extraction stage as an Agno workflow`
+**Commit sugerido:** `feat: resume extraction steps after a stage retry`
 
 ---
 
@@ -223,6 +219,21 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 **Pronto quando:** a ligação foi medida no PeerRead e o número está registrado, e a Integridade consegue ler `references[]` e `citations[]` de uma `Extraction`.
 
 **Commit sugerido:** `feat: parse references and link citations`
+
+---
+
+## Etapa 1.11 — `ExtractedDocument` a partir da extração
+
+**Decidido (12/11):** sai da 1.9 e fica na trilha Plataforma e Extração. Espera o contrato da 1.1 (Avaliação) e o texto oculto da 1.7 (Integridade).
+
+**O que fazer**
+- Montar o `ExtractedDocument` da 1.1 a partir do `ExtractedArticle` guardado na `Extraction` (seções, referências, citações, figuras e descrições).
+- Juntar os achados de texto oculto da 1.7.
+- O E1 passa a entregar o `ExtractedDocument` aos estágios seguintes.
+
+**Teste:** um `ExtractedArticle` de fixture vira um `ExtractedDocument` válido; com um achado de texto oculto, ele aparece no documento.
+
+**Commit sugerido:** `feat: build the ExtractedDocument from the extraction`
 
 ---
 

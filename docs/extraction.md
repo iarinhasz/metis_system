@@ -71,7 +71,7 @@ PDF ─▶ chamada 1: mapa das seções ─▶ gate: tem abstract e referências
     - **a figura certa:** o modelo devolve também o começo da legenda da figura que descreveu; se não bate com a legenda pedida (comparando sem o rótulo, acento, caixa e pontuação), ele olhou outra figura. Aconteceu no ICLR 304: a "Figure 1" saiu com o conteúdo da "Table 1". Se continuar trocada, a figura fica sem descrição;
     - **tabela com as linhas:** markdown só com o cabeçalho é refeito. Aconteceu no ICLR 410, na Table 5. Se continuar assim, a descrição fica e o markdown sai.
 
-    Uma figura cuja chamada falha fica sem descrição e o resto segue; só quando todas falham com o modelo fora do ar o erro sobe, para o Celery tentar de novo. Com `describe_figures` desligado na config, o passo não roda.
+    Uma figura cuja resposta continua inválida fica sem descrição e o resto segue. O modelo fora do ar sobe, como nos outros passos, e o retry do estágio refaz só as figuras que faltaram (ver [Retomada](#retomada)). Com `describe_figures` desligado na config, o passo não roda.
 12. **Resultado.** Seção obrigatória vazia é resposta inválida (`InvalidModelAnswer`, o estágio tenta de novo), e também uma lista de referências sem nenhuma entrada conferida. O resto vira um `ExtractedArticle`, guardado como `Extraction` e ligado ao run.
 
 ## A config (`DocumentConfig`)
@@ -111,15 +111,28 @@ O contrato `ExtractedDocument` da 1.1 (módulo Avaliação) ainda não existe; q
 
 - **`Extraction`** (`models.py`): o `ExtractedArticle` em JSON, único por (sha256 do PDF, versão). A versão é o hash da config inteira e de todos os prompts: mudar o modelo, um limite ou um prompt força uma extração nova. Um run novo do mesmo PDF reaproveita a guardada, sem chamar o modelo.
 - **`Run.extraction`**: o E1 liga a extração ao run pelo `RunManagement.attach_extraction`, só se o estágio ainda é da task (posse).
+- **Passos guardados:** enquanto a extração não termina, cada resposta do modelo fica no banco (`ExtractionStep`), para o retry do estágio retomar delas (ver [Retomada](#retomada)).
 - **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções, as seções abaixo dos limites (`below_check`) o número de referências, de citações e de citações sem ligação, o número de figuras e tabelas e quantas foram descritas (`figures_described`). Nunca texto do manuscrito.
+
+## Retomada
+
+Se o modelo cai no meio (fora do ar, cota, timeout), o Celery tenta o estágio de novo. Sem a retomada, o retry refaria todas as chamadas: umas 37 no ICLR 410 e 48 no 304, cada uma com o PDF.
+
+- **`ResumableSession`** (`resumable_session.py`) envolve a sessão do Agno, com a mesma interface `ask`. Cada resposta válida é guardada assim que chega, inclusive as das tentativas com dica e as das chamadas em paralelo que terminaram depois de outra cair. No retry, as guardadas voltam sem chamar o modelo.
+- **Por que o retry segue o mesmo caminho:** cada prompt depende só das respostas anteriores. O mapa dá os prompts das seções, os textos dão o das referências, a lista dá os das descrições. O retry passa pelas respostas guardadas e só chama o modelo a partir de onde parou.
+- **Chave:** o hash do prompt, do schema pedido e de `with_document`, junto do sha256 do PDF e da versão do extractor. Mudar um prompt, a config ou um schema não reaproveita a resposta antiga.
+- **`ExtractionStep`** (`sha256`, `version`, `key`, `answer`), único pelos três primeiros. As respostas guardadas são lidas uma vez, na thread principal; cada thread das chamadas em paralelo grava a sua e fecha a própria conexão (o Django abre uma conexão por thread e não a fecha sozinho).
+- **Quando os passos são apagados:** quando a `Extraction` é guardada, e quando o estágio falha com `InvalidModelAnswer` (seção obrigatória vazia, referências sem entrada). Neste caso, as respostas guardadas levariam à mesma falha no retry.
+- **Quando ficam:** num run que terminou em `error_llm` depois de todas as tentativas. Reprocessar no gate retoma deles. A limpeza das sobras entra no comando de retenção da 6.4.
+- Dois runs do mesmo PDF ao mesmo tempo podem chamar o modelo para o mesmo passo; fica a primeira resposta gravada.
 
 ## Falhas
 
 | Situação | Resultado |
 |---|---|
 | Falta a `GEMINI_KEY` | `MissingModelKey` → `waiting_setup` |
-| Chamada ao modelo falhou (fora do ar, cota, timeout de `METIS_LLM_TIMEOUT_SECONDS`) | `ModelUnavailable` → retry do estágio → `error_llm` |
-| Resposta vazia, cortada, fora do schema ou seção obrigatória vazia | `InvalidModelAnswer` → retry do estágio → `error_llm` |
+| Chamada ao modelo falhou (fora do ar, cota, timeout de `METIS_LLM_TIMEOUT_SECONDS`) | `ModelUnavailable` → retry do estágio, que retoma das respostas guardadas → `error_llm` |
+| Resposta vazia, cortada, fora do schema ou seção obrigatória vazia | `InvalidModelAnswer` → as respostas guardadas são apagadas → retry do estágio, do zero → `error_llm` |
 | Sem abstract ou sem referências no mapa | `MissingRequiredSections` → `rejected_invalid_submission`, sem as chamadas por seção |
 | PDF sem texto para o pypdf (escaneado) | O modelo ainda lê o PDF; as seções ficam sem verificação |
 | PDF acima de 18 MB (o Gemini aceita 20 MB por pedido) | Vai como texto, lido pelo pypdf |
@@ -140,11 +153,11 @@ O Agno não refaz chamadas (`retries=0`): quem tenta de novo, com backoff, é o 
 - **Citações:** chamada em número sobrescrito ("…doença¹⁻³", comum na área da saúde) não é reconhecida; num artigo numérico, um intervalo como "[1, 2]" no meio de uma fórmula vira citação; no autor-ano, "Silva (2020)" com duas entradas de Silva 2020 que nem o segundo autor nem o "et al." desempatam fica sem ligação.
 - **Tabela cortada no meio:** a conferência só pega a tabela que vem só com o cabeçalho. A Table 11 do ICLR 410 veio com 67 números numa rodada e 181 na seguinte. Os números que vêm estão no PDF (100% nas 16 tabelas conferidas), mas pode faltar linha.
 - **Julgamento brando:** nas 19 figuras e tabelas da calibração, o modelo disse sempre que a figura sustenta as frases e não apontou nenhum problema. Serve de ponto de partida para o E2, não de veredito.
-- **Ainda não feito:** o recorte da imagem (adiado) e o texto oculto (1.7, Integridade).
+- **Ainda não feito:** o recorte da imagem (adiado), o texto oculto (1.7, Integridade) e o `ExtractedDocument` da 1.1, montado a partir deste resultado (1.11).
 
 ## Como testar
 
-- `extractor/tests/`: a config, o mapa, a conferência, a nova tentativa, as referências (`test_references.py`), as citações (`test_citations.py`), as figuras (`test_figures.py`, `test_figure_mentions.py`, `test_figure_descriptions.py`), a medição (`test_citation_bench.py`) e o caso de uso, com uma sessão falsa e PDFs gerados no teste; a sessão do Agno contra um servidor HTTP local no lugar do Google; o E1 por attempt com banco real e PDF no storage.
+- `extractor/tests/`: a config, o mapa, a conferência, a nova tentativa, as referências (`test_references.py`), as citações (`test_citations.py`), as figuras (`test_figures.py`, `test_figure_mentions.py`, `test_figure_descriptions.py`), a retomada (`test_resumable_session.py` e o retry no meio em `test_attempt_extraction.py`), a medição (`test_citation_bench.py`) e o caso de uso, com uma sessão falsa e PDFs gerados no teste; a sessão do Agno contra um servidor HTTP local no lugar do Google; o E1 por attempt com banco real e PDF no storage.
 - `pytest -m llm`: divide um artigo inventado com o Gemini de verdade (usa a `GEMINI_KEY` do `.env`; fica fora do `pytest` padrão e do CI).
 - Calibração (11/11): dois artigos do ICLR 2017 (PeerRead) divididos de ponta a ponta. No 410 (13 páginas), 18 de 19 seções passaram nas duas medidas, com 21 chamadas em 30 s; no 304 (20 páginas), as 3 reprovadas eram de pseudocódigo, com 39 chamadas em 68 s.
 - **Medição da ligação citação ↔ referência (12/11)**, com `python manage.py bench_citation_links --execute` (em dry-run só lista os artigos; `--rescore <pasta>` recalcula a partir dos artigos salvos, sem o modelo): 10 artigos do PeerRead (ICLR 2017, ACL 2017, CoNLL 2016), comparados com o gabarito do science-parse. Contra o gabarito bruto, recall de 80% e precisão de 71%. O gabarito erra muito: 134 das 406 chamadas dele não batem com o próprio texto (o sobrenome e o ano da chamada não são os da referência ligada) ou têm os offsets fora do lugar; sem elas, **recall de 93% (244 de 263) e precisão de 92% (244 de 264)**, com 98% das referências casadas pelo título. Na conferência manual, as 20 citações contadas como erradas estavam certas (o gabarito não as tinha naquela frase); das 19 chamadas não achadas, 7 estão em tabelas, legendas ou notas (fora do texto por desenho), 3 em frases que o modelo pulou na cópia e o resto é desacordo de recorte do gabarito. Os relatórios ficam em `dataset_project/processed/bench_citation_links/`.

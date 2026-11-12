@@ -74,21 +74,24 @@ def test_describes_each_figure_with_its_caption_and_citing_sentences() -> None:
     assert NO_MENTIONS in prompts["Table 2"]
 
 
-def test_a_failed_figure_stays_without_description() -> None:
+def test_the_model_down_on_one_figure_fails_the_stage_after_the_others() -> None:
     fake = FakeSession(SCAN, {}, descriptions={"Table 2": [ModelUnavailable("429")]})
+
+    with pytest.raises(ModelUnavailable):
+        describe_figures(fake, ARTICLE_CONFIG, FIGURES, [])
+
+    # A outra foi descrita mesmo assim: a resposta dela fica guardada para o retry.
+    assert sorted(fake.described) == ["Figure 1", "Table 2"]
+
+
+def test_a_figure_still_invalid_stays_without_description() -> None:
+    invalid: list[DescribedFigure | Exception] = [InvalidModelAnswer("fora do schema")]
+    fake = FakeSession(SCAN, {}, descriptions={"Table 2": invalid})
 
     first, second = describe_figures(fake, ARTICLE_CONFIG, FIGURES, [])
 
     assert first.description is not None
     assert second.description is None
-
-
-def test_all_figures_failing_with_the_model_down_fail_the_stage() -> None:
-    down: list[DescribedFigure | Exception] = [ModelUnavailable("503")]
-    fake = FakeSession(SCAN, {}, descriptions={"Figure 1": down, "Table 2": down})
-
-    with pytest.raises(ModelUnavailable):
-        describe_figures(fake, ARTICLE_CONFIG, FIGURES, [])
 
 
 def test_invalid_answer_is_asked_again() -> None:

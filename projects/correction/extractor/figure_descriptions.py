@@ -5,9 +5,9 @@ Cada chamada leva o PDF, o rótulo, a página, a legenda e as frases do artigo q
 bate com a legenda pedida, ele olhou outra figura (aconteceu: a "Figure 1" descrita com o
 conteúdo da "Table 1"), e a chamada é refeita com uma dica. Também é refeita a tabela que vem
 sem as linhas de dados (aconteceu: só o cabeçalho); se continuar assim, a descrição fica e o
-markdown da tabela sai. Uma figura cuja chamada falha, ou que continua trocada, fica sem
-descrição e o estágio segue; só quando todas falham com o modelo fora do ar o erro sobe, para o
-Celery tentar de novo.
+markdown da tabela sai. Uma figura cuja resposta é inválida, ou que continua trocada, fica sem
+descrição e o estágio segue. O modelo fora do ar sobe, como nos outros passos: o Celery tenta de
+novo, e as descrições que já tinham dado certo voltam guardadas (resumable_session.py).
 """
 
 import re
@@ -18,7 +18,7 @@ from typing import Final
 from projects.correction.extractor.article import Figure, FigureDescription, FigureMention
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.coverage import squash
-from projects.correction.extractor.errors import InvalidModelAnswer, ModelUnavailable
+from projects.correction.extractor.errors import InvalidModelAnswer
 from projects.correction.extractor.figures import NUMBER
 from projects.correction.extractor.prompts import load_prompt, render_prompt
 from projects.correction.extractor.schemas import DescribedFigure
@@ -47,16 +47,13 @@ def describe_figures(
     if not figures or not config.describe_figures:
         return tuple(figures)
     with ThreadPoolExecutor(max_workers=config.max_parallel_calls) as pool:
+        # O modelo fora do ar numa figura sobe daqui, depois que as outras em andamento terminam.
         outcomes = list(
             pool.map(lambda figure: _describe(session, config, figure, mentions), figures)
         )
-    if all(isinstance(outcome, BaseException) for outcome in outcomes):
-        unavailable = [o for o in outcomes if isinstance(o, ModelUnavailable)]
-        if unavailable:
-            raise unavailable[0]
     return tuple(
         figure
-        if isinstance(outcome, BaseException)
+        if isinstance(outcome, InvalidModelAnswer)
         else figure.model_copy(update={"description": outcome})
         for figure, outcome in zip(figures, outcomes, strict=True)
     )
@@ -67,7 +64,7 @@ def _describe(
     config: DocumentConfig,
     figure: Figure,
     mentions: Sequence[FigureMention],
-) -> FigureDescription | ModelUnavailable | InvalidModelAnswer:
+) -> FigureDescription | InvalidModelAnswer:
     """A descrição, ou o erro que deixa esta figura sem descrição (sem derrubar as outras)."""
     prompt = render_prompt(
         config.describe_figure_prompt,
@@ -76,7 +73,7 @@ def _describe(
         caption=figure.caption,
         mentions=_mentions_text(figure, mentions),
     )
-    error: ModelUnavailable | InvalidModelAnswer = InvalidModelAnswer("sem tentativa")
+    error = InvalidModelAnswer("sem tentativa")
     hint = ""
     partial: DescribedFigure | None = None  # a figura certa, mas a tabela sem as linhas
     for _ in range(config.check_retries + 1):
@@ -85,8 +82,6 @@ def _describe(
         except InvalidModelAnswer as exc:
             error = exc  # resposta inválida: tenta de novo
             continue
-        except ModelUnavailable as exc:
-            return exc  # o modelo fora do ar: quem tenta de novo é o Celery
         if not _same_figure(figure.caption, answer.caption_start):
             error = InvalidModelAnswer(f"A descrição de {figure.label} foi de outra figura.")
             seen = " ".join(answer.caption_start.split())[:QUOTE_CHARS]
