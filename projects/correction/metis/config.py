@@ -46,6 +46,10 @@ class MetisSettings(BaseSettings):
     # Chave da API do Gemini, lida do .env sem o prefixo METIS_.
     gemini_key: str = Field(default="", validation_alias="GEMINI_KEY")
     llm_timeout_seconds: int = 600
+    openai_api_key: str = ""
+    # Modelos mínimos para os contratos ao vivo; não definem os papéis da etapa 1.3.
+    agno_contract_openai_model: str = "gpt-4o-mini"
+    agno_contract_google_model: str = "gemini-2.5-flash"
 
     @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
     @classmethod
