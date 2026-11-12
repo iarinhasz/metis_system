@@ -1,0 +1,19 @@
+# Lista de permissão: só entra no contexto de build o que a imagem usa.
+# Fica de fora todo o resto: .env, .git, .venv, dataset_project/ (inclusive o raw/ do PeerRead),
+# docs/ e planning/.
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!manage.py
+!projects/
+
+# Dentro de projects/: uploads e estáticos locais, caches e segredos.
+projects/**/media/
+projects/**/staticfiles/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.env
+**/.env.*

@@ -1,6 +1,6 @@
 # Metis: plano completo do projeto
 
-**Situação:** M0 implementado até a etapa 0.6 (reconciliador). O código fica em `projects/correction/`. Próximo passo: a etapa 0.7 (Docker), que fecha o I1 ([04](04_etapas_m0_restante.md))
+**Situação:** M0 implementado (etapas 0.1–0.7, [04](04_etapas_m0_restante.md)), com a verificação manual do I1 passando no `docker compose` em 11/11. O código fica em `projects/correction/`. Próximo passo da trilha P: a fase 2 ([03](03_roteiro_e_trilhas.md#fases))
 **Data:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)
 **Fluxo no Agno:** [docs/agents.md](../../../docs/agents.md); em diagramas, com as entidades e as ligações: [docs/flow_graph.md](../../../docs/flow_graph.md)

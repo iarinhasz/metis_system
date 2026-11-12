@@ -1,6 +1,6 @@
 # M0 — Fundação (restante)
 
-**Situação:** etapas 0.1–0.6 implementadas, em `projects/correction/`; a 0.6 está na branch `feat/0.6-reconciliador`.
+**Situação:** etapas 0.1–0.7 implementadas, em `projects/correction/`; a verificação manual do I1 passou no `docker compose` em 11/11.
 **Trilha:** P
 **Referência:** [etapas originais do M0](../../2026-10_october/1_desenho_inicial/03_etapa_m0_fundacao.md), [Orquestração](../../../docs/orchestration.md)
 
@@ -55,6 +55,8 @@ Como no plano de outubro.
 Como no plano de outubro, com estes ajustes:
 - O `command` dos serviços usa `python manage.py` da raiz e `celery -A projects.correction.metis.celery`.
 - O `.dockerignore` exclui `dataset_project/raw/` (o zip do PeerRead tem ~1,2 GB).
+
+**Como ficou:** o `.dockerignore` é uma lista de permissão (só `pyproject.toml`, `uv.lock`, `.python-version`, `manage.py` e `projects/`, sem `media/`); o `collectstatic` roda no build; o flower tem imagem própria, com `UV_SYNC_ARGS="--extra flower"`; workers, beat e flower esperam o `web` ficar saudável, o que garante as migrações aplicadas.
 
 **Commit sugerido:** `chore: add Docker setup`
 
