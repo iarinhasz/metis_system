@@ -78,7 +78,7 @@ Hoje a equipe tem chave da **OpenAI** e do **Google**. A decisão é a D14.
 
 | Agente (método da `AgentFactory`) | Estágio | Entrada | `output_schema` | Papel de modelo |
 |---|---|---|---|---|
-| `figure_describer(kind)` | E1 | Recorte + legenda + parágrafos que citam a figura; prompt muda com a classe | `FigureDescription` | `vision` |
+| `figure_describer(kind)` | E1 | Recorte + legenda + parágrafos que citam a figura; prompt muda com a classe. Hoje (1.8): o PDF inteiro + rótulo, página, legenda e frases que citam a figura, num prompt só, pela sessão do `extractor/` | `FigureDescription` (hoje `DescribedFigure`) | `vision` (hoje o modelo da config do extractor) |
 | `profiler_field()` | E2 | Título, abstract, palavras-chave + enum dos fields | `FieldChoice` (field, `paper_type`, idioma, palavras-chave, confiança) | `fast` |
 | `profiler_topic(field)` | E2 | Os mesmos dados + enum dos subfields e topics daquele field | `TopicChoice` (subfield, topic, áreas secundárias, confiança) | `fast` |
 | `section_role_classifier()` | E2 | Títulos ambíguos + primeira frase + `paper_type` | `SectionRoles` | `fast` |
@@ -117,6 +117,7 @@ answers = {sid: ask_section(session, config, prompt(sid), local_text[sid])   # c
 ```
 
 - **Uma chamada por seção, em paralelo** (até `max_parallel_calls`): respostas curtas, e o modelo pula menos texto que numa resposta com o artigo inteiro.
+- **Depois das seções:** uma chamada separa as referências em campos, uma lista as figuras e tabelas e uma por figura, em paralelo, descreve cada uma (`describe_figures`). As citações e as chamadas às figuras são achadas em código.
 - **Sem retry no Agno** (`retries=0`): uma falha vira `ModelUnavailable`, e quem tenta de novo é o Celery.
 - O detalhe (config, conferência, cache, falhas) está em [Extração](extraction.md).
 

@@ -2,7 +2,8 @@
 paralelo, traz o texto de cada uma, conferido contra o texto do PDF (ver section_answer.py).
 Depois, uma chamada separa a lista de referências em campos (references.py), e o código liga
 as chamadas no texto a ela (citations.py). Por fim, uma chamada lista as figuras e as tabelas
-(figures.py), e o código acha as frases que as citam (figure_mentions.py)."""
+(figures.py), o código acha as frases que as citam (figure_mentions.py), e uma chamada por
+figura, em paralelo, descreve cada uma (figure_descriptions.py)."""
 
 from concurrent.futures import Future, ThreadPoolExecutor
 
@@ -16,6 +17,7 @@ from projects.correction.extractor.errors import (
     MissingRequiredSections,
     UnreadablePdf,
 )
+from projects.correction.extractor.figure_descriptions import describe_figures
 from projects.correction.extractor.figure_mentions import find_figure_mentions
 from projects.correction.extractor.figures import scan_figures
 from projects.correction.extractor.pdf_text import read_pdf_pages
@@ -73,6 +75,8 @@ def extract_article(
     references_text = "\n\n".join(s.text for s in sections if s.key == "references")
     references = parse_references(session, config, references_text)
     figures = scan_figures(session, config, reference)
+    figure_mentions = find_figure_mentions(sections, figures)
+    figures = describe_figures(session, config, figures, figure_mentions)
 
     return ExtractedArticle(
         title=scan.title.strip(),
@@ -83,7 +87,7 @@ def extract_article(
         references=references,
         citations=find_citations(sections, references),
         figures=figures,
-        figure_mentions=find_figure_mentions(sections, figures),
+        figure_mentions=figure_mentions,
     )
 
 

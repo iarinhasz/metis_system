@@ -156,13 +156,16 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 **Decidido (12/11):** pelo Gemini, sem esperar a 1.3 e a 1.4 (a mesma exceção da 1.5: o Agno direto no `extractor/`). Vem depois da 1.6, na mesma branch.
 
-**O que fazer**
-- **Uma chamada por figura ou tabela, em paralelo** (`prompts/describe_figure.md`): o PDF, o rótulo, a página, a legenda e as frases que a citam (da 1.6). A resposta (`FigureDescription`) traz a classe (gráfico de linhas, de barras, diagrama, foto…), a descrição, os dados legíveis, se a figura sustenta o que o texto afirma sobre ela (com o motivo) e os problemas (eixo sem unidade, legenda que não bate com o desenho). Para tabela, também o markdown.
-- **Falhas:** uma figura que falha fica sem descrição e o estágio segue; todas falhando com `ModelUnavailable` → retry do estágio.
-- **No resultado:** a descrição em cada `Figure` (ou nula).
-- **`DocumentConfig`:** `describe_figure_prompt` e `describe_figures` (desligar a descrição).
+**Situação:** implementada em 12/11/2026.
 
-**Teste:** sessão falsa (cada figura descrita; falha isolada deixa só aquela sem descrição; todas falhando sobem; `describe_figures=False` não chama); com o Gemini, as figuras e tabelas de 2 artigos comparadas com o PDF.
+**Como ficou** (detalhe em [Extração](../../../docs/extraction.md)):
+- **Uma chamada por figura ou tabela, em paralelo** (`extractor/figure_descriptions.py`, `prompts/describe_figure.md`): o PDF, o rótulo, a página, a legenda e até 5 frases que a citam (da 1.6). A resposta traz a classe (gráfico de linhas, diagrama, tabela…), a descrição, os dados legíveis, se a figura sustenta o que o texto afirma sobre ela (com o motivo), os problemas (eixo sem unidade, legenda que não bate com o desenho) e, para tabela, o markdown.
+- **Conferências, com nova tentativa e dica:** o modelo devolve o começo da legenda da figura que descreveu, e o código confere se é a pedida (no ICLR 304 a "Figure 1" saiu uma vez com o conteúdo da "Table 1"); tabela só com o cabeçalho é refeita (no ICLR 410, a Table 5).
+- **Falhas:** figura que falha ou continua trocada fica sem descrição e o estágio segue; todas falhando com `ModelUnavailable` → retry do estágio. Tabela que continua sem as linhas fica com a descrição e sem o markdown.
+- **No resultado:** `Figure.description` (`FigureDescription`, ou nula); o evento do E1 conta as descritas (`figures_described`).
+- **`DocumentConfig`:** `describe_figure_prompt` (marcadores conferidos) e `describe_figures`.
+
+**Teste:** `test_figure_descriptions.py` (sessão falsa: cada figura descrita com a legenda e as frases que a citam; falha isolada deixa só aquela sem descrição; todas falhando sobem; resposta inválida refeita; figura trocada refeita e, se continuar, sem descrição; legenda devolvida sem o rótulo aceita; tabela sem as linhas refeita e, se continuar, sem o markdown; `describe_figures=False` não chama). Com o Gemini: as 19 figuras e tabelas do ICLR 304 e do 410 descritas, cerca de 80 s por artigo, e todos os números das 16 tabelas presentes no texto do PDF. Ficou de fora: a tabela cortada no meio (a Table 11 do 410 veio com 67 números numa rodada e 181 na outra) e um julgamento brando (todas "sustentam", nenhum problema apontado).
 
 **Commit sugerido:** `feat: describe figures and tables with Gemini`
 

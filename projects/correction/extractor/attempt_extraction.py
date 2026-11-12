@@ -56,4 +56,5 @@ def extraction_payload(
         "citations": len(article.citations),
         "unlinked_citations": sum(c.reference_id is None for c in article.citations),
         "figures": len(article.figures),
+        "figures_described": sum(f.description is not None for f in article.figures),
     }

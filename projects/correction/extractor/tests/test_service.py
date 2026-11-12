@@ -259,3 +259,5 @@ def test_lists_the_figures_and_finds_the_sentences_that_cite_them() -> None:
     )
     [mention] = article.figure_mentions
     assert (mention.figure_id, mention.marker, mention.sentence) == ("fig_1", "Figure 1", cited)
+    assert figure.description is not None
+    assert session.described == ["Figure 1"]

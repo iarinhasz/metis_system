@@ -52,6 +52,21 @@ class Citation(BaseModel):
     end: int
 
 
+class FigureDescription(BaseModel):
+    """O que o modelo leu numa figura ou tabela (1.8). Não tem como conferir contra o PDF."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    figure_class: str
+    description: str
+    data_read: tuple[str, ...]
+    # Nulo quando o texto não afirma nada sobre a figura.
+    supports_claims: bool | None
+    support_rationale: str
+    issues: tuple[str, ...]
+    table_markdown: str | None
+
+
 class Figure(BaseModel):
     """Uma figura ou tabela, com a legenda conferida contra o texto do PDF."""
 
@@ -66,6 +81,8 @@ class Figure(BaseModel):
     caption: str
     # Fração da legenda que está no texto do PDF; None quando não deu para verificar.
     fidelity: float | None
+    # Nula antes da 1.8, com `describe_figures` desligado ou quando a chamada falhou.
+    description: FigureDescription | None = None
 
 
 class FigureMention(BaseModel):

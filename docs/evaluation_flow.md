@@ -33,8 +33,10 @@ E1 extração ──▶ E2 perfil ──▶ E3 integridade ──┬── risco
 Entrada: o PDF. Saída: a `Extraction`, o artigo dividido em seções que os estágios seguintes leem.
 - Uma chamada ao modelo (Gemini) mapeia os títulos das seções; sem abstract ou sem referências → `rejected_invalid_submission`.
 - Uma chamada por seção, em paralelo, copia o texto de cada uma. O código confere a resposta contra o texto do PDF e refaz a seção que veio incompleta ou com texto de outra.
+- Uma chamada separa as referências em campos, e o código liga cada citação no texto à sua referência.
+- Uma chamada lista as figuras e tabelas, conferidas pela legenda; outra por figura, em paralelo, descreve cada uma (o que mostra, os dados legíveis, se sustenta o que o texto diz dela e, para tabela, o markdown).
 - Um run novo do mesmo PDF reaproveita a extração guardada.
-- Em aberto: descrição de figuras, texto oculto e a ligação de cada citação à sua referência.
+- Em aberto: texto oculto (1.7, Integridade) e a retomada dos passos num retry do estágio (1.9).
 
 Detalhe: [Extração](extraction.md).
 

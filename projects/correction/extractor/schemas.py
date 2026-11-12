@@ -72,3 +72,31 @@ class FigureScan(_Output):
     """Resposta da chamada que lista as figuras e as tabelas do artigo."""
 
     figures: tuple[ScannedFigure, ...]
+
+
+class DescribedFigure(_Output):
+    """Resposta da chamada que descreve uma figura ou tabela."""
+
+    caption_start: str = Field(
+        description="As primeiras palavras da legenda da figura descrita, copiadas do PDF."
+    )
+    figure_class: str = Field(
+        description="A classe: gráfico de linhas, de barras, de dispersão, diagrama, fluxograma, "
+        "foto, mapa, tabela…"
+    )
+    description: str = Field(description="O que a figura mostra, em poucas frases.")
+    data_read: tuple[str, ...] = Field(
+        description="O que dá para ler nela: eixos e unidades, valores, tendências."
+    )
+    supports_claims: bool | None = Field(
+        description="Se a figura sustenta o que o texto afirma sobre ela; nulo se o texto não "
+        "afirma nada sobre ela."
+    )
+    support_rationale: str = Field(description="Por que sustenta ou não, citando o que se vê.")
+    issues: tuple[str, ...] = Field(
+        description="Problemas: eixo sem unidade, legenda que não bate com o desenho, texto "
+        "ilegível, escala enganosa. Vazio se não houver."
+    )
+    table_markdown: str | None = Field(
+        description="Para tabela, o conteúdo dela em markdown; para figura, nulo."
+    )

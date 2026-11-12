@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.schemas import (
+    DescribedFigure,
     FigureScan,
     HeadingScan,
     ParsedReference,
@@ -20,6 +21,25 @@ from projects.correction.extractor.schemas import (
 from projects.correction.extractor.session import DocumentSession, SessionOpener
 
 ASKED_TITLE = re.compile(r'Seção: "([^"]+)"')
+ASKED_FIGURE = re.compile(r'Figura: "([^"]+)"')
+ASKED_CAPTION = re.compile(r"Legenda: (.+)")
+
+
+def described(text: str = "Um gráfico de linhas.", **fields: object) -> DescribedFigure:
+    values: dict[str, object] = {
+        "caption_start": "",
+        "figure_class": "gráfico de linhas",
+        "description": text,
+        "data_read": (),
+        "supports_claims": None,
+        "support_rationale": "",
+        "issues": (),
+        "table_markdown": None,
+    }
+    values.update(fields)
+    return DescribedFigure.model_validate(values)
+
+
 REFERENCES_TEXT = re.compile(r"<referencias>\n(.*?)\n</referencias>", re.S)
 
 
@@ -46,12 +66,15 @@ class FakeSession:
         *,
         references: list[ParsedReferences] | None = None,
         figures: list[FigureScan] | None = None,
+        descriptions: dict[str, list[DescribedFigure | Exception]] | None = None,
         delay_seconds: float = 0.0,
     ) -> None:
         self._scan = scan
         self._sections = {title: list(answers) for title, answers in sections.items()}
         self._references = list(references or [])
         self._figures = list(figures or [FigureScan(figures=())])
+        self._descriptions = {label: list(a) for label, a in (descriptions or {}).items()}
+        self.described: list[str] = []
         self._delay_seconds = delay_seconds
         self._lock = threading.Lock()
         self._running = 0
@@ -90,6 +113,8 @@ class FakeSession:
         elif output is FigureScan:
             with self._lock:
                 answer = self._figures.pop(0) if len(self._figures) > 1 else self._figures[0]
+        elif output is DescribedFigure:
+            answer = self._description_answer(prompt)
         else:
             match = ASKED_TITLE.search(prompt)
             assert match is not None, "o prompt da chamada 2 não diz qual seção quer"
@@ -111,3 +136,22 @@ class FakeSession:
         assert match is not None, "o prompt das referências não traz a lista"
         paragraphs = [p.strip() for p in match.group(1).split("\n\n") if p.strip()]
         return ParsedReferences(references=tuple(raw_entry(p) for p in paragraphs))
+
+    def _description_answer(self, prompt: str) -> DescribedFigure:
+        """A próxima resposta roteirizada para a figura do prompt; sem roteiro, uma genérica.
+        Uma exceção no roteiro é levantada, como uma chamada que falhou."""
+        match = ASKED_FIGURE.search(prompt)
+        assert match is not None, "o prompt da descrição não diz qual figura quer"
+        label = match.group(1)
+        with self._lock:
+            self.described.append(label)
+            answers = self._descriptions.get(label) or [described()]
+            answer = answers.pop(0) if len(answers) > 1 else answers[0]
+        if isinstance(answer, Exception):
+            raise answer
+        if not answer.caption_start:
+            # Sem roteiro para isso, a figura descrita é a certa: o começo da legenda pedida.
+            caption = ASKED_CAPTION.search(prompt)
+            assert caption is not None
+            answer = answer.model_copy(update={"caption_start": caption.group(1)[:60]})
+        return answer

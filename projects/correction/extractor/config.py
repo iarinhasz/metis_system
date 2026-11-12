@@ -21,6 +21,8 @@ FOOTNOTES_MARKER: Final = "<<footnotes>>"
 EXTRACTION_MARKERS: Final = (TITLE_MARKER, END_MARKER, FOOTNOTES_MARKER)
 # Onde o texto da seção de referências entra no prompt que a separa em campos.
 REFERENCES_MARKER: Final = "<<references>>"
+# Marcadores do prompt que descreve uma figura: rótulo, página, legenda e frases que a citam.
+FIGURE_MARKERS: Final = ("<<label>>", "<<page>>", "<<caption>>", "<<mentions>>")
 
 
 class Provider(StrEnum):
@@ -80,6 +82,10 @@ class DocumentConfig(BaseModel):
     references_prompt: str
     # Chamada que lista as figuras e as tabelas, com a legenda.
     figures_prompt: str
+    # Chamada que descreve uma figura ou tabela (uma por figura, em paralelo).
+    describe_figure_prompt: str
+    # False: as figuras ficam só listadas, sem descrição (economiza uma chamada por figura).
+    describe_figures: bool = True
     # Sem uma delas, o documento não pode ser avaliado e é rejeitado.
     required_sections: tuple[SectionDefinition, ...] = ()
     # Procuradas pelo nome quando existem; a falta não rejeita o documento.
@@ -99,7 +105,13 @@ class DocumentConfig(BaseModel):
     check_retries: int = Field(default=1, ge=0)
 
     @field_validator(
-        "name", "model", "scan_prompt", "extraction_prompt", "references_prompt", "figures_prompt"
+        "name",
+        "model",
+        "scan_prompt",
+        "extraction_prompt",
+        "references_prompt",
+        "figures_prompt",
+        "describe_figure_prompt",
     )
     @classmethod
     def _not_blank(cls, value: str) -> str:
@@ -113,6 +125,14 @@ class DocumentConfig(BaseModel):
         for marker in EXTRACTION_MARKERS:
             if marker not in value:
                 raise ValueError(f"extraction_prompt precisa do marcador {marker}")
+        return value
+
+    @field_validator("describe_figure_prompt")
+    @classmethod
+    def _describe_figure_prompt_has_the_markers(cls, value: str) -> str:
+        for marker in FIGURE_MARKERS:
+            if marker not in value:
+                raise ValueError(f"describe_figure_prompt precisa do marcador {marker}")
         return value
 
     @field_validator("references_prompt")
