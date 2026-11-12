@@ -28,7 +28,7 @@ Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../20
 
 | # | Pergunta | Situação | Decidir antes de |
 |---|---|---|---|
-| Q1 | Quais modelos em cada papel? | **Parcialmente decidido (D14):** OpenAI e Google; A = GPT, B = Gemini, C = outro modelo de uma das duas; juiz cruzado. Ainda abertos: os ids exatos de cada papel | 1.3 (papéis), 1.8 (`vision`), 3.1 (avaliadores e juízes) |
+| Q1 | Quais modelos em cada papel? | **Parcialmente decidido (D14):** OpenAI e Google; A = GPT, B = Gemini, C = outro modelo de uma das duas; juiz cruzado. Na 1.3 (12/11), a equipe escolheu padrões de desenvolvimento substituíveis pelo ambiente, documentados em `docs/agents.md`. Os ids e a calibração de produção continuam abertos | 1.3 (papéis), 1.8 (`vision`), 3.1 (avaliadores e juízes) |
 | Q2 | Orçamento por artigo | Aberta; medido no A/B | 3.13 |
 | Q3 | Identificação do artigo entre versões | **Decidido:** `external_id` obrigatório | — |
 | Q4 | Curadoria e áreas iniciais | Aberta; proposta: genérica + Computação, Física/Quântica e Saúde | 2.7 |
