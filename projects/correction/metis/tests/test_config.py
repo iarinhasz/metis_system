@@ -14,6 +14,7 @@ from projects.correction.metis.config import MetisSettings
         {"stage_retry_backoff_max_seconds": 7200},
         {"stale_stage_after_seconds": 1800},
         {"max_stage_claims": 4},
+        {"llm_timeout_seconds": 1500},
     ],
 )
 def test_rejects_contradictory_timing(override: dict[str, int]) -> None:

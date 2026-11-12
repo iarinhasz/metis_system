@@ -30,7 +30,7 @@ Os caminhos de código citados nos docs (`metis/config.py`, `attempts/`, `agents
 | [Orquestração](orchestration.md) | Estágios e checkpoints, ciclo de uma task, posse do estágio, erros, retries, reconciliador, regras do Agno |
 | [Grafo do fluxo](flow_graph.md) | Diagramas: entidades e como se ligam, o que cada estágio grava e lê, os passos e agentes de cada estágio, estados da execução |
 | [Agentes e workflows](agents.md) | Fronteiras do Agno, pacote `agents/`, modelos e juiz cruzado, catálogo de agentes, workflow por estágio, estado, concorrência, custo, testes |
-| [Extração](extraction.md) | GROBID, Docling, recorte e descrição das figuras, texto oculto, `ExtractedDocument` |
+| [Extração](extraction.md) | Divisão do artigo por chamadas ao modelo, `DocumentConfig`, conferência contra o PDF, `Extraction` |
 | [Perfil e Questions](questions_and_profiling.md) | Taxonomia, classificação do artigo, resolução da Question, papéis das seções e mapa do documento, critérios, curadoria |
 | [Checagem de integridade](integrity_check.md) | Fases 0, 1 e 2, regras de risco, relatório, gate, APIs acadêmicas |
 | [Avaliadores, juiz e consolidação](evaluators_and_judge.md) | Passes por seção, checagens entre seções, síntese, validadores, juiz, revisão parcial, A/B do modo de avaliação, relatório final |

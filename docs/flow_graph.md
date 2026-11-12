@@ -29,8 +29,8 @@ Cada caixa mostra o nome em português na primeira linha e, embaixo, o identific
 | `Run` | Execução | `attempts` | Uma execução do pipeline sobre uma versão; o status, o perfil e o snapshot da configuração | API (cria); `RunManagement` (status); E2 (perfil e Question) | Todos os estágios |
 | `RunEvent` | Evento da execução | `attempts` | Trilha de auditoria: cada transição, retry, republicação e decisão humana | `RunManagement`, sempre | Admin, API de status |
 | `LLMCall` | Chamada de LLM | `attempts` | Uma chamada de modelo, com tokens e custo | `UsageSink` do pipeline, em todo estágio com agente | Admin (custo), evals |
-| `ExtractedDocument` | Documento extraído | `extraction` | O artigo estruturado: seções, referências, citações, figuras, tabelas, texto oculto. Compartilhado entre execuções (sha256 + versões dos parsers) | E1 | E2, E3, E4 |
-| `Figure` | Figura | `extraction` | Recorte de uma figura, com a descrição | E1 | E4 |
+| `Extraction` | Artigo dividido | `extractor` | O artigo dividido em seções (título, nível, texto, cobertura e fidelidade). Compartilhado entre execuções (sha256 + versão do extractor) | E1 | E2, E3, E4 |
+| `Figure` | Figura | `extractor` | Recorte de uma figura, com a descrição (em aberto: 1.6) | E1 | E4 |
 | `TaxonomyNode` | Nó da taxonomia | `questions` | Um nó da taxonomia OpenAlex (domínio → campo → subcampo → tópico) | Comando `load_taxonomy` | E2 |
 | `Question` | Question (perfil de avaliação) | `questions` | O perfil de avaliação de uma área | Curadoria no admin | E2 (resolve), E4 (snapshot) |
 | `RubricField` | Campo da rubrica | `questions` | Um campo da rubrica da Question, com o `rubric_text` do domínio | Curadoria no admin | E4 |
@@ -50,8 +50,8 @@ erDiagram
     Attempt ||--o{ Run : "é avaliada por"
     Run ||--o{ RunEvent : "registra"
     Run ||--o{ LLMCall : "custa"
-    ExtractedDocument |o--o{ Run : "é usado por"
-    ExtractedDocument ||--o{ Figure : "contém"
+    Extraction |o--o{ Run : "é usado por"
+    Extraction ||--o{ Figure : "contém"
     TaxonomyNode |o--o{ TaxonomyNode : "é pai de"
     TaxonomyNode |o--o{ Question : "é coberto por"
     Question ||--o{ RubricField : "tem"
@@ -81,10 +81,10 @@ erDiagram
         json profile "perfil do E2"
         json config_snapshot "modelos, prompts, Question"
     }
-    ExtractedDocument {
+    Extraction {
         text sha256 "hash do PDF"
-        json parser_versions "versões dos parsers"
-        json content "o documento estruturado"
+        text version "hash da config e dos prompts do extractor"
+        json content "o artigo dividido em seções"
     }
     Question {
         bool is_generic "é a genérica"
@@ -162,7 +162,7 @@ flowchart TB
     end
     subgraph E1["E1 Extração"]
         direction LR
-        ED[("Documento extraído<br/>ExtractedDocument")]
+        ED[("Artigo dividido<br/>Extraction")]
         FIG[("Figura<br/>Figure")]
         ED ~~~ FIG
     end
@@ -202,7 +202,7 @@ Em todo estágio, a mudança de status gera um evento (`RunEvent`) e cada chamad
 | Execução (`Run`) | grava | status | lê e grava (perfil) | status | lê (perfil) | status | grava (gate, reprocessar) |
 | Evento (`RunEvent`) | grava | grava | grava | grava | grava | grava | grava (decisões) |
 | Chamada de LLM (`LLMCall`) | — | grava | grava | grava | grava | grava | grava (rascunho de Question) |
-| Documento extraído (`ExtractedDocument`) | — | grava | lê | lê | lê | — | — |
+| Artigo dividido (`Extraction`) | — | grava | lê | lê | lê | — | — |
 | Figura (`Figure`) | — | grava | — | — | lê | — | — |
 | Taxonomia (`TaxonomyNode`) | — | — | lê | — | — | — | grava |
 | Question e rubrica (`Question`, `RubricField`) | — | — | lê | — | lê | — | grava |
@@ -240,33 +240,30 @@ A base dos estágios muda o status da execução; os executors gravam as saídas
 
 ```mermaid
 flowchart TD
-    ATT[("Versão (PDF)<br/>Attempt")] --> CACHE{"Já existe extração para<br/>sha256 + versões dos parsers?"}
-    CACHE -->|"sim"| LINK["Liga a extração à execução"]
-    CACHE -->|"não"| PARSE
-    subgraph PARSE["Em paralelo: leitura do PDF (Parallel)"]
-        direction LR
-        GRO["Estrutura e citações<br/>grobid"]
-        DOC["Figuras, tabelas, fórmulas<br/>docling"]
-        HID["Texto oculto<br/>hidden_text"]
-    end
-    GROBID[/"Serviço GROBID"/] -.- GRO
-    PARSE --> MERGE["Junta GROBID e Docling por posição<br/>merge_by_bbox"]
-    MERGE --> QG{"Tem texto, abstract e referências?<br/>quality_gate"}
+    ATT[("Versão (PDF)<br/>Attempt")] --> CACHE{"Já existe extração para<br/>sha256 + versão do extractor?"}
+    CACHE -->|"sim"| LINK["Liga a extração à execução<br/>Run.extraction"]
+    CACHE -->|"não"| MAP["Mapa das seções<br/>chamada 1"]
+    LLM{{"Gemini, pelo Agno"}} -.- MAP
+    MAP --> QG{"Tem abstract e referências?"}
     QG -->|"não"| REJ(["Rejeitado<br/>rejected_invalid_submission"])
-    QG -->|"sim"| DESC["Descreve as figuras<br/>describe_figures"]
-    AGF{{"Descritor de figuras<br/>figure_describer"}} -.- DESC
-    DESC --> BUILD["Monta e grava<br/>build_and_persist"]
-    BUILD ==> ED[("Documento extraído<br/>ExtractedDocument")]
-    BUILD ==> FIG[("Figura<br/>Figure")]
-    BUILD --> OK(["Extraído<br/>extracted"])
-    LINK --> OK
+    QG -->|"sim"| SEC
+    subgraph SEC["Em paralelo: uma chamada por seção"]
+        direction LR
+        COPY["Copia a seção<br/>chamada 2"] --> CHK{"Cobertura e fidelidade<br/>contra o texto do PDF"}
+        CHK -->|"abaixo do limite:<br/>refaz com dica"| COPY
+    end
+    LLM -.- COPY
+    PDF[/"Texto do PDF<br/>pypdf"/] -.- CHK
+    SEC ==> ED[("Artigo dividido<br/>Extraction")]
+    ED --> LINK
+    LINK --> OK(["Extraído<br/>extracted"])
 ```
 
 ### E2 — Perfil
 
 ```mermaid
 flowchart TD
-    ED[("Documento extraído<br/>ExtractedDocument")] -.- CF
+    ED[("Artigo dividido<br/>Extraction")] -.- CF
     TAX[("Taxonomia<br/>TaxonomyNode")] -.- CF
     CF["Classifica o campo<br/>classify_field"] --> CT["Classifica subcampo e tópico,<br/>só entre os filhos do campo<br/>classify_topic"]
     AGP{{"Classificador de área<br/>profiler_field · profiler_topic"}} -.- CF
@@ -291,7 +288,7 @@ Até o M3, o E3 é um passo só (*pass-through*). A forma final, com as duas fas
 
 ```mermaid
 flowchart TD
-    ED[("Documento extraído<br/>ExtractedDocument")] -.- HT
+    ED[("Artigo dividido<br/>Extraction")] -.- HT
     HT["Fase 0: texto oculto<br/>hidden_text"] --> RR["Resolve as referências<br/>resolve_references"]
     SCH[/"APIs acadêmicas<br/>Crossref · OpenAlex · S2 · arXiv"/] -.- RR
     RR --> PH

@@ -16,6 +16,10 @@ class AttemptManagement:
     objects: ClassVar[models.Manager[Attempt]]
 
     @classmethod
+    def get_by_id(cls, attempt_id: Any) -> Attempt:
+        return cls.objects.get(pk=attempt_id)
+
+    @classmethod
     def find_by_sha256(cls, article: Article, sha256: str) -> Attempt | None:
         return cls.objects.filter(article=article, sha256=sha256).first()
 

@@ -54,7 +54,7 @@ O Celery mantém o mesmo id da task em `retry()` e na reentrega depois da morte 
 | Exceção | Exemplo | Retry automático | Status final | Como sai |
 |---|---|---|---|---|
 | `LLMUnavailable` (passageiro) | 429 ou 5xx do provedor de LLM | sim, com backoff | `error_llm` | "Reprocessar" no admin |
-| `TransientStageError` (passageiro) | GROBID fora do ar, timeout no Crossref | sim, com backoff | `error_external` | "Reprocessar" |
+| `TransientStageError` (passageiro) | Timeout no Crossref | sim, com backoff | `error_external` | "Reprocessar" |
 | `InvalidSubmission` (permanente) | PDF sem texto, sem abstract, criptografado | não | `rejected_invalid_submission` | Final: o autor envia uma versão nova |
 | `SetupRequired` (permanente) | Nenhuma Question disponível, nem a genérica | não | `waiting_setup` | Configurar e "Reprocessar" |
 | Qualquer outra | Bug | não | `error_unexpected` | Corrigir e "Reprocessar" |
@@ -120,7 +120,7 @@ O `metis/config.py` recusa subir com valores contraditórios:
 
 | Fila | Worker | Concorrência inicial | Por quê |
 |---|---|---|---|
-| `extraction` | `worker-extraction` | baixa (1–2), com limite de memória | GROBID e Docling são pesados em CPU e memória |
+| `extraction` | `worker-extraction` | baixa (1–2), com limite de memória | Cada E1 já faz até `max_parallel_calls` chamadas ao modelo ao mesmo tempo |
 | `integrity` | `worker-integrity` | 2 | Rede (APIs acadêmicas com rate limit) + embeddings locais |
 | `evaluation` | `worker-evaluation` | 4 | Chamadas de LLM, limitadas por I/O |
 | `default` | `worker-evaluation` | — | Manutenção (reconciliador) |

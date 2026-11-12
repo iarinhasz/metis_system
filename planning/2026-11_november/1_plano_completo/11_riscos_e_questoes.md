@@ -20,7 +20,7 @@ Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../20
 | R12 | Complexidade do modo por seção | Custo e erro não detectado | Checagens entre seções; mapa em todo passe; juiz com o artigo inteiro; A/B | 3.4, 3.13 |
 | R13 | **Novo.** Duas famílias em três slots deixam os erros mais correlacionados | A mediana e o juiz pegam menos erro | Juiz sempre da outra família; slot C de outro tamanho ou geração; concordância A×C medida à parte no A/B; um 3º provedor entra no C só por config | 3.1, 3.13 |
 | R14 | **Novo.** Threads do `Parallel` e dos pools abrem conexões do Django | Conexões esgotadas no Postgres | `bounded_map` fecha a conexão por thread; `ProviderLimiter`; teste com `transaction=True` (D20) | 1.3 |
-| R15 | **Novo.** Agno, Docling ou torch sem suporte a Python 3.14 | Bloqueia o M1 | Spike 1.2; conferir as wheels na 1.6; plano B: imagem 3.13 só nos workers que precisarem | 1.2, 1.6 |
+| R15 | **Novo.** Agno, Docling ou torch sem suporte a Python 3.14. **Em parte resolvido (11/11):** o Agno 3.1 roda em 3.14; Docling e torch só importam se a 1.6 escolher o Docling | Bloqueia o M1 | Spike 1.2; conferir as wheels na 1.6; plano B: imagem 3.13 só nos workers que precisarem | 1.2, 1.6 |
 | R16 | **Novo.** O contrato `ExtractedDocument` muda depois que as fixtures existem | Trilhas A e I quebram | `contract_version`; regenerar as fixtures pelo comando; mudança de contrato avisada no PR | 1.1 |
 | R17 | **Novo.** O E4 não cabe no soft limit da task (25 min) | Estágio morto pelo Celery | Medir na 3.10 e no A/B; ajustar a concorrência; se preciso, dividir o E4 em avaliação e juiz, com um checkpoint novo | 3.10, 3.13 |
 
@@ -43,3 +43,5 @@ Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../20
 | Q13 | Checagens entre seções da primeira versão | Aberta; proposta: promessas × resultados, método × pergunta, figuras × texto | 3.4 |
 | Q14 | Papéis por `paper_type` cobrem os artigos reais? | Aberta | 2.4, 2.7 |
 | Q15 | **Nova.** Quem fica em cada trilha (P, A, I)? | **Parcialmente decidido (07/11):** as trilhas viraram 4 módulos ([divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html)); Plataforma e Extração fica com Iara Yasmin. Faltam os nomes de Agentes, Perfil e Relatório, de Avaliação e de Integridade | Início da fase 1 |
+| Q16 | **Nova (11/11).** Figuras, tabelas e fórmulas: Docling (pesado) ou chamada de visão do modelo sobre as páginas? | Aberta | 1.6 |
+| Q17 | **Nova (11/11).** Sem o GROBID, como ligar cada citação no texto à sua referência: código sobre o texto das seções ou chamada ao modelo? | Aberta | 1.10, 4.4, 4.7 |

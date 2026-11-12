@@ -23,9 +23,9 @@ O Metis recebe o PDF de um artigo científico e devolve um relatório de avalia�
 └──────────────────────────┘            └──┬──────────┬──────────┬─────┘
                ▲                           │          │          │
                │                           ▼          ▼          ▼
-     beat: reconciliador              GROBID e     APIs        provedores
-     de runs parados                  Docling      acadêmicas  de LLM
-                                      (local)      (Crossref,  (GPT, Gemini)
+     beat: reconciliador              pypdf        APIs        provedores
+     de runs parados                  (texto       acadêmicas  de LLM
+                                      local)       (Crossref,  (GPT, Gemini)
                                                    OpenAlex,
                                                    S2, arXiv)
 ```
@@ -33,7 +33,7 @@ O Metis recebe o PDF de um artigo científico e devolve um relatório de avalia�
 O pipeline tem cinco estágios, cada um numa task Celery curta:
 
 ```text
-E1 Extração      texto, referências, citações, figuras descritas, texto oculto  → ExtractedDocument
+E1 Extração      mapa das seções e texto de cada uma, conferido com o PDF       → Extraction
 E2 Perfil        área (taxonomia OpenAlex), tipo de artigo, papéis das seções   → Question + mapa do documento
 E3 Integridade   similaridade + citações + texto oculto                         → IntegrityReport → GATE
 E4 Avaliação     3 avaliadores por seção + síntese → juiz → revisão (máx. 2)    → rodadas e vereditos
@@ -48,13 +48,12 @@ O detalhe de cada estágio está nos documentos próprios; o caminho completo de
 |---|---|---|
 | `web` | Recebe submissões, valida o PDF, responde status, serve o admin | Não chama LLM nem API externa; não processa PDF |
 | Admin do Django | Curadoria de Questions, decisão do gate, reprocessamento, leitura da trilha de auditoria | Não edita notas nem saídas dos estágios |
-| `worker-extraction` | E1: GROBID, Docling, recorte e descrição das figuras | Trabalho de rede pesado ou longo de LLM |
+| `worker-extraction` | E1: divide o artigo com chamadas ao Gemini, em paralelo, e confere o texto contra o PDF | Os outros estágios |
 | `worker-integrity` | E3: busca de candidatos, MinHash, embeddings locais, consultas acadêmicas | Avaliação |
 | `worker-evaluation` | E2, E4 e E5 (chamadas de LLM) e a fila `default` (manutenção) | Parse de PDF |
 | `beat` | Agenda o reconciliador | Lógica de negócio |
 | PostgreSQL + pgvector | Estado dos runs, saídas estruturadas, eventos, vetores do corpus | — |
 | Redis | Broker do Celery | Guardar estado de negócio |
-| GROBID | Estrutura do artigo, referências e ligação citação ↔ referência | — |
 
 ## Celery × Agno
 
@@ -81,7 +80,7 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 | `metis/` | projeto Django | settings, URLs, API Ninja, app Celery, `config.py` (único leitor de variáveis de ambiente) |
 | `attempts/` | app | `Article`, `Attempt`, `Run`, `RunEvent`, `LLMCall`; máquina de estados; API de submissão e status |
 | `questions/` | app | Taxonomia, `Question`, `RubricField`, critérios em código, profiler, resolução da Question |
-| `extraction/` | app | E1 e o `ExtractedDocument` |
+| `extractor/` | app | E1: `DocumentConfig`, chamadas ao modelo, conferência contra o PDF e o model `Extraction` |
 | `integrity/` | app | E3, relatório, corpus (`SourceDocument`, `SourceChunk`), regras de risco |
 | `evaluation/` | app | E4 e E5: contexto, avaliadores, validadores, juiz, rodadas, relatório final |
 | `pipeline/` | app sem models | `StageTask`, tasks Celery, publicação, reconciliador e, em `services.py`, os casos de uso que iniciam ou retomam runs (submissão, decisão do gate, reprocessamento) |
@@ -91,8 +90,8 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 | `evals/` | pacote | Comandos de avaliação offline (PeerRead) |
 
 Regras:
-- `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda.
-- **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. O `Workflow` de cada estágio (com `Step`, `Parallel`, `Loop`, `Condition`) é montado no `workflow.py` do app do estágio. `agents/` não importa apps de domínio. Um teste de fronteira de imports garante as três regras (ver [Agentes e workflows](agents.md#fronteiras)).
+- `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda, e os erros de estágio (`pipeline/errors.py`), que um estágio levanta para dizer ao pipeline como tratar a falha.
+- **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. O `Workflow` de cada estágio (com `Step`, `Parallel`, `Loop`, `Condition`) é montado no `workflow.py` do app do estágio. `agents/` não importa apps de domínio. Um teste de fronteira de imports garante as três regras (ver [Agentes e workflows](agents.md#fronteiras)). Exceção provisória: o `extractor/` cria o `Agent` e o modelo Gemini direto (`session.py`), porque o `agents/` (1.3) ainda não existe.
 - **Só `scholarly/` chama APIs acadêmicas.** Rate limit, cache e chaves ficam num lugar só.
 - **Só `queries/` fala com o banco.** Fora de `queries/<app>/`, ninguém usa `Model.objects` nem `cursor`: o código chama o método do Management na classe do model (`Run.get_with_events(run_id)`).
 - **Só `metis/config.py` lê variáveis de ambiente.** O ruff bloqueia `os.getenv`/`os.environ` fora dele.
@@ -104,7 +103,7 @@ As decisões e as alternativas descartadas estão em [planning/…/1_desenho_ini
 | Tema | Decisão |
 |---|---|
 | Stack | Django 6 + Ninja, Celery + Redis, Postgres 18 + pgvector, Agno 3.x |
-| Parsers | GROBID (estrutura e citações) + Docling (figuras, tabelas, fórmulas) + pdfplumber (texto oculto); tudo com licença permissiva |
+| Extração | O artigo é dividido por chamadas ao modelo (Gemini, pelo Agno) e o texto é conferido contra o PDF lido pelo pypdf. Sem parser dedicado: o GROBID foi descartado em 11/11/2026 (pesado); figuras e texto oculto estão em aberto |
 | Questions | Curadas por área da taxonomia OpenAlex, com fallback até uma Question genérica |
 | Avaliadores | 3 slots com mesmo contexto e mesmos critérios: A = GPT, B = Gemini, C = outro modelo de uma das duas famílias, trocável por config. Juiz sempre da outra família |
 | Leitura do artigo | Por seção: passes por papel da seção geram observações, checagens entre seções e síntese por critério; o A/B do M3 contra o artigo inteiro confirma |

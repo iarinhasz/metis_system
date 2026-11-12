@@ -1,4 +1,4 @@
-"""Base dos estágios (Template Method) e os cinco estágios, ainda stub.
+"""Base dos estágios (Template Method) e os cinco estágios; o E1 é real, os demais ainda stub.
 
 Ciclo de uma task: claim → execute() → complete → publica o próximo estágio após o commit.
 Cada estágio implementa só o execute(). A posse do run é pelo id da task Celery, que se
@@ -21,6 +21,7 @@ from projects.correction.attempts.status import (
     Stage,
     StageSpec,
 )
+from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import StageError, TransientStageError
 from projects.correction.pipeline.publishing import publish_stage_on_commit
@@ -151,7 +152,9 @@ class ExtractionStage(StageTask):
     stage = Stage.EXTRACTION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        return StageOutcome()
+        extraction, reused = extract_attempt(ctx.attempt_id)
+        Run.attach_extraction(ctx.run_id, ctx.task_id, extraction)
+        return StageOutcome(payload=extraction_payload(extraction, reused=reused))
 
 
 class ProfilingStage(StageTask):

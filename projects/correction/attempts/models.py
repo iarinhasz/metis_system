@@ -88,6 +88,14 @@ class Run(RunManagement, TimeStampModel):
     publish_count = models.PositiveIntegerField(default=0)
     version = models.PositiveIntegerField(default=1)
     last_error = models.TextField(blank=True)
+    # O artigo dividido em seções pelo E1; os estágios seguintes leem daqui.
+    extraction = models.ForeignKey(
+        "extractor.Extraction",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="runs",
+    )
 
     class Meta:
         ordering = ["-created_at"]

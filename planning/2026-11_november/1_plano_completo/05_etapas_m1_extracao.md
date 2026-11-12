@@ -100,25 +100,30 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ---
 
-## Etapa 1.5 — GROBID
+## Etapa 1.5 — Divisão do artigo pelo modelo
 
-**O que fazer**
-- Serviço `grobid` (`grobid/grobid:0.9.1-crf`) no compose e no CI; `METIS_GROBID_URL`.
-- `extraction/grobid.py`: cliente com os parâmetros de [Extração](../../../docs/extraction.md#ferramentas) (`consolidateCitations=0`), timeout e erro passageiro (`TransientStageError`).
-- Parser do TEI: cabeçalho, abstract, seções com hierarquia, `biblStruct` → `references[]`, `<ref type="bibr">` → `citation_mentions[]`, coordenadas de figuras e chamadas no texto.
-- O TEI fica no storage, com chave pelo sha256.
+**Situação:** implementada em 11/11/2026, no lugar do GROBID.
 
-**Teste** (`extraction/tests/test_grobid.py`)
-- TEIs gravados de 3–5 PDFs reais → snapshot das seções, referências e citações.
-- GROBID fora do ar → `TransientStageError`.
+**Por que mudou:** o GROBID chegou a ser implementado e foi descartado: a imagem tem 1,7 GB e ele ocupa 3,6 GB de RAM para uma divisão que o modelo faz. Decisão de 11/11: a estrutura vem de chamadas ao modelo (Gemini 2.5 Flash, pelo Agno), com uma config tipada por tipo de documento, e o texto é conferido contra o PDF.
 
-**Commit sugerido:** `feat: add GROBID client and TEI parser`
+**O que foi feito** (detalhe em [Extração](../../../docs/extraction.md)):
+- `extractor/config.py`: a `DocumentConfig` (estratégia, modelo, prompts, seções procuradas pelo nome, notas de rodapé, paralelismo e limites da conferência); `configs.py`: a `ARTICLE_CONFIG`.
+- Chamada 1: o mapa das seções, só com títulos em linha própria (três rodadas seguidas deram o mesmo mapa) → dict das seções → gate de abstract e referências.
+- Chamada 2, uma por seção, em paralelo, conferida contra o texto do PDF lido pelo pypdf (cobertura e fidelidade) e refeita com uma dica quando reprovada.
+- `GEMINI_KEY` no `.env`, lida pelo `metis/config.py`; `METIS_LLM_TIMEOUT_SECONDS`.
+- Adiantado da 1.9: o model `Extraction` (cache por sha256 + versão do extractor), `Run.extraction` e o E1 real no `StageTask`.
+
+**Teste:** `extractor/tests/` (sessão falsa, servidor HTTP local no lugar do Google, PDFs gerados no teste, banco real); `pytest -m llm` com o Gemini de verdade; calibração em dois artigos do ICLR 2017 (PeerRead); E2E no compose, com o ICLR 410 chegando a `done` em cerca de 45 s.
+
+**Commit sugerido:** `feat: split articles into sections with Gemini via Agno`
 
 ---
 
 ## Etapa 1.6 — Docling, junção e Figure
 
-**O que fazer**
+**Em aberto (11/11):** sem o GROBID, a junção por bbox não se aplica, e o Docling é pesado (modelos do torch). Antes de começar, decidir se as figuras vêm do Docling (medindo imagem e memória) ou de uma chamada de visão do modelo sobre as páginas do PDF.
+
+**O que fazer** (plano original)
 - `extraction/docling.py`: com as opções de [Extração](../../../docs/extraction.md#ferramentas); figuras com bbox, classe e recorte; tabelas em markdown; fórmulas em LaTeX.
 - Junção GROBID ↔ Docling por página + sobreposição de bbox (`to_top_left_origin()` no Docling).
 - Model `Figure` (recorte no storage, `image_sha256`).
@@ -178,11 +183,15 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 - Segundo run da mesma attempt → reaproveita a extração, sem chamar GROBID nem agente.
 - Retry do estágio no meio → os passos já persistidos não rodam de novo.
 
+**Como ficou (11/11):** o cache (`Extraction` por sha256 + versão do extractor), o gate de abstract e referências e o E1 real no `StageTask` entraram na 1.5, sem Workflow do Agno. Falta montar o `ExtractedDocument` da 1.1 a partir do `ExtractedArticle` e juntar as figuras (1.6 e 1.8) e o texto oculto (1.7).
+
 **Commit sugerido:** `feat: run real extraction stage as an Agno workflow`
 
 ---
 
 ## Etapa 1.10 — Medição da ligação citação ↔ referência
+
+**Em aberto (11/11):** sem o GROBID, ninguém liga as chamadas no texto às referências. Antes de medir, decidir como ligar: código sobre o texto das seções (`[3]`, "(Silva, 2020)") ou uma chamada ao modelo. A medição contra os `referenceMentions` do PeerRead continua valendo. As etapas 4.4 e 4.7 da Integridade dependem disso.
 
 **O que fazer**
 - Comando `bench_citation_links` em `evals/`: roda o GROBID em PDFs do PeerRead e compara com os `referenceMentions` (precisão e recall da ligação).
@@ -196,8 +205,8 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ## Pronto do M1 (I2)
 
-- 3–5 PDFs reais geram um `ExtractedDocument` estável (snapshot).
+- 3–5 PDFs reais divididos com cobertura e fidelidade dentro dos limites (dois do ICLR 2017 já calibrados em 11/11).
 - Um gráfico vetorial é detectado e recortado inteiro; um texto oculto plantado é detectado.
-- A ligação citação ↔ referência foi medida.
+- A ligação citação ↔ referência foi medida (depende da decisão da 1.10).
 - Cada chamada de visão aparece em `LLMCall`, com custo.
 - A verificação manual de [12](12_testes_e_verificacao.md#i2--extração-real) passa.

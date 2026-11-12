@@ -10,7 +10,7 @@ Article 1──N Attempt 1──N Run ──┬── N RunEvent              (t
                                 ├── 1 IntegrityReport 1──N IntegrityFinding
                                 ├── N ReviewRound 1──N JudgeVerdict
                                 ├── 1 FinalReport
-                                ├── → ExtractedDocument     (compartilhado entre runs: sha256 + versões dos parsers)
+                                ├── → Extraction            (compartilhada entre runs: sha256 + versão do extractor)
                                 └── → Question (+ snapshot)
 
 TaxonomyNode 1──N Question 1──N RubricField
@@ -52,6 +52,7 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `publish_count` | Republicações do checkpoint atual; zera no claim e no "Reprocessar" |
 | `version` | +1 a cada transição; compõe o `event_key` |
 | `last_error` | Último erro. O histórico fica nos eventos |
+| `extraction` | A `Extraction` que o E1 ligou ao run; os estágios seguintes leem daqui |
 | `extracted_document` (M1) | FK para a extração usada |
 | `question` (M2) | FK para a Question resolvida |
 | `profile` (M2) | Perfil do E2: área, confiança, tipo de artigo, idioma, papéis das seções e mapa do documento |
@@ -89,12 +90,12 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 
 Os critérios não são model: ficam em código (`EvaluationConfig`), ver [Perfil e Questions](questions_and_profiling.md#critérios-em-código).
 
-## `extraction`
+## `extractor`
 
 | Model | Campos principais |
 |---|---|
-| `ExtractedDocument` | `sha256`, `parser_versions`, `content` (JSON com o contrato descrito em [Extração](extraction.md#o-extracteddocument)). Único por (sha256, versões) |
-| `Figure` | `document`, `figure_id`, `page`, `bbox`, `kind`, `caption`, `image` (recorte), `image_sha256`, `description` (`FigureDescription`) |
+| `Extraction` | `sha256`, `version` (hash da config e dos prompts do extractor), `content` (o `ExtractedArticle` em JSON, descrito em [Extração](extraction.md#o-resultado)). Único por (sha256, versão) |
+| `Figure` (em aberto: 1.6) | `document`, `figure_id`, `page`, `bbox`, `kind`, `caption`, `image` (recorte), `image_sha256`, `description` (`FigureDescription`) |
 
 ## `integrity`
 

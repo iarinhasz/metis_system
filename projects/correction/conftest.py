@@ -6,6 +6,8 @@ from unittest.mock import Mock
 import pytest
 
 from projects.correction.attempts.models import Article, Attempt, Run
+from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
+from projects.correction.extractor.models import Extraction
 from projects.correction.metis.celery import app
 
 
@@ -18,8 +20,33 @@ def publisher(monkeypatch: pytest.MonkeyPatch) -> Mock:
 
 
 @pytest.fixture
-def eager_celery() -> Iterator[None]:
-    """Roda as tasks na hora, no mesmo processo.
+def fake_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Troca a extração do E1 (chamadas ao modelo) por uma fixa, guardada no banco."""
+
+    def extract(attempt_id: object) -> tuple[Extraction, bool]:
+        attempt = Attempt.get_by_id(attempt_id)
+        section = ExtractedSection(
+            id="sec_1",
+            title="Resumo",
+            level=1,
+            parent_id=None,
+            key="abstract",
+            text="Resumo do artigo.",
+            has_footnotes=False,
+            coverage=None,
+            fidelity=None,
+        )
+        article = ExtractedArticle(
+            title="Artigo", authors=(), language="pt", model="fake/modelo", sections=(section,)
+        )
+        return Extraction.store(attempt.sha256, "teste", article), False
+
+    monkeypatch.setattr("projects.correction.pipeline.stages.extract_attempt", extract)
+
+
+@pytest.fixture
+def eager_celery(fake_extraction: None) -> Iterator[None]:
+    """Roda as tasks na hora, no mesmo processo, com a extração do E1 fixa (sem modelo).
 
     Sem propagar exceções: com propagate, o Celery repassa o Retry ao chamador em vez de
     reexecutar a task. O StageTask registra no run todo erro do execute(), e os testes
