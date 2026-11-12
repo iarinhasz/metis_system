@@ -70,3 +70,6 @@ DJANGO_SETTINGS_MODULE = "projects.correction.metis.settings"
 pythonpath = ["."]
 python_files = ["test_*.py"]
 addopts = "-ra"
+markers = [
+    "llm: chama provedores reais com GEMINI_KEY/METIS_OPENAI_API_KEY; rode com `pytest -m llm`",
+]
