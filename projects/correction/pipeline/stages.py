@@ -22,9 +22,12 @@ from projects.correction.attempts.status import (
     StageSpec,
 )
 from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
+from projects.correction.extractor.config import DocumentConfig
+from projects.correction.extractor.session import AgnoSession, DocumentSession
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import StageError, TransientStageError
 from projects.correction.pipeline.publishing import publish_stage_on_commit
+from projects.correction.pipeline.usage import DatabaseUsageSink
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +155,13 @@ class ExtractionStage(StageTask):
     stage = Stage.EXTRACTION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        extraction, reused = extract_attempt(ctx.attempt_id)
+        def open_session(config: DocumentConfig, pdf: bytes) -> DocumentSession:
+            return AgnoSession(
+                config, pdf, run_id=ctx.run_id,
+                usage_sink=DatabaseUsageSink(), task_id=ctx.task_id,
+            )
+
+        extraction, reused = extract_attempt(ctx.attempt_id, opener=open_session)
         Run.attach_extraction(ctx.run_id, ctx.task_id, extraction)
         return StageOutcome(payload=extraction_payload(extraction, reused=reused))
 
