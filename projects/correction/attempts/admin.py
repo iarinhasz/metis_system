@@ -10,7 +10,7 @@ from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllow
 from django.shortcuts import redirect
 from django.urls import URLPattern, path, reverse
 
-from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
+from projects.correction.attempts.models import Article, Attempt, LLMCall, Run, RunEvent
 from projects.correction.attempts.status import RECOVERABLE, HumanDecision, RunStatus
 from projects.correction.pipeline.services import decide_run, recover_run
 from projects.correction.queries.attempts.run import RunConflict
@@ -148,3 +148,18 @@ class RunEventAdmin(ReadOnlyModelAdmin):
     list_display = ("run", "event_type", "from_status", "to_status", "actor", "created_at")
     list_filter = ("event_type", "actor")
     search_fields = ("run__id", "event_key", "task_id")
+
+
+@admin.register(LLMCall)
+class LLMCallAdmin(ReadOnlyModelAdmin):
+    list_display = (
+        "run", "stage", "role", "agent", "provider", "model", "input_tokens", "output_tokens",
+        "cached_tokens", "cost_usd", "latency_ms", "success", "created_at",
+    )
+    list_filter = ("stage", "role", "provider", "model", "success", "created_at")
+    search_fields = ("run__id", "model", "agent", "prompt_version")
+    list_select_related = ("run",)
+    actions = None
+
+    def has_change_permission(self, request: HttpRequest, obj: Model | None = None) -> bool:
+        return False
