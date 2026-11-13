@@ -53,9 +53,9 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `version` | +1 a cada transição; compõe o `event_key` |
 | `last_error` | Último erro. O histórico fica nos eventos |
 | `extraction` | A `Extraction` que o E1 ligou ao run; os estágios seguintes leem daqui |
-| `question` | FK com `PROTECT` para a Question resolvida; nula antes da resolução |
+| `question` | FK com `PROTECT` para a Question resolvida; no rubric check aponta ao rascunho desde a criação |
 | `profile` | JSON do E2: `field_choice`, `classification` (área, confianças, tipo e idioma), `resolution`, `section_roles`, `document_map` e `complete` |
-| `config_snapshot` | Specs sem credenciais, templates e hashes dos prompts usados, versão da taxonomia, política do profiler, método e snapshot da Question. Num rubric check, recebe a Question rascunho |
+| `config_snapshot` | Specs sem credenciais, templates e hashes dos prompts usados, versão da taxonomia, política do profiler, método e snapshot da Question. Num rubric check, recebe a Question rascunho e `rubric_check` com id do lote, revisão do rascunho e versão da extração |
 | `purpose` | `evaluation` (padrão), `rubric_check` ou `ab_test`, indexado e com constraint no banco. Runs internos não aparecem nas rotas públicas nem participam da substituição de avaliações (D18) |
 
 Implementado na etapa 2.5, com a migration `0004` de `attempts`. Os JSONs começam

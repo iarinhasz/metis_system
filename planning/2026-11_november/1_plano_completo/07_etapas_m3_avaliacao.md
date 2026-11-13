@@ -196,6 +196,23 @@ de desenvolvimento, executar `uv run python manage.py migrate`.
 
 **Commit sugerido:** `feat: run rubric checks with draft questions`
 
+**Implementação (13/11/2026):** ação e formulário no admin para amostras de 1–20
+attempts com cache do E1, criação atômica e idempotente de lotes internos,
+snapshot do rascunho e da configuração de avaliação, desvio auditado do E3 e
+comparação dos relatórios lado a lado. A Question ativa e avaliações anteriores
+permanecem intactas. O desvio também vale para a retomada pelo reconciliador.
+
+**Dependência pendente nesta branch:** E4 ainda é um stub; os relatórios completos
+dependem das rodadas julgadas da etapa 3.10. A tela mostra `waiting_setup` quando
+elas faltam. A integração substitui apenas E4 por rodadas julgadas sintéticas e
+executa E2/E5 reais, com fakes no limite dos provedores.
+Ver [operação no admin](../../../docs/questions_and_profiling.md#rubric-check-no-admin-312).
+
+**Verificação:** 633 testes passaram em Python 3.14 e PostgreSQL 18, com 5 contratos
+`llm` excluídos e apenas o aviso de depreciação existente do SDK Google. Mypy
+aprovou 225 arquivos; Ruff e formatação passaram (227 arquivos); checks do Django
+sem problemas e `makemigrations --check --dry-run` sem mudanças pendentes.
+
 ---
 
 ## Etapa 3.13 — A/B do modo de avaliação e custo

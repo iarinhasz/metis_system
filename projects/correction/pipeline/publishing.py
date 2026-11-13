@@ -10,6 +10,7 @@ from django.db import transaction
 from projects.correction.attempts.status import (
     STAGE_BY_CHECKPOINT,
     STAGE_BY_NAME,
+    RunPurpose,
     RunStatus,
     Stage,
 )
@@ -35,6 +36,11 @@ def publish_checkpoint_stage(run: Run) -> None:
 
     Fora de um checkpoint (gate, erro, final), não publica nada.
     """
+    if run.purpose == RunPurpose.RUBRIC_CHECK and run.status == RunStatus.PROFILED:
+        skipped = type(run).skip_rubric_check_integrity(run.pk)
+        if skipped is None:
+            return
+        run = skipped
     spec = STAGE_BY_CHECKPOINT.get(RunStatus(run.status))
     if spec is not None:
         publish_stage_on_commit(str(run.pk), spec.stage)

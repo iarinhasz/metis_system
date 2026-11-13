@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  .rubric-results { display: flex; align-items: flex-start; gap: 16px; overflow-x: auto; padding-bottom: 16px; }
+  .rubric-results article { flex: 0 0 min(36rem, 90vw); border: 1px solid var(--hairline-color); padding: 16px; box-sizing: border-box; }
+  .rubric-results pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+</style>
+{% endblock %}
+{% block content %}
+  <p><strong>{{ frozen_question.name }}</strong> · versão congelada {{ frozen_question.version }} · lote {{ batch_id }}</p>
+  <p>Resultados internos, lado a lado. A Question ativa não é alterada pelo teste.</p>
+  <p><a href="">Atualizar resultados</a> · <a href="{% url 'admin:questions_question_change' question.pk %}">Voltar à Question</a></p>
+  <details><summary>Rubrica usada neste lote</summary>
+    {% for field in frozen_question.rubric_fields %}<h3>{{ field.label }}</h3><p style="white-space: pre-wrap">{{ field.rubric_text }}</p>{% endfor %}
+  </details>
+  <div class="rubric-results">
+    {% for result in results %}
+      <article>
+        <h2>{{ result.run.attempt.article.external_id }} · attempt {{ result.run.attempt.attempt_number }}</h2>
+        <p>{{ result.run.attempt.original_filename }}</p>
+        <p><a href="{{ result.run_url }}">Run {{ result.run.pk }}</a> · {{ result.run.status }}</p>
+        {% if result.report %}
+          <p>Nota: {{ result.report.total_score|default_if_none:"—" }} · concordância: {{ result.report.agreement|default_if_none:"—" }}</p>
+          <pre>{{ result.report.markdown }}</pre>
+        {% else %}
+          <p>Relatório ainda não disponível. Atualize a página para acompanhar a execução.</p>
+          {% if result.run.last_error %}<p class="errornote">{{ result.run.last_error }}</p>{% endif %}
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% endblock %}

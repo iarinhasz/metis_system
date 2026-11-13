@@ -16,8 +16,8 @@ from django.db import transaction
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.attempts.models import Run
 from projects.correction.attempts.status import (
-    NEXT_STAGE,
     STAGE_BY_NAME,
+    RunPurpose,
     RunStatus,
     Stage,
     StageSpec,
@@ -27,8 +27,8 @@ from projects.correction.extractor.attempt_extraction import extract_attempt, ex
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.session import AgnoSession, DocumentSession
 from projects.correction.metis.config import settings
-from projects.correction.pipeline.errors import StageError, TransientStageError
-from projects.correction.pipeline.publishing import publish_stage_on_commit
+from projects.correction.pipeline.errors import SetupRequired, StageError, TransientStageError
+from projects.correction.pipeline.publishing import publish_checkpoint_stage
 from projects.correction.pipeline.usage import DatabaseUsageSink
 from projects.correction.questions.workflow import run_profiling
 
@@ -109,9 +109,8 @@ class StageTask(_TaskBase):
             if run is None:
                 logger.info("Posse perdida antes de concluir: run=%s", ctx.run_id)
                 return
-            next_stage = NEXT_STAGE[self.stage]
-            if not outcome.halt and next_stage is not None:
-                publish_stage_on_commit(ctx.run_id, next_stage)
+            if not outcome.halt:
+                publish_checkpoint_stage(run)
 
     def _fail(self, ctx: StageContext, status: RunStatus, exc: BaseException) -> None:
         Run.fail_stage(
@@ -158,6 +157,12 @@ class ExtractionStage(StageTask):
     stage = Stage.EXTRACTION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
+        run = Run.get_by_id(ctx.run_id)
+        if run.purpose == RunPurpose.RUBRIC_CHECK:
+            if run.extraction is None:
+                raise SetupRequired("O rubric check precisa de uma extração em cache.")
+            return StageOutcome(payload=extraction_payload(run.extraction, reused=True))
+
         def open_session(config: DocumentConfig, pdf: bytes) -> DocumentSession:
             return AgnoSession(
                 config,

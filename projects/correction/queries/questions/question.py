@@ -83,6 +83,42 @@ class QuestionManagement:
     def lock_for_curation(cls, question_id: Any) -> Question:
         return cls.objects.select_for_update().get(pk=question_id)
 
+    @staticmethod
+    def rubric_check_snapshot(question: Question, *, revision: str) -> QuestionSnapshot:
+        """O chamador mantém a Question travada até criar todos os runs do lote."""
+        if question.updated_at.isoformat() != revision:
+            raise CurationConflict("O rascunho mudou. Recarregue a página antes de testar.")
+        if question.active:
+            raise CurationError(
+                "O rubric check exige um rascunho inativo; não edite a Question ativa."
+            )
+        get_method(question.method)
+        fields = list(question.rubric_fields.all())
+        if not fields or any(
+            not field.label.strip() or not field.rubric_text.strip() for field in fields
+        ):
+            raise CurationError("Inclua pelo menos um campo de rubrica com rótulo e texto.")
+        node = question.taxonomy_node
+        return QuestionSnapshot(
+            id=question.pk,
+            version=question.version,
+            name=question.name,
+            method=question.method,
+            is_generic=question.is_generic,
+            taxonomy_node_code=node.code if node else None,
+            taxonomy_version=node.taxonomy_version if node else None,
+            rubric_fields=tuple(
+                RubricFieldSnapshot(
+                    id=field.pk,
+                    key=field.key,
+                    label=field.label,
+                    rubric_text=field.rubric_text,
+                    order=field.order,
+                )
+                for field in fields
+            ),
+        )
+
     @classmethod
     @transaction.atomic
     def store_draft(

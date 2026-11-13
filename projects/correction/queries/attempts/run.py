@@ -25,6 +25,7 @@ from projects.correction.attempts.status import (
 
 if TYPE_CHECKING:
     from datetime import datetime
+    from uuid import UUID
 
     from django.db import models
 
@@ -121,6 +122,18 @@ class RunManagement:
     @classmethod
     def get_by_id(cls, run_id: Any) -> Run:
         return cls.objects.get(pk=run_id)
+
+    @classmethod
+    def rubric_check_batch(cls, question_id: Any, batch_id: UUID) -> list[Run]:
+        return list(
+            cls.objects.filter(
+                purpose=RunPurpose.RUBRIC_CHECK,
+                question_id=question_id,
+                config_snapshot__rubric_check__batch_id=str(batch_id),
+            )
+            .select_related("attempt__article", "question", "final_report")
+            .order_by("created_at", "pk")
+        )
 
     @classmethod
     def get_with_events(cls, run_id: Any, *, public: bool = False) -> Run | None:
@@ -265,6 +278,8 @@ class RunManagement:
         actor: str = "pipeline",
         purpose: RunPurpose | str = RunPurpose.EVALUATION,
         config_snapshot: dict[str, Any] | None = None,
+        question_id: Any = None,
+        extraction: Extraction | None = None,
     ) -> Run:
         """Cria o run no checkpoint `received`, já com o primeiro evento."""
         run = cls.objects.create(
@@ -273,6 +288,8 @@ class RunManagement:
             version=1,
             purpose=RunPurpose(purpose),
             config_snapshot=config_snapshot or {},
+            question_id=question_id,
+            extraction=extraction,
         )
         _run_event().append(
             run,
@@ -302,6 +319,12 @@ class RunManagement:
         from_status = RunStatus(run.status)
         if to_status not in TRANSITIONS[from_status]:
             raise InvalidTransition(f"Transição não permitida: {from_status} → {to_status}.")
+        if (
+            from_status == RunStatus.PROFILED
+            and to_status == RunStatus.INTEGRITY_CHECKED
+            and run.purpose != RunPurpose.RUBRIC_CHECK
+        ):
+            raise InvalidTransition("Somente rubric checks podem pular a integridade.")
         run.status = to_status
         run.version += 1
         for field, value in (updates or {}).items():
@@ -328,6 +351,9 @@ class RunManagement:
         run = cls._locked(run_id)
         status = RunStatus(run.status)
 
+        if spec.stage == Stage.INTEGRITY and run.purpose == RunPurpose.RUBRIC_CHECK:
+            return None
+
         if status == spec.checkpoint:
             prior_claims = run.stage_claims if run.stage == spec.stage else 0
             return cls._transition(
@@ -350,6 +376,19 @@ class RunManagement:
             run.save(update_fields=["stage_claims", "stage_started_at", "updated_at"])
             return run
         return None
+
+    @classmethod
+    @transaction.atomic
+    def skip_rubric_check_integrity(cls, run_id: Any) -> Run | None:
+        run = cls._locked(run_id)
+        if run.purpose != RunPurpose.RUBRIC_CHECK or run.status != RunStatus.PROFILED:
+            return None
+        return cls._transition(
+            run,
+            RunStatus.INTEGRITY_CHECKED,
+            payload={"skipped": True, "reason": "rubric_check"},
+            updates={"stage": Stage.INTEGRITY, "stage_claims": 0, "publish_count": 0},
+        )
 
     @classmethod
     @transaction.atomic

@@ -20,6 +20,21 @@ class AttemptManagement:
         return cls.objects.get(pk=attempt_id)
 
     @classmethod
+    def for_rubric_check_selection(cls, version: str) -> models.QuerySet[Attempt]:
+        from projects.correction.extractor.models import Extraction
+
+        cached = Extraction.objects.filter(sha256=models.OuterRef("sha256"), version=version)
+        return (
+            cls.objects.filter(models.Exists(cached))
+            .select_related("article")
+            .order_by("article__external_id", "attempt_number", "pk")
+        )
+
+    @classmethod
+    def rubric_check_sample(cls, attempt_ids: tuple[Any, ...]) -> list[Attempt]:
+        return list(cls.objects.filter(pk__in=attempt_ids).select_related("article").order_by("pk"))
+
+    @classmethod
     def find_by_sha256(cls, article: Article, sha256: str) -> Attempt | None:
         return cls.objects.filter(article=article, sha256=sha256).first()
 

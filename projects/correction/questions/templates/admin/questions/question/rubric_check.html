@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <p><strong>{{ question.name }}</strong> · versão {{ question.version }}</p>
+  <p>Este teste cria um run interno por attempt selecionada usando uma cópia congelada
+    do rascunho salvo. A Question ativa e as avaliações existentes são preservadas.</p>
+  <p>A extração é reaproveitada do cache e a integridade é pulada. Perfil, avaliação
+    e consolidação podem consumir chamadas aos provedores configurados.</p>
+  {% if question.active %}
+    <p class="errornote">Esta Question está ativa. Crie e salve um rascunho inativo antes de testar.</p>
+  {% else %}
+    <form method="post">{% csrf_token %}
+      {{ form.as_p }}
+      <div class="submit-row"><input type="submit" value="Rodar rubric check" class="default"></div>
+    </form>
+  {% endif %}
+  <p><a href="{% url 'admin:questions_question_change' question.pk %}">Voltar à Question</a></p>
+{% endblock %}

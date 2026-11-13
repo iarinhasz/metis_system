@@ -326,5 +326,5 @@ def test_rubric_check_uses_the_supplied_draft(
     monkeypatch.setattr("projects.correction.pipeline.stages.AgentFactory", lambda *a, **kw: fake)
     publish_stage(str(research.pk), Stage.PROFILING)
     profiled = Run.get_by_id(research.pk)
-    assert profiled.status == RunStatus.PROFILED and profiled.question_id == draft.pk
+    assert profiled.status == RunStatus.INTEGRITY_CHECKED and profiled.question_id == draft.pk
     assert Run.get_by_id(run.pk).status == RunStatus.RECEIVED

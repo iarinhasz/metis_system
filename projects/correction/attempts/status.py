@@ -147,7 +147,12 @@ TRANSITIONS: dict[RunStatus, frozenset[RunStatus]] = {
         {RunStatus.PROFILED, RunStatus.EXTRACTED, *_failures, RunStatus.SUPERSEDED}
     ),
     RunStatus.PROFILED: frozenset(
-        {RunStatus.CHECKING_INTEGRITY, RunStatus.SUPERSEDED, RunStatus.ERROR_UNEXPECTED}
+        {
+            RunStatus.CHECKING_INTEGRITY,
+            RunStatus.INTEGRITY_CHECKED,
+            RunStatus.SUPERSEDED,
+            RunStatus.ERROR_UNEXPECTED,
+        }
     ),
     RunStatus.CHECKING_INTEGRITY: frozenset(
         {

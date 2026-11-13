@@ -81,6 +81,44 @@ propósitos internos ficam fora das rotas públicas de consulta e decisão, não
 substituem a avaliação retornada no reenvio do PDF e não são invalidados por uma
 nova submissão de avaliação.
 
+### Rubric check no admin (3.12)
+
+Salve uma Question **inativa**, com ao menos um campo de rubrica preenchido. Na sua
+página, use **Rodar rubric check**, ou selecione uma Question na lista e use a ação
+de mesmo nome. Selecione de 1 a 20 attempts: a seleção mostra somente PDFs com
+extração em cache na versão atual do E1. O teste cria um run interno por attempt;
+os arquivos não são reabertos nem enviados novamente ao extrator.
+
+O formulário exige permissão de alterar a Question, criar Run, ver Attempt, ver Run
+e ver FinalReport (`questions.change_question`, `attempts.add_run`,
+`attempts.view_attempt`, `attempts.view_run`, `evaluation.view_finalreport`). A tela
+de resultados exige as permissões de leitura desses dados. As views pertencem ao
+admin, exigem autenticação de staff e protegem o POST com CSRF.
+
+O lote congela id, versão, método, campos e textos do rascunho em cada
+`Run.config_snapshot["question"]`; também fixa o método de avaliação, a revisão
+do rascunho, a versão da extração e um identificador de lote. A criação é atômica
+e a publicação das tasks ocorre somente após o commit. Reenviar o mesmo formulário
+devolve o lote já criado, sem agendar novas chamadas. Editar o rascunho depois não
+muda os snapshots existentes; enviar uma nova amostra exige um novo formulário.
+
+E1 reaproveita a extração ligada ao run; E2 classifica e monta o mapa, usando a
+Question congelada sem consultar o fallback por Questions ativas. A passagem de
+`profiled` para `integrity_checked` registra um evento com `skipped=true` e motivo
+`rubric_check`; não executa E3. O reconciliador usa o mesmo desvio. Avaliações
+normais continuam passando pelo E3. E4 e E5 seguem os estágios já configurados.
+
+A página do lote compara os FinalReports lado a lado, com nota, concordância e
+texto do relatório. Ela mostra também os estados pendentes e erros de cada run,
+sem expor os resultados internos nas rotas públicas. Question ativa, validação,
+versão e runs de avaliação anteriores permanecem intactos.
+
+**Limitação da branch atual:** E4 ainda é um stub. Sem as rodadas julgadas de A, B
+e C da etapa 3.10, E5 termina em `waiting_setup`, com a pendência visível na tela.
+Os testes de integração substituem somente E4 por rodadas sintéticas julgadas e
+exercitam E1 em cache, E2, E5 e a comparação de FinalReports reais. Nenhum relatório
+de avaliação é fabricado pelo fluxo de produção.
+
 Para operar: aplique `uv run python manage.py migrate`, carregue a taxonomia e
 configure uma Question validada e ativa do método selecionado. Sem essa Question,
 o comportamento esperado é `waiting_setup`, preservando a classificação.

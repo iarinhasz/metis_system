@@ -21,6 +21,13 @@ Como o pipeline anda, falha e se recupera. Os estados citados aqui estão defini
 
 O E2 roda na fila `evaluation` porque é uma chamada de LLM, não um parse.
 
+Nos runs internos `purpose=rubric_check`, E1 usa a extração em cache ligada na
+criação, E2 usa o rascunho congelado e E3 é pulado. `RunManagement` registra a
+transição de `profiled` para `integrity_checked` com `skipped=true` antes de
+publicar E4 após o commit. O desvio só é permitido para esse propósito; mensagens
+de E3 para rubric checks têm o claim negado. A publicação normal e o reconciliador
+passam pela mesma regra. Ver [Rubric check no admin](questions_and_profiling.md#rubric-check-no-admin-312).
+
 A fila e o nome da task de cada estágio ficam no `STAGES` (`attempts/status.py`). As rotas do Celery (`CELERY_TASK_ROUTES`) e a publicação (`pipeline/publishing.py`) são geradas a partir dele.
 
 ## Ciclo de uma task de estágio
