@@ -132,7 +132,7 @@ Os métodos do catálogo aceitam `output_schema=MeuSchema`. Enquanto o contrato 
 
 `FakeAgentFactory` herda a mesma interface e aceita `scripts` por nome de prompt ou por `Role`: `InvalidFor(n)` devolve conteúdo fora do schema N vezes, uma exceção `LLMUnavailable` simula indisponibilidade, e respostas pydantic ou dicts fornecem casos específicos. `QuoteNotInDocument(path=...)` e `MissingElsewhere(path=...)` alteram um campo de um exemplo válido para exercitar validadores semânticos. Depois do roteiro, o fake volta a gerar respostas do schema. `MemoryUsageSink` guarda uma medição por execução, inclusive nas falhas.
 
-`pricing.py` calcula o custo com uma tabela injetada; modelo sem preço produz `cost_usd=None` e alerta. A tabela de produção, o model `LLMCall` e o sink persistente pertencem à etapa 1.4. O E1 usa por enquanto o sink nulo. A reexportação de `pipeline.errors.LLMUnavailable` em `agents/errors.py` é a única dependência permitida do pacote no pipeline: preserva a classe que o Celery já reconhece.
+`pricing.py` calcula o custo com tarifas Standard por padrão ou com uma tabela injetada; modelo sem preço produz `cost_usd=None` e alerta. O E1 recebe o sink persistente do pipeline. A reexportação de `pipeline.errors.LLMUnavailable` em `agents/errors.py` é a única dependência permitida do pacote no pipeline: preserva a classe que o Celery já reconhece.
 
 **Verificação da 1.3 (12/11):** em Linux com Python 3.14.10 e PostgreSQL 18, **412 testes passaram em 88,75 s**, com 5 casos `llm` excluídos. Passaram `uv lock --check`, `uv sync --locked --all-groups`, Ruff (137 arquivos), mypy (135 arquivos) e `manage.py check`. O lock permaneceu idêntico. A suíte cobre os dois SDKs por HTTP local, timeout e retry sem multiplicação, uso nas falhas, todos os métodos da fábrica falsa, o slot C nas duas famílias, a fronteira de imports e conexões reais fechadas nas threads, em sucesso e falha. O catálogo não recebeu chamadas externas nem calibração de produção nesta etapa.
 
@@ -368,6 +368,37 @@ Workflow(name="consolidation", telemetry=False, steps=[
 | Saída fora do schema | O validador do passo | `AgentResult(valid=False)` → nova tentativa com o motivo, até o limite do passo; depois, o item fica inválido (E4) ou o estágio falha (E2) |
 
 - O `runner.py` trata o `RunStatus.error` devolvido pelo Agent e levanta `LLMUnavailable`, além de tratar exceções de provedor que escaparem. Erros de programação que forem efetivamente levantados sobem como estão e terminam em `error_unexpected`. Depois de um `Parallel`, o executor de junção também confere os ramos: o status global `completed` não comprova que todos deram certo.
+
+## Implementação da etapa 1.4
+
+`attempts.LLMCall` registra run, estágio, papel, agente, provedor, modelo, hash do prompt, tokens, custo, latência, sucesso e classe do erro. `pipeline.usage.DatabaseUsageSink` delega a gravação a `LLMCall.record_usage()`, em `queries/attempts/llm_call.py`. Cada execução do runner gera uma linha; uma resposta inválida e uma nova tentativa contam como execuções distintas. O admin permite consulta e filtros, sem criar, alterar ou excluir registros.
+
+`ExtractionStage` passa o run, o id da task e o sink para `AgnoSession`. As chamadas de mapa, seções, referências e figuras usam a mesma fábrica e persistem o uso. Respostas recuperadas por `ResumableSession` e uma `Extraction` reaproveitada não executam o runner nem criam cobrança duplicada. Sessões avulsas sem run continuam com o sink nulo. A persistência não grava prompt, resposta, PDF nem credenciais; erros são os códigos sanitizados do runner.
+
+### Tarifas iniciais
+
+Tarifas **Standard pagas**, USD por milhão de tokens, conferidas em **12/11/2026**, para os cinco ids usados no catálogo e no E1:
+
+| Provedor/modelo | Entrada | Saída | Leitura de cache |
+|---|---:|---:|---:|
+| OpenAI `gpt-5.6-terra` | 2,00 | 12,00 | 0,20 |
+| OpenAI `gpt-5.6-luna` | 0,20 | 1,20 | 0,02 |
+| Google `gemini-3.8-flash`, até 31/12/2026 | 0,75 | 3,75 | 0,075 |
+| Google `gemini-3.8-flash`, a partir de 01/01/2027 | 1,50 | 7,50 | 0,15 |
+| Google `gemini-3.5-flash-lite` | 0,30 | 2,50 | 0,03 |
+| Google `gemini-2.5-flash` (E1) | 0,30 | 2,50 | 0,03 |
+
+Fontes: [OpenAI Docs — GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [OpenAI Docs — GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) e [preços oficiais da Gemini API](https://ai.google.dev/gemini-api/docs/pricing).
+
+Nos dois modelos OpenAI, acima de 272.000 tokens de entrada, aplicam-se 2× à entrada e 1,5× à saída do pedido inteiro; escritas de cache custam 1,25× a entrada comum. A tarifa promocional do Gemini 3.8 é escolhida pela data UTC da chamada e muda em janeiro, inclusive num processo já em execução. O id legado do E1 mantém as mesmas tarifas de texto/imagem após o redirecionamento anunciado pelo Google para 01/12/2026.
+
+O cálculo subtrai da entrada comum os tokens lidos e escritos no cache, sem cobrá-los duas vezes. O Agno 3.1.12 separa `thoughts_token_count` da saída do Gemini: o runner soma o raciocínio à saída faturável e o guarda também em `reasoning_tokens`. No OpenAI, o raciocínio já faz parte da saída e não é somado de novo. O valor final usa `Decimal` e 12 casas, com arredondamento `ROUND_HALF_UP`, e fica congelado no registro.
+
+Trocar o modelo pelo ambiente exige cadastrar sua tarifa por `(Provider, model_id)`; um id desconhecido mantém os tokens, custo nulo e aviso no log. A tabela cobre tokens de texto e imagem/PDF em chamadas Standard. Não estima taxas de ferramentas, armazenamento de cache, áudio, descontos de conta ou Batch/Flex/Priority; essas modalidades não são usadas pelo pipeline atual. Em falhas sem métricas, registram-se as contagens disponíveis (zero quando ausentes), sem inferir consumo que o provedor não informou.
+
+Os testes usam PostgreSQL 18 e HTTP local, sem chamadas a provedores externos: gravação por run, falha e resposta inválida, modelo sem tarifa, tentativas distintas, concorrência, cache e raciocínio, admin somente leitura e integração do E1. Os testes de preços cobrem também o fim da promoção e o limite de contexto longo.
+
+**Verificação da 1.4 (12/11):** a suíte completa passou com **437 testes**, 5 casos `llm` excluídos e um aviso de depreciação do SDK Google, em Linux com Python 3.14.10 e PostgreSQL 18. Passaram também Ruff (143 arquivos), mypy (141 arquivos), `manage.py check`, aplicação de `attempts.0003_llmcall` e conferência de migrações pendentes. A validação com chaves válidas da 1.2 continua pendente.
 
 ## Custo
 
