@@ -93,7 +93,7 @@ class MeasuredRunner[T: BaseModel]:
             input_tokens = (metrics.input_tokens or 0) if metrics else 0
             output_tokens = (metrics.output_tokens or 0) if metrics else 0
             cached_tokens = (metrics.cache_read_tokens or 0) if metrics else 0
-            tokens = (metrics.cache_write_tokens or 0) if metrics else 0
+            cache_write_tokens = (metrics.cache_write_tokens or 0) if metrics else 0
             reasoning_tokens = (metrics.reasoning_tokens or 0) if metrics else 0
             # No Google o Agno separa pensamentos dos candidatos; no OpenAI eles já
             # estão em completion_tokens. A saída registrada é o total faturável.
