@@ -157,8 +157,11 @@ class ExtractionStage(StageTask):
     def execute(self, ctx: StageContext) -> StageOutcome:
         def open_session(config: DocumentConfig, pdf: bytes) -> DocumentSession:
             return AgnoSession(
-                config, pdf, run_id=ctx.run_id,
-                usage_sink=DatabaseUsageSink(), task_id=ctx.task_id,
+                config,
+                pdf,
+                run_id=ctx.run_id,
+                usage_sink=DatabaseUsageSink(),
+                task_id=ctx.task_id,
             )
 
         extraction, reused = extract_attempt(ctx.attempt_id, opener=open_session)
