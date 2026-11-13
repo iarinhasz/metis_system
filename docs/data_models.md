@@ -70,15 +70,19 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `payload` | JSON: erro, decisão humana, nota, motivo da republicação |
 | `event_key` | Único: `{run}:{version}` nas transições. Retry e reentrega não duplicam eventos |
 
-**`LLMCall`** (M1): uma linha por chamada de modelo.
+**`LLMCall`** (M1, etapa 1.4): uma linha por execução do runner, inclusive falhas e respostas inválidas. O admin permite somente leitura.
 
 | Campo | Observação |
 |---|---|
-| `run`, `stage`, `role` | Papel: `profiler`, `figure_describer`, `evaluator_<slot>`, `judge`, `meta_reviewer`, `adjudicator`… |
+| `run`, `stage`, `role` | Run e estágio; papel do catálogo (`fast`, `vision`, `evaluator_a`, `judge_google`…) |
+| `agent` | Agente executado (`profiler_field`, `figure_describer`, `document_extractor`…) |
 | `provider`, `model`, `prompt_version` | A versão é o hash do prompt |
 | `input_tokens`, `output_tokens`, `cached_tokens` | Vêm das métricas do Agno |
+| `cache_write_tokens`, `reasoning_tokens` | Contagens adicionais; a saída inclui raciocínio uma única vez |
 | `cost_usd`, `latency_ms` | Custo pela tabela de preços (um modelo sem preço gera alerta) |
 | `success`, `error` | Resultado da chamada |
+
+`cost_usd` usa `Decimal` com 12 casas e aceita nulo quando não há tarifa cadastrada. Os registros guardam o custo calculado na chamada: atualizar a tabela não altera o histórico. O sink não grava prompt, resposta, credenciais nem PDF. O acesso ao banco fica em `queries/attempts/llm_call.py`.
 
 ## `questions`
 
