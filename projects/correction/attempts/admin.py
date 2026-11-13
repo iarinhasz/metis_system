@@ -153,8 +153,19 @@ class RunEventAdmin(ReadOnlyModelAdmin):
 @admin.register(LLMCall)
 class LLMCallAdmin(ReadOnlyModelAdmin):
     list_display = (
-        "run", "stage", "role", "agent", "provider", "model", "input_tokens", "output_tokens",
-        "cached_tokens", "cost_usd", "latency_ms", "success", "created_at",
+        "run",
+        "stage",
+        "role",
+        "agent",
+        "provider",
+        "model",
+        "input_tokens",
+        "output_tokens",
+        "cached_tokens",
+        "cost_usd",
+        "latency_ms",
+        "success",
+        "created_at",
     )
     list_filter = ("stage", "role", "provider", "model", "success", "created_at")
     search_fields = ("run__id", "model", "agent", "prompt_version")
