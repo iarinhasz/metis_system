@@ -91,6 +91,10 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ## Etapa 1.4 — LLMCall, preços e registro de uso
 
+**Situação (12/11/2026):** implementada. `LLMCall` e a migração `attempts.0003_llmcall` registram uso por run e estágio; o admin é somente leitura. `pipeline.usage.DatabaseUsageSink` grava pelo Management de `queries/attempts/llm_call.py`. O E1 recebe o sink e o run real na sessão; respostas retomadas e extrações reaproveitadas não geram novas linhas. A tabela Standard cobre os modelos de desenvolvimento e o E1, com cache, raciocínio faturável, faixa de contexto longo e a mudança de preço do Gemini 3.8 em janeiro. Modelo sem tarifa mantém custo nulo e aviso no log. Fontes e limites em [docs/agents.md](../../../docs/agents.md#implementação-da-etapa-14).
+
+**Verificação:** **437 testes passaram**, com 5 casos `llm` excluídos, em Linux com Python 3.14.10 e PostgreSQL 18. Passaram Ruff (143 arquivos), mypy (141 arquivos), `manage.py check`, aplicação da migração e `makemigrations --check --dry-run`. Sem mudanças de dependências. A validação com chaves válidas da 1.2 continua pendente; as agregações de custo por run e período permanecem na 6.2.
+
 **O que fazer**
 - Model `LLMCall` em `attempts/`, com os campos de [Modelos de dados](../../../docs/data_models.md#attempts); admin somente leitura.
 - `pipeline/usage.py`: o `UsageSink` real, que grava o `LLMCall` ligado ao run e ao estágio.
