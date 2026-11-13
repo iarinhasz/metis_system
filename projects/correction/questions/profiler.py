@@ -6,7 +6,11 @@ from pydantic import BaseModel, ValidationError
 
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.runner import AgentPayload, AgentRunner
-from projects.correction.agents.schemas.profiling import field_choice_schema, topic_choice_schema
+from projects.correction.agents.schemas.profiling import (
+    FieldChoice,
+    field_choice_schema,
+    topic_choice_schema,
+)
 from projects.correction.attempts.status import RunStatus
 from projects.correction.extractor.article import ExtractedArticle
 from projects.correction.metis.config import settings
@@ -30,22 +34,56 @@ def profile_article(
     keywords: tuple[str, ...] = (),
     max_attempts: int | None = None,
 ) -> ArticleProfile:
+    field_choice = classify_field(
+        article,
+        factory=factory,
+        taxonomy_version=taxonomy_version,
+        keywords=keywords,
+        max_attempts=max_attempts,
+    )
+    return classify_topic(
+        article,
+        field_choice,
+        factory=factory,
+        taxonomy_version=taxonomy_version,
+        keywords=keywords,
+        max_attempts=max_attempts,
+    )
+
+
+def _attempts(max_attempts: int | None) -> int:
     attempts = settings.profiling_max_attempts if max_attempts is None else max_attempts
     if attempts < 1:
         raise ValueError("O profiler precisa de pelo menos uma tentativa por passo.")
+    return attempts
+
+
+def _manuscript(article: ExtractedArticle, keywords: tuple[str, ...]) -> str:
     abstract = article.section("abstract")
     if not article.title.strip() or abstract is None or not abstract.text.strip():
         raise InvalidSubmission("O profiler precisa de título e abstract não vazios.")
+    return json.dumps(
+        {"title": article.title, "abstract": abstract.text, "keywords": keywords},
+        ensure_ascii=False,
+    )
+
+
+def classify_field(
+    article: ExtractedArticle,
+    *,
+    factory: AgentFactory,
+    taxonomy_version: str,
+    keywords: tuple[str, ...] = (),
+    max_attempts: int | None = None,
+) -> FieldChoice:
+    attempts = _attempts(max_attempts)
+    manuscript = _manuscript(article, keywords)
     fields = TaxonomyNode.fields_for_profiling(taxonomy_version)
     if not fields:
         raise SetupRequired("A versão da taxonomia não tem fields disponíveis.")
     field_nodes = {node.code: node for node in fields}
-    manuscript = json.dumps(
-        {"title": article.title, "abstract": abstract.text, "keywords": keywords},
-        ensure_ascii=False,
-    )
     field_schema = field_choice_schema(tuple(field_nodes))
-    field_choice = _ask(
+    return _ask(
         factory.profiler_field(output_schema=field_schema),
         field_schema,
         AgentPayload(
@@ -56,6 +94,23 @@ def profile_article(
         attempts,
         step="field",
     )
+
+
+def classify_topic(
+    article: ExtractedArticle,
+    field_choice: FieldChoice,
+    *,
+    factory: AgentFactory,
+    taxonomy_version: str,
+    keywords: tuple[str, ...] = (),
+    max_attempts: int | None = None,
+) -> ArticleProfile:
+    attempts = _attempts(max_attempts)
+    manuscript = _manuscript(article, keywords)
+    fields = TaxonomyNode.fields_for_profiling(taxonomy_version)
+    field_nodes = {node.code: node for node in fields}
+    if field_choice.field not in field_nodes:
+        raise SetupRequired("O field salvo não pertence à versão da taxonomia.")
     field = field_nodes[field_choice.field]
     topics = TaxonomyNode.topics_for_field(taxonomy_version, field.code)
     if not topics:

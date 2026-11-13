@@ -55,6 +55,15 @@ class TaxonomyNodeManagement:
         return cls.objects.count()
 
     @classmethod
+    def latest_version(cls) -> str | None:
+        return (
+            cls.objects.filter(level=TaxonomyLevel.DOMAIN)
+            .order_by("-created_at", "-pk")
+            .values_list("taxonomy_version", flat=True)
+            .first()
+        )
+
+    @classmethod
     def fields_for_profiling(cls, version: str) -> list[TaxonomyNode]:
         return list(
             cls.objects.filter(

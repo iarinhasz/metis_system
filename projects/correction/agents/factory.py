@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from projects.correction.agents.limits import ProviderLimiter, shared_limiter
 from projects.correction.agents.models import ModelFactory
 from projects.correction.agents.pricing import Pricing
-from projects.correction.agents.prompts import RenderedPrompt, render
+from projects.correction.agents.prompts import RenderedPrompt, render, render_template
 from projects.correction.agents.runner import AgentPayload, AgentRunner, MeasuredRunner
 from projects.correction.agents.schemas import PendingOutput
 from projects.correction.agents.specs import ModelSpec, Role
@@ -70,6 +70,9 @@ class AgentFactory:
             limiter if limiter is not None else shared_limiter(config.llm_max_concurrency)
         )
         self.pricing = pricing if pricing is not None else Pricing()
+        self.prompt_templates: dict[str, str] = {}
+        self.prompt_versions: dict[str, str] = {}
+        self.on_prompt: Callable[[str, str], None] | None = None
 
     def _invoke[T: BaseModel](
         self,
@@ -112,7 +115,14 @@ class AgentFactory:
         **context: str,
     ) -> AgentRunner[T]:
         selected = spec if spec is not None else self.models.specs[role]
-        rendered = prompt if prompt is not None else render(name, output_schema, **context)
+        rendered = prompt or (
+            render_template(self.prompt_templates[name], output_schema, **context)
+            if name in self.prompt_templates
+            else render(name, output_schema, **context)
+        )
+        self.prompt_versions[name] = rendered.version
+        if self.on_prompt is not None:
+            self.on_prompt(name, rendered.version)
         return MeasuredRunner(
             self._invoke(name, role, selected, rendered, output_schema, retries),
             output_schema,

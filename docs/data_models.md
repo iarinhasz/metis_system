@@ -53,11 +53,15 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `version` | +1 a cada transição; compõe o `event_key` |
 | `last_error` | Último erro. O histórico fica nos eventos |
 | `extraction` | A `Extraction` que o E1 ligou ao run; os estágios seguintes leem daqui |
-| `extracted_document` (M1) | FK para a extração usada |
-| `question` (M2) | FK para a Question resolvida |
-| `profile` (M2) | Perfil do E2: área, confiança, tipo de artigo, idioma, papéis das seções e mapa do documento |
-| `config_snapshot` (M2+) | `ModelSpec`s, versões de prompt, versão da taxonomia, snapshot da Question, modo de avaliação. Num rubric check, leva a Question rascunho |
-| `purpose` (M2) | `evaluation` (padrão), `rubric_check` ou `ab_test`. Só `evaluation` aparece para quem submete e torna outros runs `superseded` (D18) |
+| `question` | FK com `PROTECT` para a Question resolvida; nula antes da resolução |
+| `profile` | JSON do E2: `field_choice`, `classification` (área, confianças, tipo e idioma), `resolution`, `section_roles`, `document_map` e `complete` |
+| `config_snapshot` | Specs sem credenciais, templates e hashes dos prompts usados, versão da taxonomia, política do profiler, método e snapshot da Question. Num rubric check, recebe a Question rascunho |
+| `purpose` | `evaluation` (padrão), `rubric_check` ou `ab_test`, indexado e com constraint no banco. Runs internos não aparecem nas rotas públicas nem participam da substituição de avaliações (D18) |
+
+Implementado na etapa 2.5, com a migration `0004` de `attempts`. Os JSONs começam
+vazios e aceitam checkpoints parciais; `complete=True` só é gravado depois do mapa.
+Cada gravação confere status `profiling` e a posse pelo id da task. O reprocessamento
+preserva os checkpoints e o snapshot, inclusive a Question já resolvida.
 
 **`RunEvent`**: append-only.
 

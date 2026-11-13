@@ -48,7 +48,7 @@ def create_attempt(
 def get_run(request: HttpRequest, run_id: UUID) -> RunResponse:
     """Estado atual do run e a trilha de eventos em ordem cronológica."""
     del request
-    run = Run.get_with_events(run_id)
+    run = Run.get_with_events(run_id, public=True)
     if run is None:
         raise Http404("Run não encontrado.")
     return RunResponse.from_run(run)
@@ -63,6 +63,8 @@ def decide_gate(
 ) -> Status[RunResponse] | Status[dict[str, str]]:
     """Decisão do gate humano: `continue` segue para o E4, `close` encerra o run."""
     del request
+    if Run.get_with_events(run_id, public=True) is None:
+        return RUN_NOT_FOUND
     try:
         decide_run(run_id, body.decision, actor="service-api", note=body.note)
     except Run.DoesNotExist:

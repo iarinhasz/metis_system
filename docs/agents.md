@@ -210,7 +210,7 @@ pela fábrica, com schemas de `agents/schemas/profiling.py` fechados em uma vers
 taxonomia. O schema do topic valida também o par topic/subfield. Respostas inválidas
 voltam com motivo sanitizado até o orçamento local; o esgotamento termina em `error_llm`.
 `questions/resolver.py` produz a Question e seu snapshot pela cadeia de fallback.
-A composição abaixo e a persistência no Run entram na etapa 2.5.
+A composição abaixo e a persistência no Run estão implementadas na etapa 2.5.
 
 ```python
 Workflow(name="profiling", telemetry=False, steps=[
@@ -227,6 +227,18 @@ Workflow(name="profiling", telemetry=False, steps=[
 
 - O enum do segundo passo é montado em tempo de execução (`pydantic.create_model` com `Literal` dos filhos do field escolhido). Assim o modelo não consegue devolver um topic de outro field.
 - Num Run de rubric check (`purpose=rubric_check`), o `resolve_question` usa a Question rascunho do `config_snapshot` em vez de resolver pela árvore.
+
+O `ProfilingStage` chama `run_profiling()` com a fábrica e o `DatabaseUsageSink`.
+Os executors são classes chamáveis em `questions/workflow.py`; cada passo consulta
+o Run, reaproveita seu checkpoint e confere a posse antes de gravar. Field, topic,
+resolução e cada seção ambígua concluída sobrevivem ao retry da task. O Celery
+continua sendo o único responsável pelo retry de indisponibilidade do provedor.
+
+Antes da primeira chamada, o Run fixa os specs, os templates de prompt, o método,
+a versão da taxonomia, o limite de tentativas e o limiar de confiança. Os hashes
+dos prompts renderizados são registrados junto dos checkpoints e correspondem aos
+`LLMCall`s. Um retry usa essa configuração, mesmo que o ambiente ou os prompts
+tenham mudado. As credenciais ficam fora do snapshot.
 
 ### E3 — Integridade (`integrity/workflow.py`)
 

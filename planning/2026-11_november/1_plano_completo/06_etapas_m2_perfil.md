@@ -91,6 +91,11 @@ dois provedores usam HTTP local; não exigem chaves nem chamadas a LLMs externos
 
 **Commit sugerido:** `feat: assign section roles and build the document map`
 
+**Situação (13/11/2026):** implementada como dependência da 2.5, com regras PT/EN
+por tipo de artigo, classificação apenas dos títulos ambíguos, fallback `other`
+e mapa determinístico. Testes cobrem títulos compostos, papéis incompatíveis,
+baixa confiança e o conteúdo do mapa.
+
 ---
 
 ## Etapa 2.5 — Workflow do E2 e o Run
@@ -107,6 +112,15 @@ dois provedores usam HTTP local; não exigem chaves nem chamadas a LLMs externos
 - Retry no meio → a classificação já gravada não chama o agente de novo.
 
 **Commit sugerido:** `feat: run profiling stage and store the run profile`
+
+**Situação (13/11/2026):** implementada. Workflow Agno com política explícita de
+propagação de erros; checkpoints de field, classificação, Question, papéis e mapa
+no Run. Migration dos quatro campos, snapshot de configuração sem credenciais,
+retomada com posse conferida e isolamento dos propósitos internos nas rotas públicas
+e na substituição de avaliações. Testes eager com fakes e PostgreSQL real.
+
+Validação: suíte com **533 testes aprovados** (5 testes `llm` fora da execução),
+Ruff, mypy, checks do Django e migrations no PostgreSQL 18.
 
 ---
 

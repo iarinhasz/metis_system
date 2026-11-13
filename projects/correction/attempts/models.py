@@ -11,7 +11,7 @@ from django.db.models.functions import Now
 from django.utils import timezone
 
 from projects.correction.agents.specs import Provider, Role
-from projects.correction.attempts.status import RunStatus, Stage
+from projects.correction.attempts.status import RunPurpose, RunStatus, Stage
 from projects.correction.queries.attempts.article import ArticleManagement
 from projects.correction.queries.attempts.attempt import AttemptManagement
 from projects.correction.queries.attempts.llm_call import LLMCallManagement
@@ -73,6 +73,17 @@ class Attempt(AttemptManagement, TimeStampModel):
 
 class Run(RunManagement, TimeStampModel):
     attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name="runs")
+    purpose = models.CharField(
+        max_length=16,
+        choices=[(purpose.value, purpose.value) for purpose in RunPurpose],
+        default=RunPurpose.EVALUATION,
+        db_index=True,
+    )
+    question = models.ForeignKey(
+        "questions.Question", on_delete=models.PROTECT, null=True, blank=True, related_name="runs"
+    )
+    profile = models.JSONField(default=dict, blank=True)
+    config_snapshot = models.JSONField(default=dict, blank=True)
     status = models.CharField(
         max_length=40,
         choices=[(status.value, status.value) for status in RunStatus],
@@ -101,6 +112,12 @@ class Run(RunManagement, TimeStampModel):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(purpose__in=[purpose.value for purpose in RunPurpose]),
+                name="run_purpose_valid",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"Run {self.pk} ({self.status})"

@@ -39,7 +39,7 @@ são fields da mesma versão e não participam da resolução principal.
 A saída `ArticleProfile` traz o caminho completo com códigos e nomes, versão da
 taxonomia, tipo do artigo, idioma, palavras-chave, áreas secundárias e as duas
 confianças. A confiança final é a menor dos dois passos. O perfil é imutável e
-serializa com `model_dump(mode="json")` para o futuro `Run.profile`.
+serializa com `model_dump(mode="json")` para `Run.profile["classification"]`.
 
 Cada passo aceita até `METIS_PROFILING_MAX_ATTEMPTS` respostas (padrão: **3**).
 Uma resposta inválida provoca outra chamada com os nomes dos campos e os códigos de
@@ -50,8 +50,40 @@ e pelo sink fornecidos à fábrica; não se repete o field quando só o topic é
 
 A versão é um argumento obrigatório: uma nova carga da taxonomia não altera o
 catálogo no meio da classificação. Versão ausente ou field sem topics gera
-`SetupRequired`. A execução com Agno Workflow e a persistência/retomada no Run entram
-na etapa 2.5.
+`SetupRequired`. A etapa 2.5 separa `classify_field()` e `classify_topic()` em passos
+do Workflow, com checkpoints independentes no Run; `profile_article()` continua
+disponível para chamadas avulsas.
+
+### Workflow e retomada implementados (2.5)
+
+O E2 recebe o id do Run e lê `Run.extraction.article`. A task executa o Workflow
+Agno de forma síncrona e só chega a `profiled` depois de persistir a classificação,
+a Question, os papéis de todas as seções e o mapa. A transição publica o E3 após
+o commit. Falta de taxonomia ou de Question disponível leva a `waiting_setup`.
+Depois da configuração, a ação **Reprocessar** no admin retoma os passos pendentes.
+
+`METIS_EVALUATION_METHOD` seleciona o método, com padrão `standard`.
+`METIS_PROFILING_TAXONOMY_VERSION` permite escolher uma carga específica; vazio
+seleciona a versão carregada mais recentemente. Essa escolha fica fixa no Run
+antes da primeira chamada. Também ficam fixos specs, templates, orçamento local
+e limiar de confiança. Nenhuma chave de API entra no snapshot.
+
+`Run.profile` guarda `field_choice`, `classification`, `resolution`, `section_roles`
+e `document_map`. `complete=True` marca o fim do E2. Cada resposta bem-sucedida
+é gravada antes do passo seguinte: uma falha no topic não repete o field, e uma
+falha numa seção ambígua não repete outras seções. Toda escrita confere se a task
+ainda tem a posse do Run. Os eventos levam apenas ids e metadados de conclusão.
+
+`Run.config_snapshot["question"]` preserva id, versão e textos da rubrica usada.
+Runs `rubric_check` recebem esse snapshot de rascunho ao serem criados e dispensam
+o fallback por Questions ativas. Runs `ab_test` usam a resolução normal. Os dois
+propósitos internos ficam fora das rotas públicas de consulta e decisão, não
+substituem a avaliação retornada no reenvio do PDF e não são invalidados por uma
+nova submissão de avaliação.
+
+Para operar: aplique `uv run python manage.py migrate`, carregue a taxonomia e
+configure uma Question validada e ativa do método selecionado. Sem essa Question,
+o comportamento esperado é `waiting_setup`, preservando a classificação.
 
 ## Taxonomia
 
@@ -146,6 +178,15 @@ Depois de resolver a Question, o E2 dá a cada seção do `ExtractedDocument` um
 - **Casos especiais:** uma seção pode ter mais de um papel ("Experimentos e resultados"). O que não se encaixa fica como `other` e aparece só no mapa.
 - **Mapa do documento:** montado em código, sem LLM, com o abstract, a lista de seções (com papel e primeira frase) e as legendas de figuras e tabelas. Vai em todo passe por seção do E4. Por ser extraído, e não interpretado, pode ser compartilhado pelos 3 avaliadores sem comprometer a independência deles.
 - **O Run guarda** os papéis e o mapa junto com o perfil do artigo.
+
+Implementados como dependência do E2 em `section_roles.py` e `document_map.py`.
+Os papéis aceitos vêm de `agents/schemas/section_roles.py` e são limitados pelo
+`paper_type`. O classificador recebe somente títulos ambíguos e um trecho limitado
+da seção como dados. Resposta inválida, confiança baixa ou papel incompatível
+vira `other`; indisponibilidade do provedor sobe para o retry do estágio.
+Abstract e referências ficam no mapa com `other`, sem chamada de classificação.
+O mapa guarda o abstract, títulos, papéis, primeira frase de cada seção e legendas
+das figuras e tabelas; não incorpora descrições interpretativas das imagens.
 
 ## Estrutura de uma Question
 

@@ -11,10 +11,30 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
 from projects.correction.attempts.models import Article, Run
-from projects.correction.attempts.status import STAGES, RunStatus, Stage
+from projects.correction.attempts.status import STAGES, RunPurpose, RunStatus, Stage
 from projects.correction.metis.config import settings
 
 PDF_V1 = b"%PDF-1.7\nconteudo de teste\n"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("purpose", [RunPurpose.RUBRIC_CHECK, RunPurpose.AB_TEST])
+def test_internal_runs_are_hidden_from_public_routes(
+    run: Run,
+    authenticated_client: Client,
+    purpose: RunPurpose,
+) -> None:
+    internal = Run.create(attempt=run.attempt, purpose=purpose)
+    assert authenticated_client.get(f"/api/runs/{internal.pk}").status_code == 404
+    assert (
+        authenticated_client.post(
+            f"/api/runs/{internal.pk}/decision",
+            data={"decision": "continue"},
+            content_type="application/json",
+        ).status_code
+        == 404
+    )
+    assert authenticated_client.get(f"/api/runs/{run.pk}").status_code == 200
 
 
 CaptureOnCommit = Callable[..., AbstractContextManager[list[Callable[[], Any]]]]

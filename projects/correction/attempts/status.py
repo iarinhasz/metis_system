@@ -4,6 +4,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+class RunPurpose(StrEnum):
+    EVALUATION = "evaluation"
+    RUBRIC_CHECK = "rubric_check"
+    AB_TEST = "ab_test"
+
+
 class RunStatus(StrEnum):
     RECEIVED = "received"
     EXTRACTING = "extracting"

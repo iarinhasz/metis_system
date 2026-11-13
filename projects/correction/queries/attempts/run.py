@@ -18,6 +18,7 @@ from projects.correction.attempts.status import (
     STAGE_FAILURES,
     TRANSITIONS,
     HumanDecision,
+    RunPurpose,
     RunStatus,
     Stage,
 )
@@ -63,18 +64,89 @@ class RunManagement:
         return cls.objects.get(pk=run_id)
 
     @classmethod
-    def get_with_events(cls, run_id: Any) -> Run | None:
+    def get_with_events(cls, run_id: Any, *, public: bool = False) -> Run | None:
         """Run com a attempt e a trilha de eventos já carregadas, sem N+1."""
+        runs = cls.objects.filter(purpose=RunPurpose.EVALUATION) if public else cls.objects.all()
+        return runs.select_related("attempt").prefetch_related("events").filter(pk=run_id).first()
+
+    @classmethod
+    def latest_for_attempt(cls, attempt: Attempt) -> Run | None:
         return (
-            cls.objects.select_related("attempt")
-            .prefetch_related("events")
-            .filter(pk=run_id)
+            cls.objects.filter(attempt=attempt, purpose=RunPurpose.EVALUATION)
+            .order_by("-created_at", "-pk")
             .first()
         )
 
     @classmethod
-    def latest_for_attempt(cls, attempt: Attempt) -> Run | None:
-        return cls.objects.filter(attempt=attempt).order_by("-created_at", "-pk").first()
+    def for_profiling(cls, run_id: Any, task_id: str) -> Run:
+        run = (
+            cls.objects.select_related("extraction")
+            .filter(pk=run_id, current_task_id=task_id, status=RunStatus.PROFILING)
+            .first()
+        )
+        if run is None:
+            raise RunConflict("A task perdeu a posse do perfil.")
+        return run
+
+    @classmethod
+    @transaction.atomic
+    def initialize_profiling(cls, run_id: Any, task_id: str, snapshot: dict[str, Any]) -> Run:
+        run = cls._locked(run_id)
+        cls._require_profiling_owner(run, task_id)
+        if "profiling" not in run.config_snapshot:
+            run.config_snapshot = {**run.config_snapshot, **snapshot}
+            run.updated_at = timezone.now()
+            run.save(update_fields=["config_snapshot", "updated_at"])
+        return run
+
+    @classmethod
+    @transaction.atomic
+    def checkpoint_profile(
+        cls,
+        run_id: Any,
+        task_id: str,
+        key: str,
+        value: Any,
+        *,
+        prompt_versions: dict[str, str],
+        question_id: Any = None,
+    ) -> None:
+        """Persiste um passo, sem perder os anteriores e sem aceitar uma task obsoleta."""
+        run = cls._locked(run_id)
+        cls._require_profiling_owner(run, task_id)
+        run.profile = {**run.profile, key: value}
+        run.config_snapshot = {
+            **run.config_snapshot,
+            "prompt_versions": {
+                **run.config_snapshot.get("prompt_versions", {}),
+                **prompt_versions,
+            },
+        }
+        fields = ["profile", "config_snapshot", "updated_at"]
+        if question_id is not None:
+            run.question_id = question_id
+            run.config_snapshot["question"] = value["question"]
+            fields.append("question")
+        run.updated_at = timezone.now()
+        run.save(update_fields=fields)
+
+    @staticmethod
+    def _require_profiling_owner(run: Run, task_id: str) -> None:
+        if run.status != RunStatus.PROFILING or run.current_task_id != task_id:
+            raise RunConflict("A task perdeu a posse do perfil.")
+
+    @classmethod
+    @transaction.atomic
+    def record_profiling_prompt(cls, run_id: Any, task_id: str, name: str, version: str) -> None:
+        """Registra a versão antes da chamada, inclusive quando o provedor vai falhar."""
+        run = cls._locked(run_id)
+        cls._require_profiling_owner(run, task_id)
+        run.config_snapshot = {
+            **run.config_snapshot,
+            "prompt_versions": {**run.config_snapshot.get("prompt_versions", {}), name: version},
+        }
+        run.updated_at = timezone.now()
+        run.save(update_fields=["config_snapshot", "updated_at"])
 
     @classmethod
     def attach_extraction(cls, run_id: Any, task_id: str, extraction: Extraction) -> bool:
@@ -127,9 +199,22 @@ class RunManagement:
 
     @classmethod
     @transaction.atomic
-    def create(cls, *, attempt: Attempt, actor: str = "pipeline") -> Run:
+    def create(
+        cls,
+        *,
+        attempt: Attempt,
+        actor: str = "pipeline",
+        purpose: RunPurpose | str = RunPurpose.EVALUATION,
+        config_snapshot: dict[str, Any] | None = None,
+    ) -> Run:
         """Cria o run no checkpoint `received`, já com o primeiro evento."""
-        run = cls.objects.create(attempt=attempt, status=RunStatus.RECEIVED, version=1)
+        run = cls.objects.create(
+            attempt=attempt,
+            status=RunStatus.RECEIVED,
+            version=1,
+            purpose=RunPurpose(purpose),
+            config_snapshot=config_snapshot or {},
+        )
         _run_event().append(
             run,
             event_type="transition",
@@ -403,7 +488,7 @@ class RunManagement:
     def supersede_other_attempts(cls, article: Article, current_attempt: Attempt) -> int:
         runs = (
             cls.objects.select_for_update()
-            .filter(attempt__article=article)
+            .filter(attempt__article=article, purpose=RunPurpose.EVALUATION)
             .exclude(attempt=current_attempt)
             .exclude(status__in=[status.value for status in FINAL])
             .order_by("pk")

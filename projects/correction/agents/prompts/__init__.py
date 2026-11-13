@@ -27,8 +27,16 @@ def render_text(template: str, **values: str) -> RenderedPrompt:
 
 
 def render(name: str, output_schema: type[BaseModel], **values: str) -> RenderedPrompt:
+    return render_template(template(name), output_schema, **values)
+
+
+def template(name: str) -> str:
     path = (PROMPT_DIR / f"{name}.md").resolve()
     if not path.is_relative_to(PROMPT_DIR.resolve()):
         raise ValueError("Caminho de prompt fora do catálogo.")
+    return path.read_text(encoding="utf-8")
+
+
+def render_template(text: str, output_schema: type[BaseModel], **values: str) -> RenderedPrompt:
     example = schema_example(output_schema).model_dump_json(indent=2)
-    return render_text(path.read_text(encoding="utf-8"), **(values | {"example_json": example}))
+    return render_text(text, **(values | {"example_json": example}))

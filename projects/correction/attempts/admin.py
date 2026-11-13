@@ -57,8 +57,9 @@ class AttemptAdmin(ReadOnlyModelAdmin):
 class RunAdmin(ReadOnlyModelAdmin):
     """Página do run com os botões do gate (continuar, encerrar) e do reprocessamento."""
 
-    list_display = ("id", "attempt", "status", "stage", "version", "created_at")
-    list_filter = ("status", "stage")
+    list_display = ("id", "attempt", "purpose", "status", "stage", "question", "created_at")
+    list_filter = ("purpose", "status", "stage")
+    list_select_related = ("attempt", "question")
     search_fields = ("id", "attempt__article__external_id")
 
     def get_urls(self) -> list[URLPattern]:

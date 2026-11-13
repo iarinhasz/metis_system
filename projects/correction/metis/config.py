@@ -33,6 +33,8 @@ class MetisSettings(BaseSettings):
     api_token: str = ""
     media_root: str = "media"
     max_upload_mb: int = 50
+    evaluation_method: str = Field(default="standard", min_length=1, pattern=r"^[a-zA-Z0-9_-]+$")
+    profiling_taxonomy_version: str = ""
 
     # Opcional: amplia a cota de leitura da taxonomia pública do OpenAlex.
     openalex_api_key: str = ""
