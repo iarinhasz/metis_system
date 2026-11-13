@@ -23,7 +23,7 @@ def publisher(monkeypatch: pytest.MonkeyPatch) -> Mock:
 def fake_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
     """Troca a extração do E1 (chamadas ao modelo) por uma fixa, guardada no banco."""
 
-    def extract(attempt_id: object) -> tuple[Extraction, bool]:
+    def extract(attempt_id: object, **kwargs: object) -> tuple[Extraction, bool]:
         attempt = Attempt.get_by_id(attempt_id)
         section = ExtractedSection(
             id="sec_1",
