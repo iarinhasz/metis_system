@@ -38,5 +38,7 @@ jobs:
       - run: uv sync --locked --all-groups
       - run: uv run ruff check
       - run: uv run ruff format --check
+      - name: Conferir migrações versionadas
+        run: uv run python manage.py makemigrations --check --dry-run
       - run: uv run mypy projects/correction
       - run: uv run pytest
