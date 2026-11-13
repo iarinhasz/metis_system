@@ -289,6 +289,67 @@ a permissão de alterar; os campos em linha respeitam suas permissões do Django
 A taxonomia continua somente de leitura. O rubric check depende do E4 e permanece
 na etapa 3.12, conforme o plano.
 
+### Questions iniciais e benchmark (2.7)
+
+O catálogo `questions/data/initial_questions.json` propõe quatro Questions para o
+método `standard`: genérica, Computação (field 17), Física/Astronomia com foco
+quântico (31) e Medicina (27). Cada uma contém as sete rubricas de domínio; não
+muda a escala, os pesos nem os critérios ativos do método.
+
+Carregue uma versão completa da taxonomia OpenAlex e prepare os rascunhos:
+
+```sh
+uv run python manage.py load_taxonomy
+uv run python manage.py load_taxonomy --execute
+uv run python manage.py seed_questions
+uv run python manage.py seed_questions --execute
+```
+
+`seed_questions` também aceita `--taxonomy-version HASH` e `--file CAMINHO`.
+Sem versão explícita, respeita `METIS_PROFILING_TAXONOMY_VERSION` e depois usa a
+última versão carregada. A falta de qualquer field do catálogo aborta a carga
+inteira. Ela é atômica e serializada, inclusive quando ainda não existe a Question
+genérica. Repetir o comando preserva qualquer Question já existente no mesmo
+escopo/método, incluindo rascunhos, nomes e textos editados por pessoas.
+
+As novas Questions começam **não validadas e inativas**. Os textos são propostas
+para revisão, não rubricas já aprovadas por especialistas. A pessoa responsável
+deve revisar, validar e ativar no admin antes de usar a genérica como fallback
+ou as específicas no E2. O comando não aprova conteúdo nem modifica Runs.
+
+O pacote `projects/correction/evals/` inclui uma amostra aberta de 30 artigos
+(10 por área), com 152 seções, e o comando `bench_profiling`:
+
+```sh
+# Confere a amostra, sem consultar LLM nem escrever relatório.
+uv run python manage.py bench_profiling
+
+# Medição local condicional ao tipo de artigo de referência; sem chamadas pagas.
+uv run python manage.py bench_profiling --execute --mode rules --output regras.json
+
+# Profiler real: field, topic e LLM nas seções ambíguas. Usa o papel fast.
+uv run python manage.py bench_profiling --execute --mode llm --limit 30 --max-attempts 1 --output llm.json
+```
+
+O modo LLM precisa da taxonomia carregada e da chave do provedor configurado para
+`fast` (`GEMINI_KEY`/`METIS_GOOGLE_API_KEY` ou `METIS_OPENAI_API_KEY`, conforme o
+ModelSpec). `--max-attempts` limita respostas inválidas por passo; o retry de
+transporte da fábrica continua valendo. Para outra rodada, use um novo arquivo.
+As entradas e os rótulos são separados. A medição não depende de uma Question
+ativa nem cria Runs: a finalidade é medir a classificação do E2.
+
+A primeira medição real das **regras locais** em 13/11/2026 foi **119/152 (78,29%)**
+de acerto exato dos papéis e **F1 micro 0,7885**, sem falhas nem chamadas de LLM.
+Computação: 44/61; Física: 34/40; Medicina: 41/51. O field não é medido nesse modo.
+O relatório `evals/data/baseline_rules.json` registra os resultados e os hashes.
+
+Os rótulos são provisórios: fields do OpenAlex e papéis anotados pelo Codex,
+ainda sem revisão humana independente. O número é a referência de desenvolvimento
+para este conjunto e este modo, não uma estimativa geral ou uma validação do LLM.
+Consulte [a origem, as licenças e a convenção de anotação](../projects/correction/evals/data/README.md).
+Evals de desempenho ficam fora do CI; os testes regulares conferem o contrato da
+amostra, as métricas e a integração com fakes sem fazer chamadas externas.
+
 ## Falhas
 
 | Situação | Resultado |

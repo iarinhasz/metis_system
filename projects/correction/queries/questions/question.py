@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -22,6 +22,31 @@ if TYPE_CHECKING:
 
 class QuestionManagement:
     objects: ClassVar[models.Manager[Question]]
+
+    @classmethod
+    @transaction.atomic
+    def store_initial_drafts(
+        cls,
+        items: tuple[tuple[DraftQuestion, TaxonomyNode | None], ...],
+        *,
+        method: str,
+    ) -> tuple[tuple[Question, bool], ...]:
+        # Serializa o bootstrap mesmo quando o escopo genérico ainda não tem linha.
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(%s)", [0x4D455449535145])
+        results = []
+        for draft, node in items:
+            existing = (
+                cls.objects.filter(method=method, taxonomy_node=node, is_generic=node is None)
+                .order_by("created_at", "pk")
+                .first()
+            )
+            results.append(
+                (existing, False)
+                if existing is not None
+                else (cls.store_draft(draft, method=method, taxonomy_node=node), True)
+            )
+        return tuple(results)
 
     @classmethod
     def create(

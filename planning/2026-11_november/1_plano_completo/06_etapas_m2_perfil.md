@@ -166,6 +166,29 @@ conexões reais para verificar que o resolver não mistura versões das rubricas
 
 **Pronto quando:** o primeiro número está registrado e vira a meta.
 
+**Implementação (13/11/2026):** catálogo versionado com genérica + Computação,
+Física/Quântica e Medicina. `seed_questions` faz dry-run por padrão e cria quatro
+rascunhos inativos/não validados com `--execute`, preservando qualquer curadoria
+existente no mesmo escopo/método. A revisão, validação e ativação continuam no admin.
+
+`bench_profiling` mede regras locais ou o profiler real (field, topic e papéis
+ambíguos), com relatório JSON de métricas, uso, modelos, versões e falhas. A amostra
+inclui 30 artigos abertos PLOS ONE, 10 por área, com DOI, atribuição, licença e hash
+de origem, em `projects/correction/evals/data/`. Fields vêm do OpenAlex e papéis
+foram anotados pelo Codex; são **rótulos provisórios, sem revisão humana independente**.
+
+Primeira referência local registrada: **119/152 papéis (78,29%)**, **F1 micro 0,7885**,
+zero falhas e zero chamadas pagas. Esse modo usa o tipo de artigo de referência
+e não mede o field. O resultado está em `baseline_rules.json`; não é baseline
+de LLM. A rodada com LLM foi autorizada para até 30 artigos e aguarda a credencial
+do provedor no clone. A aprovação das rubricas e dos rótulos continua pendente.
+
+Validação: **575 testes passaram**, com 5 contratos ao vivo excluídos; Ruff,
+formatação (197 arquivos), mypy (195 arquivos), checks do Django e conferência
+de migrações aprovados. Inclui carga concorrente/idempotente, rollback atômico,
+preservação de curadoria, métricas multilabel e profiler com fakes sem rótulos
+no payload. A taxonomia completa de 4.798 nós foi carregada no banco isolado.
+
 **Commit sugerido:** `feat: seed initial questions and measure profiling`
 
 ---
