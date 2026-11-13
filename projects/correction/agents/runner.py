@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from projects.correction.agents.errors import LLMUnavailable
 from projects.correction.agents.limits import ProviderLimiter
 from projects.correction.agents.pricing import Pricing
-from projects.correction.agents.specs import ModelSpec, Role
+from projects.correction.agents.specs import ModelSpec, Provider, Role
 from projects.correction.agents.usage import LLMUsage, UsageSink
 
 
@@ -93,6 +93,12 @@ class MeasuredRunner[T: BaseModel]:
             input_tokens = (metrics.input_tokens or 0) if metrics else 0
             output_tokens = (metrics.output_tokens or 0) if metrics else 0
             cached_tokens = (metrics.cache_read_tokens or 0) if metrics else 0
+            tokens = (metrics.cache_write_tokens or 0) if metrics else 0
+            reasoning_tokens = (metrics.reasoning_tokens or 0) if metrics else 0
+            # No Google o Agno separa pensamentos dos candidatos; no OpenAI eles já
+            # estão em completion_tokens. A saída registrada é o total faturável.
+            if self._spec.provider is Provider.GOOGLE:
+                output_tokens += reasoning_tokens
             duration = metrics.duration if metrics else None
             elapsed = duration if duration is not None else perf_counter() - started
             usage = LLMUsage(
@@ -106,6 +112,8 @@ class MeasuredRunner[T: BaseModel]:
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 cached_tokens=cached_tokens,
+                cache_write_tokens=cache_write_tokens,
+                reasoning_tokens=reasoning_tokens,
                 latency_ms=max(0, int(elapsed * 1000)),
                 success=content is not None,
                 error=error,
@@ -115,6 +123,7 @@ class MeasuredRunner[T: BaseModel]:
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     cached_tokens=cached_tokens,
+                    cache_write_tokens=cache_write_tokens,
                 ),
             )
             self._sink.record(usage)
