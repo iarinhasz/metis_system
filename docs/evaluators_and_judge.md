@@ -1,5 +1,11 @@
 # Avaliadores, juiz e consolidação (E4 e E5)
 
+**Revisão de 13/11/2026:** contratos/models de rodadas e o E5 estão implementados,
+como detalhado em [Consolidação implementada](#consolidação-implementada-311).
+Passes, checagens, juiz, loop e A/B do E4 neste documento são o **desenho alvo**;
+a task E4 ainda é stub. Não há correlação com notas humanas ou custo médio por
+artigo medidos. [Evidências e metas](status_and_metrics.md).
+
 ## Visão geral
 
 ```text
@@ -39,7 +45,7 @@ Cada passe por seção tem uma tarefa pequena e um checklist próprio. Mas parte
 - **Mapa do documento.** Montado em código no E2, sem LLM (ver [Perfil e Questions](questions_and_profiling.md#papéis-das-seções-e-mapa-do-documento)): abstract, seções com papel e primeira frase, legendas de figuras e tabelas.
   - Com ele, cada passe sabe o que existe fora da sua seção.
   - Na dúvida, o passe marca a observação como `possibly_elsewhere` em vez de afirmar que algo falta.
-- **O artigo é dado, não instrução.** Todo trecho do artigo vai entre delimitadores, com a regra explícita de que nada dentro dele é comando. É a segunda defesa contra prompt injection; a primeira é o scan do E1.
+- **O artigo é dado, não instrução.** Payloads delimitados e conferência de evidência são defesas previstas para E4. O scan de texto oculto do E1 ainda não está implementado.
 - **Ordem do prompt.** O conteúdo do artigo vem antes da tarefa, como prefixo estável, para aproveitar o caching de prompt. Isso pesa sobretudo no juiz, que recebe o artigo inteiro em toda rodada.
 
 ## Papéis e critérios
@@ -63,7 +69,7 @@ Cada papel de seção avalia só os critérios que dependem dele. A tabela é a 
 
 - **Três slots**, cada um com um `ModelSpec` (provedor, modelo, parâmetros). A configuração fica nos settings, e o Run guarda um snapshot.
   - Hoje há chave da OpenAI e do Google (D14): A = GPT, B = Gemini, C = outro modelo de uma das duas famílias, de tamanho ou geração diferente.
-  - O slot C troca de provedor só por config (ex.: OpenRouter ou Ollama) quando houver chave de uma 3ª família.
+  - Hoje o slot C troca entre OpenAI e Google por config. OpenRouter/Ollama e uma terceira família exigem ampliar `Provider`, `Family`, a fábrica e os testes.
 - **Independência.** Cada avaliador faz os próprios passes, checagens e síntese. Só o mapa do documento é compartilhado, e ele é extraído em código, sem nenhuma opinião.
 - **Por que famílias diferentes:** os erros ficam menos correlacionados. Três execuções do mesmo modelo tendem a errar igual, e aí nem o juiz nem a mediana pegam. Com duas famílias em três slots, a correlação é maior (risco R13): o A/B do M3 mede a concordância entre os slots da mesma família à parte.
 
@@ -187,7 +193,8 @@ O esboço em código (E4 e E5), com a tabela do que cada passo lê, grava e pula
 
 **Meta-revisor (agente).** Une as sínteses e as observações dos 3 avaliadores em pontos fortes, pontos fracos e sugestões acionáveis, citando os critérios e as evidências que usa. **Não altera notas.**
 
-**`FinalReport`.** JSON estruturado, renderizado em Markdown/PDF. Nunca é uma string que outra parte do sistema precise parsear.
+**`FinalReport`.** JSON estruturado, com render Markdown implementado. PDF é
+planejado. O contrato JSON é consumido diretamente, sem parsear a narrativa.
 
 | Campo | Conteúdo |
 |---|---|
@@ -273,6 +280,10 @@ expõe rodadas, vereditos e relatório apenas para leitura. A saída em PDF cont
 fora do escopo desta etapa, que exige render Markdown.
 
 ## Custo
+
+As quantidades e tempos desta tabela são **estimativas do desenho de E4**,
+sem benchmark real. `LLMCall` e o painel de custo já permitem registrar uma
+medição futura; o alerta de orçamento não bloqueia chamadas.
 
 | | `whole_document` | `sectioned` (proposta) |
 |---|---|---|

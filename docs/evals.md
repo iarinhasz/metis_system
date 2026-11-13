@@ -5,6 +5,10 @@ relatórios, sua gravação sem sobrescrita e a comparação entre variantes de 
 prompts e modelos. O primeiro consumidor é `bench_profiling`, da etapa 2.7.
 O app registra comandos de gestão e não possui models ou tasks de produção.
 
+Os [resultados disponíveis e metas revistas](status_and_metrics.md) identificam
+o baseline de regras locais, seu alcance e as medições ainda pendentes. Testes
+da infraestrutura de evals com fakes não validam o profiler com provedores reais.
+
 ## Executar e guardar uma medição
 
 ```sh

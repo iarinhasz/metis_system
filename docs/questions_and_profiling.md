@@ -1,5 +1,10 @@
 # Perfil e Questions (E2)
 
+**Estado de 13/11/2026:** E2, curadoria, catálogo inicial e infraestrutura do
+rubric check implementados. A medição disponível é de regras locais, sem LLM;
+aprovação especialista das rubricas/rótulos e medição do profiler real continuam
+pendentes. [Resultados e metas](status_and_metrics.md).
+
 ## O que é uma Question no Metis
 
 Ninguém informa a qual Question um artigo pertence: **o sistema infere a Question pela área do artigo**.
@@ -19,7 +24,7 @@ O agente `ArticleProfiler` lê título, abstract e palavras-chave e devolve (`ou
 | `secondary_areas` | Outras áreas plausíveis, para artigos interdisciplinares |
 | `paper_type` | `empirical`, `theoretical`, `review`, `methods` ou `case_study` |
 | `keywords` | Termos-chave |
-| `language` | Idioma do artigo; também define o idioma do relatório (ver questões abertas) |
+| `language` | Idioma identificado do artigo; política de idioma do relatório ainda em Q5 |
 
 A classificação roda em **2 passos**: primeiro o field, depois subfield e topic dentro dele. Cada escolha fica num enum pequeno e fechado, o que reduz erro e impede rótulo inventado.
 
@@ -162,7 +167,7 @@ coleção é recusada. Listas permitem importar um recorte explícito para desen
 da resposta e os metadados da API não mudam a versão. Repetir a carga preserva os UUIDs.
 Conteúdo diferente cria outra versão, sem apagar a árvore anterior nem suas Questions.
 O admin oferece busca, filtros por nível e versão e leitura dos pais; criação, edição,
-exclusão e ações em lote ficam bloqueadas. A ligação com o Run vem na etapa 2.5.
+exclusão e ações em lote ficam bloqueadas. A ligação com o Run está implementada na 2.5.
 
 Fontes do contrato: [objeto topic e hierarquia](https://help.openalex.org/data/topics/)
 e [paginação do OpenAlex](https://help.openalex.org/api/paging/), conferidas em 12/11/2026.
@@ -203,7 +208,10 @@ Exemplo, com nomes ilustrativos: um artigo sobre correção de erros em qubits s
 
 ## Papéis das seções e mapa do documento
 
-Depois de resolver a Question, o E2 dá a cada seção do `ExtractedDocument` um **papel**. No E4, é o papel que define o prompt, o checklist e os critérios de cada passe por seção (ver [Avaliadores e juiz](evaluators_and_judge.md#papéis-e-critérios)).
+Depois de resolver a Question, o E2 dá a cada seção do `ExtractedArticle` um
+**papel**. A entrada atual é o contrato do E1; `ExtractedDocument` permanece
+pendente na 1.1/1.11. No E4 planejado, o papel definirá prompt, checklist e critérios
+do passe (ver [Avaliadores e juiz](evaluators_and_judge.md#papéis-e-critérios)).
 
 | `paper_type` | Papéis |
 |---|---|
@@ -324,8 +332,9 @@ admin identifica a pessoa que rascunhou, editou, validou ou ativou.
 
 Rascunhar exige a permissão de adicionar Question. Editar, validar e ativar exigem
 a permissão de alterar; os campos em linha respeitam suas permissões do Django.
-A taxonomia continua somente de leitura. O rubric check depende do E4 e permanece
-na etapa 3.12, conforme o plano.
+A taxonomia continua somente de leitura. O rubric check da 3.12 já agenda lotes e
+compara resultados no admin; sem E4 real, seus runs param em `waiting_setup`,
+conforme [a limitação descrita acima](#rubric-check-no-admin-312).
 
 ### Questions iniciais e benchmark (2.7)
 

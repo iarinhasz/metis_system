@@ -2,6 +2,14 @@
 
 Os princípios e as tabelas do M0 continuam os do [plano de outubro](../../2026-10_october/1_desenho_inicial/05_testes_e_verificacao.md). Este arquivo acrescenta os testes de M1–M6, os testes do Agno e a verificação manual por ponto de integração.
 
+**Leitura desta matriz (13/11/2026):** nomes de testes e roteiros de integração
+abaixo incluem itens **planejados**. Eles não são prova de execução. Na base
+`32ff4e6`, a última validação registrada teve 654 testes passando, 5 `llm`
+excluídos, mypy em 237 arquivos e Ruff em 239, sem migrações pendentes. Essa
+validação pertence à 6.1; a revisão de docs 6.4 não reexecuta a suíte.
+E3/E4 ainda são stubs e I3–I6 não estão comprovados ponta a ponta.
+Veja [resultados, limites e metas revistas](../../../docs/status_and_metrics.md).
+
 ## Princípios (resumo)
 
 - **Banco real** (pytest-django com Postgres), sem mock nem patch.
@@ -14,7 +22,9 @@ Os princípios e as tabelas do M0 continuam os do [plano de outubro](../../2026-
 
 ## Testes comuns a todo workflow Agno
 
-Cada workflow (E1–E5) tem estes testes, além dos específicos:
+Cada workflow real deve atender aos contratos abaixo. E2 e E5 já têm testes de
+retomada/posse com fakes; E1 usa sessão, sem Workflow. A lista não afirma que
+workflows de E3/E4 ou todos estes nomes de teste já existam:
 
 | Teste | Espera |
 |---|---|
@@ -75,6 +85,14 @@ A [verificação manual do M0](../../2026-10_october/1_desenho_inicial/05_testes
 
 1. Rodar `bench_reviews`, `bench_judge`, `bench_plagiarism` e os benchmarks da Fase 2.
 2. Comparar com os números anteriores; as metas revistas estão registradas no planejamento.
+
+### Revisão documental 6.4
+
+Conferir os links e âncoras locais de `README.md`/`docs/`, as fontes de código,
+rotas e opções de comandos citadas, e se cada métrica informa data, amostra,
+modo e limitações. As metas de desenvolvimento ficam em
+[Estado e métricas](../../../docs/status_and_metrics.md#metas-revistas-por-marco).
+Links comerciais e tarifas são snapshots históricos, sem nova validação externa.
 
 ## Portões no CI
 

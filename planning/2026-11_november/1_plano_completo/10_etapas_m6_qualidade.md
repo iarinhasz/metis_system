@@ -81,6 +81,24 @@ não apontou problemas e `makemigrations --check --dry-run` não encontrou alter
 
 ## Etapa 6.4 — Retenção e docs
 
+**Recorte docs do módulo entregue em 13/11/2026:** revisão contra o código de
+`32ff4e6`, identificação do fluxo alvo e da implementação atual, comandos/API,
+configuração, limites, modelos e metas de M0–M6. Os [números e metas revistas](../../../docs/status_and_metrics.md)
+preservam os ensaios históricos: citações 244/263 de recall e 244/264 de
+precisão no protocolo filtrado; regras locais 119/152 e F1 micro 0,7885, sem LLM.
+Os 654 testes da 6.1 são referência da entrega anterior, não nova execução de 6.4.
+
+**Verificação do recorte:** 21 arquivos Markdown revisados, 181 links/âncoras
+locais conferidos sem erros e `git diff --check` limpo. Baseline, totais por
+área, padrões da configuração, rotas, stubs e sink da curadoria conferidos
+diretamente contra os arquivos locais. Sem alteração de código, banco ou
+chamada a provedor nesta revisão.
+
+**A etapa completa permanece aberta:** Q7 ainda precisa de política de retenção,
+permissões específicas e comando de limpeza com dry-run. Nada foi apagado nesta
+revisão. Medição de LLM/PeerRead, A/B e benchmarks de integridade continuam
+pendentes; este recorte não fecha o pronto do M6.
+
 **O que fazer**
 - Retenção de dados (Q7): por quanto tempo guardar PDFs, recortes e relatórios, e quem vê; comando de limpeza com dry-run.
 - Revisão dos docs contra o código.

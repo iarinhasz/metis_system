@@ -1,7 +1,14 @@
 # Metis: plano completo do projeto
 
-**Situação:** M0 implementado (etapas 0.1–0.7, [04](04_etapas_m0_restante.md)). Na fase 2, a 1.5 e a 1.10 estão implementadas: o E1 divide o artigo com chamadas ao Gemini, conferidas contra o PDF (o GROBID foi descartado em 11/11), separa as referências em campos e liga as citações (recall de 93% e precisão de 92% no PeerRead) ([05](05_etapas_m1_extracao.md)). A 1.6 (lista de figuras e tabelas), a 1.8 (descrição de cada figura e tabela, conferida pelo começo da legenda) e a 1.9 (retomada dos passos num retry do estágio) também estão feitas; a 1.11 (montar o `ExtractedDocument`) espera a 1.1 e a 1.7. O código fica em `projects/correction/`
-**Data:** 05/11/2026
+**Situação revisada em 13/11/2026 (base `32ff4e6`):** plataforma, E1, E2,
+curadoria e Questions iniciais, E5, rubric check, custo no admin e base de evals
+implementados. **E3 e E4 ainda são stubs**. E5 sem rodadas julgadas de A/B/C
+retorna `waiting_setup`. `ExtractedDocument`, texto oculto, recortes, A/B,
+benchmarks de avaliação/integridade e retenção completa continuam pendentes.
+O código fica em `projects/correction/`. O [estado do módulo e as metas revistas](../../../docs/status_and_metrics.md)
+registram números, condições e evidências sem declarar os marcos completos.
+
+**Data original:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)
 **Fluxo no Agno:** [docs/agents.md](../../../docs/agents.md); em diagramas, com as entidades e as ligações: [docs/flow_graph.md](../../../docs/flow_graph.md)
 **Equipe (07/11):** 4 módulos, um por integrante, com uma branch por etapa e PR para a `dev`: [divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html) (abra no navegador)
@@ -33,6 +40,11 @@ As decisões D1–D13 continuam valendo, com os ajustes indicados abaixo.
 | D21 | Em que ordem roda o gate de qualidade do E1? | Antes da descrição das figuras, para não pagar visão por um PDF que vai ser rejeitado | Depois da descrição (ordem do desenho inicial) |
 
 O detalhe de cada uma está em [docs/agents.md](../../../docs/agents.md) e nos docs ajustados.
+
+**Aplicação atual da D16:** E2 e E5 têm Workflow Agno; E1 usa sessão e
+`bounded_map` sem Workflow. E3/E4 permanecem stubs. A fronteira de `Agent` e
+modelos em `agents/` está implementada e testada; os esboços não comprovam
+implementação de todos os workflows.
 
 ## Visão do caminho
 

@@ -1,6 +1,9 @@
 # Modelos de dados
 
-Campos principais previstos. Cada marco fecha os models do seu app (tipos, índices, restrições), e este documento é atualizado junto com o código.
+Revisão de 13/11/2026. `attempts`, `questions`, `extractor` e `evaluation`
+têm models e migrations. A seção `integrity` e suas entidades no diagrama são
+**planejadas**, ainda sem app instalado. Os campos são um resumo; models e
+migrations são a fonte de tipos, índices e restrições. [Estado do módulo](status_and_metrics.md).
 
 ## Visão geral
 
@@ -26,7 +29,7 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | Campo | Observação |
 |---|---|
 | `external_id` | Texto, único. A chave do artigo no sistema que submete (ver questão aberta Q3 no planejamento) |
-| `title` | Preenchido pelo E1, a partir do cabeçalho do PDF |
+| `title` | Campo opcional; o E1 atual guarda o título em `Extraction.content.title`, sem atualizar `Article.title` |
 
 **`Attempt`**: uma versão enviada do artigo.
 
@@ -139,6 +142,10 @@ As figuras e as descrições ficam dentro do `content` da `Extraction` (1.6 e 1.
 
 ## `integrity`
 
+**Planejado para M4/M5.** Não existem models/migrations dessas entidades na base
+atual. E3 não grava relatório; `FinalReport.integrity` é um resumo JSON com
+`not_checked`, sem FK para uma tabela de integridade.
+
 | Model | Campos principais |
 |---|---|
 | `IntegrityReport` | `run` (1:1), `risk_level`, `coverage`, `narrative`, `rules_version` |
@@ -189,7 +196,7 @@ As migrations são `attempts/0005_run_consolidation.py` e `evaluation/0001_initi
 | `rejected_invalid_submission` | final | O PDF não é um artigo processável |
 | `closed_by_reviewer` | final | Encerrado na revisão humana |
 | `superseded` | final | Chegou uma versão mais nova do artigo |
-| `waiting_setup` | recuperável | Falta configuração (nenhuma Question disponível) |
+| `waiting_setup` | recuperável | Falta chave/configuração, taxonomia, Question ou rodadas completas para E5 |
 | `error_llm`, `error_external` | recuperável | Falha do provedor ou de serviço externo após os retries |
 | `error_unexpected` | recuperável | Bug, ou o reconciliador desistiu após os limites |
 

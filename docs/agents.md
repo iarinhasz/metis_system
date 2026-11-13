@@ -4,6 +4,11 @@ Como o Metis usa o Agno 3 dentro dos estágios: o pacote `agents/`, o catálogo 
 
 Os caminhos de código são relativos a `projects/correction/`. A versão em diagramas, com as entidades que cada passo lê e grava, está em [Grafo do fluxo](flow_graph.md).
 
+**Estado revisto em 13/11/2026:** fábrica, limites, uso/custo, E1 sem Workflow,
+E2 e E5 reais. Os esboços de E3/E4 e o A/B abaixo são planejados; ainda não há
+avaliadores/juiz em produção. [Medições, metas e validação atual](status_and_metrics.md).
+As verificações de 1.2/1.3/1.4 nesta página são registros históricos de cada entrega.
+
 > **Spike 1.2, verificação local em 12/11/2026:** Agno **3.1.12**, Python **3.14.5**, `openai` **3.49.0** e `google-genai` **1.75.0** instalados. Workflows e clientes dos dois provedores foram exercitados com executors sintéticos e HTTP local. A validação de respostas dos provedores com chaves válidas continua **pendente**, por decisão de seguir com os testes locais. O resultado e as correções dos esboços estão abaixo.
 
 ## Resultado do spike 1.2
@@ -69,7 +74,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
        publica o próximo                             (agents/: único lugar com Agent e Model)
 ```
 
-- **Uma task Celery por estágio, um Workflow Agno por estágio.** O `execute()` do `StageTask` monta o workflow do estágio e chama `workflow.run()`, de forma síncrona. A decisão é a D5, e o detalhe está em [Orquestração](orchestration.md#agno-dentro-dos-estágios).
+- **Uma task Celery por estágio.** E2 e E5 chamam `workflow.run()` de forma síncrona. E1 usa sessão e `bounded_map`, sem Workflow; E3/E4 ainda são stubs. Essa aplicação atual ajusta o alvo D16 de um Workflow por estágio. [Orquestração](orchestration.md#agno-dentro-dos-estágios).
 - **O banco é a fonte da verdade.** O workflow recebe só ids. Cada passo grava o que produz e, quando o estágio é retentado, pula o que já existe.
 - **O Agno não decide o fluxo.** É `Workflow`, não `Team`: a ordem dos passos é fixa em código, e os agentes só preenchem saídas tipadas.
 
@@ -91,7 +96,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
 | Módulo | Conteúdo |
 |---|---|
 | `specs.py` | `ModelSpec(provider, model_id, family, params, timeout_seconds)`, pydantic congelado. `Role` (enum dos papéis de modelo) e o mapa papel → spec, lido do `MetisSettings` |
-| `models.py` | `ModelFactory.build(spec)`: devolve o modelo Agno do provedor, com a chave passada explicitamente, `retries` e `exponential_backoff=True` (só para 429/5xx) e o timeout do spec. `judge_for(spec)` escolhe o juiz |
+| `models.py` | `ModelFactory.build(spec)`: modelo Agno com chave explícita, timeout e retry de falhas transitórias (incluindo timeout/conexão), sem multiplicar retry da SDK. `judge_for(spec)` escolhe o juiz |
 | `factory.py` | `AgentFactory(run_id, stage, usage_sink, limiter)`: um método por papel do catálogo. Cria um `Agent` novo por chamada, com instruções renderizadas, `output_schema`, `telemetry=False` e `store_media=False` |
 | `runner.py` | Protocolo `AgentRunner` (`run(payload) -> AgentResult`). A implementação real envolve o `Agent`: pega o limiter, roda, mede e chama o `UsageSink`, inclusive nas falhas. Confere primeiro `run.status`: em `error`, levanta `LLMUnavailable`. Em sucesso, se `content` não for o schema pedido, devolve `AgentResult(valid=False, raw=...)`. O `Agent.run()` não propaga normalmente o `ModelProviderError` |
 | `prompts/` | Arquivos `.md` com marcadores `<<nome>>`. O `render()` falha se sobrar marcador, a versão é o hash do conteúdo renderizado sem o artigo, e o exemplo JSON é gerado do `output_schema`. Um prompt por papel de seção em `prompts/sections/<papel>.md` |
@@ -111,6 +116,10 @@ ativação humanas no admin. A geração usa runner e limiter da mesma fábrica,
 com até três tentativas de resposta inválida. O formulário mostra falhas do
 provedor e preserva a Question ativa. O fluxo de uso está em
 [Curadoria](questions_and_profiling.md#curadoria-implementada-26).
+
+Essa chamada do admin não tem Run nem `DatabaseUsageSink`: a fábrica padrão usa
+`NullUsageSink`. Portanto rascunhos não geram `LLMCall` persistente e seu custo
+não aparece no painel por run. Benchmarks usam `MemoryUsageSink` no próprio relatório.
 
 ### Implementação da etapa 1.3
 
@@ -152,7 +161,7 @@ Hoje a equipe tem chave da **OpenAI** e do **Google**. A decisão é a D14.
 |---|---|---|
 | `evaluator_a` | OpenAI (GPT), modelo forte | Avaliador A |
 | `evaluator_b` | Google (Gemini), modelo forte | Avaliador B |
-| `evaluator_c` | Uma das duas, com outro tamanho ou geração | Avaliador C. Muda de provedor só por config (ex.: OpenRouter ou Ollama), quando houver chave |
+| `evaluator_c` | Uma das duas, com outro tamanho ou geração | Avaliador C. Troca entre OpenAI e Google por config; terceiro provedor requer ampliar a fábrica e os enums |
 | `judge_openai` | OpenAI, modelo forte | Juiz das revisões feitas pelo Gemini |
 | `judge_google` | Google, modelo forte | Juiz das revisões feitas pelo GPT |
 | `meta_reviewer` | Forte, de qualquer família | Meta-revisor do E5 |
@@ -162,7 +171,7 @@ Hoje a equipe tem chave da **OpenAI** e do **Google**. A decisão é a D14.
 
 - **Juiz cruzado.** `judge_for(spec)` devolve o juiz da **outra** família: GPT é julgado pelo Gemini, e Gemini pelo GPT. O slot C segue a regra da família dele. Assim nenhum avaliador é julgado por um modelo da mesma família (viés de autopreferência).
 - **Specs por papel** têm padrões de desenvolvimento e aceitam substituição no `.env`; a escolha de produção continua na Q1. O snapshot dos specs usados integra o `config_snapshot` do Run nas etapas seguintes.
-- **Com duas famílias, os erros ficam mais correlacionados** (risco R13). O A/B do M3 mede a concordância, e um 3º provedor entra no slot C sem mudar código.
+- **Duas famílias em três slots deixam risco de correlação** (R13). O A/B ainda precisa medi-la. A fábrica atual aceita somente `openai`/`google` e famílias `gpt`/`gemini`; um terceiro provedor exige código, contratos e testes novos.
 
 ## Catálogo de agentes
 
@@ -250,7 +259,9 @@ tenham mudado. As credenciais ficam fora do snapshot.
 
 ### E3 — Integridade (`integrity/workflow.py`)
 
-Do M0 ao M3, o E3 é um passo só, *pass-through*: risco baixo, relatório vazio e `coverage` = "não checado". A forma final (M5):
+Hoje E3 é um `StageOutcome(payload={"risk": "low"})`, sem Workflow ou
+`IntegrityReport`. O E5 declara `not_checked`, risco desconhecido e cobertura
+indisponível. O esboço a seguir é a forma planejada para M5:
 
 ```python
 Workflow(name="integrity", telemetry=False, steps=[
@@ -284,6 +295,9 @@ Workflow(name="integrity", telemetry=False, steps=[
 - **O gate não é do Agno.** O `StageOutcome(halt=True)` leva o run a `waiting_human_review` pela máquina de estados.
 
 ### E4 — Avaliação (`evaluation/workflow.py`)
+
+**Planejado:** o arquivo atual contém apenas o Workflow do E5. Os executores
+de passes, checagens, síntese, juiz e revisão abaixo ainda não estão implementados.
 
 ```python
 def evaluator_steps(slot, mode):                 # Strategy escolhida na montagem
@@ -319,7 +333,7 @@ Workflow(name="evaluation", telemetry=False, steps=[
 **Por que esta forma (D17):**
 - A rodada 1 é validada e julgada **fora** do loop. Cada iteração do loop é "revisar → validar → julgar", então **a última revisão sempre passa pelo juiz**. Num loop `[judge, revise]`, a revisão da última iteração sairia sem verificação.
 - O `Condition` evita entrar no loop quando a rodada 1 já sai sem pendências.
-- O `end_condition` consulta o estado persistido (há `JudgeVerdict` inválido sem revisão?), não a lista de outputs, porque a documentação não garante que ela cubra só a iteração atual.
+- O `end_condition` consulta o estado persistido (há `JudgeVerdict` inválido sem revisão?). O spike observou que a lista de outputs cobre só a iteração atual.
 - O que continuar inválido depois das 2 revisões vira `unresolved` no `mark_unresolved`.
 
 **Rodadas e persistência**
@@ -363,9 +377,9 @@ e retorna `waiting_setup`. Os contratos e models necessários da 3.2 estão incl
 |---|---|
 | Rascunhar Question | Ação no admin: uma chamada direta do `question_drafter`, que grava a Question com `validated=False`. Não é um Run |
 | Rubric check | Um **Run** com `purpose=rubric_check` sobre uma attempt de amostra. O `config_snapshot` leva a Question rascunho. A extração vem do cache, o E3 é pulado e o E4/E5 rodam normalmente. A Question ativa não é tocada |
-| A/B do modo de avaliação | Runs com `purpose=ab_test` e o modo (`sectioned` ou `whole_document`) no `config_snapshot`, criados pelo comando do A/B |
+| A/B do modo de avaliação (planejado) | `purpose=ab_test` já existe no enum; comando e comparação de modos ainda dependem da 3.13 |
 
-- Os três fluxos reaproveitam o pipeline e os workflows; não existe um workflow paralelo para teste.
+- Rubric check reaproveita o pipeline; rascunho é chamada síncrona no web, sem Run. A/B ainda não tem runner.
 - Runs que não são `purpose=evaluation` não aparecem para o sistema que submete e não tornam outros runs `superseded`.
 
 ## Estado e idempotência
@@ -384,7 +398,7 @@ e retorna `waiting_setup`. Os contratos e models necessários da 3.2 estão incl
   - os ramos de um `Parallel` (um thread por ramo, sem limite);
   - os pools dentro de um passo (N figuras, N passes por seção, N pares de plágio).
 - **Pools com limite.** `metis/concurrency.py` expõe `bounded_map(fn, items, max_workers)`, com fila limitada pelo `buffersize` do Python 3.14. Preserva a ordem, cancela tarefas ainda não iniciadas numa falha e espera a limpeza das que já começaram. Chama `close_old_connections()` no início e `connections.close_all()` no fim de cada tarefa: somente `close_old_connections()` manteria conexões saudáveis abertas (D20).
-- **Limite por provedor.** O `ProviderLimiter` segura a concorrência somada: 3 avaliadores em `Parallel`, cada um com um pool de passes, não passam de `METIS_LLM_MAX_CONCURRENCY` chamadas simultâneas por provedor.
+- **Limite por provedor e processo.** `ProviderLimiter` limita as chamadas simultâneas no processo em `METIS_LLM_MAX_CONCURRENCY` (padrão 4). Cada processo prefork tem seu limite; ele não é uma cota global entre workers. Pools de três avaliadores em `Parallel` são ainda o desenho de E4.
 - **Agentes por thread.** Cada ramo e cada tarefa do pool pede o próprio `Agent` à fábrica; o Agno não copia agentes entre ramos.
 - **Testes com threads** usam `pytest.mark.django_db(transaction=True)`, porque uma thread não enxerga a transação do teste.
 
@@ -474,7 +488,7 @@ preservam as casas decimais necessárias, até as 12 registradas.
 | O quê | Como |
 |---|---|
 | Executors e workflows | `FakeAgentFactory` com roteiro por papel; banco real; Celery eager |
-| Loop do juiz | Fakes que invalidam N vezes, quote inexistente, `missing` falso, `rebut`; o loop para em 2 revisões e marca `unresolved` |
+| Loop do juiz (planejado) | Fakes já oferecem roteiros; integração do loop depende de E4/3.9–3.10 |
 | Idempotência | Rodar o mesmo workflow duas vezes: a segunda não chama nenhum agente |
 | Concorrência | `bounded_map` com `transaction=True`: nenhuma conexão sobra aberta; o limiter nunca passa do limite |
 | Fronteira | `test_import_boundaries.py` |
