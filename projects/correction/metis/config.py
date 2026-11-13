@@ -1,5 +1,6 @@
 """Centralized environment configuration and startup validation."""
 
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
@@ -61,6 +62,8 @@ class MetisSettings(BaseSettings):
         default="", validation_alias=AliasChoices("METIS_GOOGLE_API_KEY", "GEMINI_KEY")
     )
     llm_max_concurrency: int = Field(default=4, ge=1)
+    # Limite de alerta no admin, em USD por run; ausente desativa a comparação.
+    llm_run_budget_usd: Decimal | None = Field(default=None, gt=0, allow_inf_nan=False)
     evaluator_a: ModelSpec = Field(default_factory=lambda: development_spec(Role.EVALUATOR_A))
     evaluator_b: ModelSpec = Field(default_factory=lambda: development_spec(Role.EVALUATOR_B))
     evaluator_c: ModelSpec = Field(default_factory=lambda: development_spec(Role.EVALUATOR_C))

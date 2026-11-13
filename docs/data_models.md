@@ -88,6 +88,12 @@ preserva os checkpoints e o snapshot, inclusive a Question já resolvida.
 
 `cost_usd` usa `Decimal` com 12 casas e aceita nulo quando não há tarifa cadastrada. Os registros guardam o custo calculado na chamada: atualizar a tabela não altera o histórico. O sink não grava prompt, resposta, credenciais nem PDF. O acesso ao banco fica em `queries/attempts/llm_call.py`.
 
+Na etapa 6.2, o admin passou a agregar esses registros por run, estágio, papel,
+provedor/modelo e dia, respeitando busca e filtros. Custos nulos deixam o total parcial,
+com contagem explícita; falhas e novas tentativas também são somadas. O alerta usa o
+histórico completo de cada run e o limite opcional `METIS_LLM_RUN_BUDGET_USD`, sem alterar
+os registros ou o estado do run. Detalhes em [Custo](agents.md#consulta-no-admin-62).
+
 ## `questions`
 
 Implementado na etapa 2.1. Os três models herdam UUIDv7 e timestamps da base comum.

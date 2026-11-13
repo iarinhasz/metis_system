@@ -1,0 +1,52 @@
+{% if cost_panel %}
+<section class="module" aria-label="Custos de LLM">
+  <h2>Custos de LLM</h2>
+  <div style="padding: 12px; overflow-x: auto;">
+    <p><strong>Custo conhecido: {{ cost_panel.totals.cost }}</strong> ·
+      {{ cost_panel.totals.calls }} chamadas · {{ cost_panel.totals.failed_calls }} falhas</p>
+    {% if cost_panel.totals.unpriced_calls %}
+      <p class="errornote">Total parcial: {{ cost_panel.totals.unpriced_calls }} chamadas sem preço cadastrado.</p>
+    {% endif %}
+    {% if cost_panel.budget %}
+      <p>Orçamento de alerta por run: {{ cost_panel.budget }}.</p>
+    {% else %}
+      <p>Orçamento não configurado.</p>
+    {% endif %}
+    {% if cost_panel.single_run %}
+      <p{% if cost_panel.totals.over_budget %} class="errornote" role="alert"{% endif %}>{{ cost_panel.totals.budget_status }}</p>
+    {% else %}
+      <p>Resumo de todas as chamadas que atendem aos filtros e à busca, em todas as páginas.
+        Use o filtro de data ou a hierarquia de datas da lista para escolher o período.</p>
+    {% endif %}
+    <p>Falhas e novas tentativas entram na soma. O alerta usa o histórico completo de cada run e não interrompe o pipeline.</p>
+    {% for section in cost_panel.sections %}
+      <details{% if section.key == "run" or cost_panel.single_run %} open{% endif %}>
+        <summary><strong>{{ section.title }}</strong></summary>
+        {% if section.key == "day" %}<p>Dias no fuso {{ cost_panel.timezone }}.</p>{% endif %}
+        <table>
+          <thead><tr><th scope="col">{{ section.title }}</th><th scope="col">Custo conhecido</th>
+            <th scope="col">Chamadas</th><th scope="col">Sem preço</th><th scope="col">Falhas</th>
+            {% if section.key == "run" %}<th scope="col">Custo histórico do run</th><th scope="col">Orçamento</th>{% endif %}
+          </tr></thead>
+          <tbody>
+          {% for group in section.groups %}
+            <tr>
+              <th scope="row">{% if group.url %}<a href="{{ group.url }}">{{ group.label }}</a>{% else %}{{ group.label }}{% endif %}</th>
+              <td>{{ group.totals.cost }}</td><td>{{ group.totals.calls }}</td>
+              <td>{{ group.totals.unpriced_calls }}</td><td>{{ group.totals.failed_calls }}</td>
+              {% if group.lifetime %}
+                <td>{{ group.lifetime.cost }}{% if group.lifetime.unpriced_calls %} (parcial; {{ group.lifetime.unpriced_calls }} sem preço){% endif %}</td>
+                <td{% if group.lifetime.over_budget %} class="errornote" role="alert"{% endif %}>{{ group.lifetime.budget_status }}</td>
+              {% endif %}
+            </tr>
+          {% empty %}
+            <tr><td colspan="7">Nenhuma chamada encontrada.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% if section.truncated %}<p>Exibindo os primeiros 100 grupos em ordem de identificação. Refine os filtros; o total acima inclui todos os grupos.</p>{% endif %}
+      </details>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

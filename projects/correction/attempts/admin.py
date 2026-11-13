@@ -10,8 +10,10 @@ from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllow
 from django.shortcuts import redirect
 from django.urls import URLPattern, path, reverse
 
+from projects.correction.attempts.costs import cost_panel
 from projects.correction.attempts.models import Article, Attempt, LLMCall, Run, RunEvent
 from projects.correction.attempts.status import RECOVERABLE, HumanDecision, RunStatus
+from projects.correction.metis.config import settings
 from projects.correction.pipeline.services import decide_run, recover_run
 from projects.correction.queries.attempts.run import RunConflict
 
@@ -108,6 +110,10 @@ class RunAdmin(ReadOnlyModelAdmin):
         obj: Run | None = None,
     ) -> HttpResponse:
         context["run_panel"] = self.action_panel(request, obj)
+        if obj is not None and request.user.has_perm("attempts.view_llmcall"):
+            context["cost_panel"] = cost_panel(
+                LLMCall.cost_report(run_id=obj.pk), settings.llm_run_budget_usd, single_run=True
+            )
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def run_action_view(self, request: HttpRequest, object_id: str) -> HttpResponse:
@@ -153,6 +159,8 @@ class RunEventAdmin(ReadOnlyModelAdmin):
 
 @admin.register(LLMCall)
 class LLMCallAdmin(ReadOnlyModelAdmin):
+    change_list_template = "admin/attempts/llmcall/change_list.html"
+    date_hierarchy = "created_at"
     list_display = (
         "run",
         "stage",
@@ -172,6 +180,23 @@ class LLMCallAdmin(ReadOnlyModelAdmin):
     search_fields = ("run__id", "model", "agent", "prompt_version")
     list_select_related = ("run",)
     actions = None
+
+    def changelist_view(
+        self, request: HttpRequest, extra_context: dict[str, Any] | None = None
+    ) -> HttpResponse:
+        response = super().changelist_view(request, extra_context)
+        # Redirecionamentos de filtros inválidos não carregam um ChangeList.
+        if (
+            hasattr(response, "context_data")
+            and response.context_data
+            and "cl" in response.context_data
+        ):
+            response.context_data["cost_panel"] = cost_panel(
+                LLMCall.cost_report(response.context_data["cl"].queryset),
+                settings.llm_run_budget_usd,
+                single_run=False,
+            )
+        return response
 
     def has_change_permission(self, request: HttpRequest, obj: Model | None = None) -> bool:
         return False

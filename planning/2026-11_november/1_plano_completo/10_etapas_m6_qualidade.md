@@ -34,6 +34,18 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: show LLM cost aggregates in the admin`
 
+**Implementação (13/11/2026):** painel na lista de `LLMCall` e no detalhe do `Run`,
+com somas históricas em `Decimal`, filtros por período e desdobramentos por run,
+estágio, papel, provedor/modelo e dia. O orçamento de alerta por run é opcional
+(`METIS_LLM_RUN_BUDGET_USD`); o alerta sempre usa o histórico completo do run,
+mesmo com filtros ativos. Valores sem preço são identificados como totais parciais.
+Ver [documentação de custo](../../../docs/agents.md#consulta-no-admin-62).
+
+**Verificação:** 608 testes passaram, com 5 testes `llm` excluídos, em Python 3.14
+e PostgreSQL 18; há somente o aviso de depreciação já existente do SDK Google.
+Ruff passou (223 arquivos formatados), mypy passou (221 arquivos), `manage.py check`
+não apontou problemas e `makemigrations --check --dry-run` não encontrou alterações.
+
 ---
 
 ## Etapa 6.3 — Endurecimento

@@ -1,0 +1,6 @@
+{% extends "admin/change_list.html" %}
+
+{% block result_list %}
+  {% include "admin/attempts/cost_panel.html" %}
+  {{ block.super }}
+{% endblock %}

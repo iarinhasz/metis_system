@@ -439,7 +439,35 @@ Os testes usam PostgreSQL 18 e HTTP local, sem chamadas a provedores externos: g
 
 - Cada chamada passa pelo `AgentRunner`, que mede e chama o `UsageSink`. O sink do pipeline grava o `LLMCall` com run, estágio, papel, provedor, modelo, versão do prompt, tokens, custo e latência.
 - Tokens vêm das métricas da resposta do Agno, incluindo os tokens de cache.
-- Um orçamento por run (M3–M4) é conferido antes de cada chamada; estourou → o estágio falha com um erro próprio, registrado no `RunEvent`.
+- O admin compara o custo histórico do run com o orçamento de alerta configurado. Esse alerta não interrompe chamadas nem muda o estado do pipeline; bloqueio preventivo por orçamento ainda não está implementado.
+
+### Consulta no admin (6.2)
+
+Em **Attempts → LLM calls**, o painel **Custos de LLM** soma todas as chamadas que atendem
+à busca e aos filtros, inclusive as de outras páginas da lista. Os desdobramentos são por
+run, estágio, papel, provedor/modelo e dia. O filtro de criação e a hierarquia de datas
+permitem selecionar o período; os dias usam o fuso ativo do Django (`America/Recife` por
+padrão). Cada tabela mostra até 100 grupos em ordem de identificação, com aviso quando
+há mais; o resumo geral continua incluindo todos os grupos. Refine os filtros para
+consultar os demais.
+
+O detalhe de cada **Run** mostra os mesmos totais e desdobramentos para todo o histórico
+da execução. Esses painéis exigem `attempts.view_llmcall`; ter somente `view_run` não dá
+acesso aos custos. Os registros continuam somente leitura.
+
+Defina, por exemplo, `METIS_LLM_RUN_BUDGET_USD=1.00` no ambiente dos processos web para
+ativar o alerta **Orçamento excedido** quando a soma conhecida for maior que USD 1.00.
+Sem a variável, aparece **Orçamento não configurado**. O limite deve ser positivo e
+finito; é um limite global de alerta por run, aplicado também a runs anteriores. Na lista
+filtrada, a coluna de custo mostra o recorte e o alerta compara separadamente o **custo
+histórico completo do run**, evitando ocultar um excesso ao filtrar por período ou modelo.
+
+As somas usam `Decimal` e os custos congelados de `LLMCall`, sem consultar a tabela de
+preços atual. Chamadas com falha e retries também entram na conta. Custo nulo sinaliza
+**total parcial**, com a contagem de chamadas sem preço; abaixo do limite, o orçamento
+fica **indeterminado**, em vez de afirmar que foi respeitado. Se a parcela conhecida já
+exceder o limite, o alerta aparece mesmo com chamadas sem preço. Valores pequenos
+preservam as casas decimais necessárias, até as 12 registradas.
 
 ## Testes
 
