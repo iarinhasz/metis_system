@@ -196,7 +196,7 @@ das figuras e tabelas; não incorpora descrições interpretativas das imagens.
 | `method` | Método de avaliação (critérios em código) |
 | `rubric_fields` | Campos com `rubric_text`: o contexto do domínio, com quebras de linha preservadas |
 | `validated`, `active` | Só Questions validadas e ativas entram na resolução |
-| `version` | Incrementa a cada edição; os runs antigos ficam com o snapshot da versão que usaram |
+| `version` | Incrementa na validação humana; editar remove aprovação e ativação. Runs antigos preservam o snapshot usado |
 
 Exemplo de `rubric_text` (computação quântica):
 - modelo de ruído e decoerência: qual, e se é realista para o hardware citado;
@@ -226,6 +226,19 @@ O núcleo vale para todas as áreas e foi semeado pelos aspectos dos reviews do 
 - O `paper_type` liga ou desliga critérios. Por exemplo, `replicability` não se aplica a um artigo teórico.
 - A Question não muda os critérios: o `rubric_text` dá a lente do domínio. "Solidez" em quântica inclui o modelo de ruído; em saúde, o desenho do estudo.
 
+### Registro implementado como dependência da curadoria (2.2)
+
+`questions/criteria.py` registra o método `standard` como `EvaluationConfig` congelado.
+As sete definições, a escala discreta, os pesos e a cobertura de critérios por papel
+são validados no import. As estruturas internas também são tuplas de objetos
+congelados. Um critério ativo sem passe, um papel sem critérios, uma nota fora da
+escala ou um peso negativo impede a configuração de carregar.
+
+O padrão inicial usa notas de **1 a 5** e pesos uniformes **1**; esses valores são
+de desenvolvimento e aguardam a calibração do M3. `replicability` fica inativo em
+artigos teóricos. Os demais tipos cobrem os sete critérios; `clarity` participa de
+todos os passes. `other` pertence apenas ao mapa e não define um passe de avaliação.
+
 ## Curadoria
 
 ```text
@@ -236,6 +249,45 @@ admin: "rascunhar Question" ──▶ rascunho (validated=False) ──▶ pesso
 - **Rubric check.** Roda o E4 em artigos de amostra com o rascunho **passado como argumento**. A Question ativa não é tocada: testar não pode mudar o que está em uso.
 - **Validação.** Validar incrementa a `version`. Os runs seguintes usam a versão nova, e os antigos ficam com o snapshot.
 - **Conjunto inicial (M2):** a genérica + 2–3 áreas (ex.: Computação, Física/Quântica, Saúde). Quem faz a curadoria é uma questão aberta.
+
+### Curadoria implementada (2.6)
+
+No admin, abra **Questions → Rascunhar Question**, selecione o método e o nó da
+taxonomia. Deixe o nó vazio para a genérica. A ação de lista **Rascunhar Question**
+também cria outra proposta no escopo da única Question selecionada.
+
+`question_drafter()` usa o papel `meta_reviewer` e recebe apenas a árvore da área e
+o `EvaluationConfig`; a função não recebe artigo, PDF nem Run. O schema exige uma
+rubrica de domínio para cada um dos sete critérios. São permitidas até três
+tentativas de saída inválida. Resposta inválida ou indisponibilidade não deixa uma
+Question parcial: Question e campos são gravados juntos, após uma resposta válida.
+A geração é síncrona; os modelos e as chaves vêm da configuração central.
+
+O rascunho do admin começa em `version=1`, `validated=False`, `active=False`.
+Revise os textos na edição da Question, nos campos de rubrica em linha, e então:
+
+1. Selecione a Question na lista e use **Validar**. A versão aumenta e a aprovação
+   fica registrada; é necessário pelo menos um campo de rubrica não vazio.
+2. Use **Ativar** para disponibilizar a versão aprovada ao resolver.
+3. Use **Desativar** para retirar uma Question de uso.
+
+Uma segunda Question aprovada e ativa do mesmo escopo e método é recusada;
+desative a anterior antes de ativar a substituta. Editar metadados, adicionar,
+alterar ou excluir um campo remove a aprovação e desativa a Question até nova
+revisão. Os estados e a versão não são editáveis diretamente pelo formulário.
+Uma edição baseada numa página desatualizada é recusada, preservando o trabalho
+do outro curador. Operações de aprovação e edição são serializadas por Question.
+
+O resolver trava as Questions candidatas enquanto lê suas rubricas, evitando
+misturar metadados aprovados com textos que acabam de ser editados. A configuração
+dos Runs já produzidos permanece intacta: a próxima validação muda a versão da
+Question, e cada novo Run captura seu próprio snapshot. O histórico de ações do
+admin identifica a pessoa que rascunhou, editou, validou ou ativou.
+
+Rascunhar exige a permissão de adicionar Question. Editar, validar e ativar exigem
+a permissão de alterar; os campos em linha respeitam suas permissões do Django.
+A taxonomia continua somente de leitura. O rubric check depende do E4 e permanece
+na etapa 3.12, conforme o plano.
 
 ## Falhas
 

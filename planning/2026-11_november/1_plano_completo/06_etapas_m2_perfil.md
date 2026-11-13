@@ -46,6 +46,12 @@ Uso e fontes em [Perfil e Questions](../../../docs/questions_and_profiling.md#ca
 
 **Commit sugerido:** `feat: define evaluation criteria and method registry`
 
+**Situação (13/11/2026):** implementada como dependência da curadoria 2.6.
+Método `standard` congelado com sete critérios, escala discreta 1–5, pesos
+uniformes de desenvolvimento e cobertura por papel e tipo de artigo. Validação
+no import recusa escalas, pesos e coberturas inválidos. Valores aguardam calibração
+no M3; o agente da curadoria recebe essa configuração em código.
+
 ---
 
 ## Etapa 2.3 — Profiler e resolução da Question
@@ -136,6 +142,18 @@ Ruff, mypy, checks do Django e migrations no PostgreSQL 18.
 - Validar incrementa a versão; um run anterior continua com o snapshot antigo.
 
 **Commit sugerido:** `feat: add question curation in the admin`
+
+**Situação (13/11/2026):** implementada. Formulário e ação de rascunho por nó ou
+genérica, sem manuscrito como entrada; rubricas em linha; ações de validar,
+ativar e desativar, com permissões e histórico do admin. Rascunhos começam
+desativados e não validados. Edições exigem nova aprovação, e a validação aumenta
+a versão. Gravações atômicas, conflito de escopo tratado, proteção contra edições
+obsoletas e leitura consistente do resolver. Runs antigos preservam os snapshots.
+Testes com fakes, POSTs reais do admin e PostgreSQL 18. Sem migration nova.
+
+**Verificação:** 564 testes aprovados, com 5 testes `llm` fora da execução;
+Ruff, formatação, mypy (187 arquivos) e checks do Django aprovados. O teste de concorrência usa duas
+conexões reais para verificar que o resolver não mistura versões das rubricas.
 
 ---
 

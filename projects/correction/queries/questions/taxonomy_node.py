@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.db import transaction
 
@@ -53,6 +53,18 @@ class TaxonomyNodeManagement:
     @classmethod
     def count(cls) -> int:
         return cls.objects.count()
+
+    @classmethod
+    def for_curation_selection(cls) -> models.QuerySet[TaxonomyNode]:
+        return (
+            cls.objects.exclude(level=TaxonomyLevel.DOMAIN)
+            .select_related("parent")
+            .order_by("name", "code", "taxonomy_version")
+        )
+
+    @classmethod
+    def get_for_curation(cls, node_id: Any) -> TaxonomyNode:
+        return cls.objects.select_related("parent__parent__parent").get(pk=node_id)
 
     @classmethod
     def latest_version(cls) -> str | None:

@@ -107,12 +107,20 @@ Os critérios não são model: ficam em código (`EvaluationConfig`), ver [Perfi
 - Uma carga de conteúdo diferente cria outra versão inteira, preservando os UUIDs e nomes
   da anterior. Repetir conteúdo idêntico não altera os registros existentes.
 - `Question.taxonomy_node` usa `PROTECT` e só fica vazio quando `is_generic=True`.
-  Rascunhos começam com `validated=False`, `active=True` e `version=1`. Há no máximo uma
+  A curadoria cria rascunhos com `validated=False`, `active=False` e `version=1`. Há no máximo uma
   Question validada e ativa por nó e método, e uma genérica validada e ativa por método.
   A resolução da etapa 2.3 devolve um snapshot imutável com id, versão e textos das
-  rubricas; a curadoria entra na etapa 2.6.
+  rubricas. A curadoria da etapa 2.6 incrementa a versão ao validar; edições retiram
+  aprovação e ativação. Ações de ativar/desativar preservam a versão dos textos.
 - `RubricField` é único por `(question, key)`, ordenado por `order` e UUID. O texto
   mantém suas quebras de linha. A exclusão da Question remove seus campos (`CASCADE`).
+
+O admin edita `RubricField` em linha na Question. Os Managements de curadoria
+travam a Question antes de alterar textos, aprovar ou ativar. A leitura de
+candidatas e suas rubricas usa a mesma disciplina, produzindo um snapshot
+consistente para o Run. A edição usa também a revisão temporal da página para
+recusar sobrescritas de outro curador. A etapa 2.6 usa os campos existentes e não
+requer migration nova.
 
 ## `extractor`
 

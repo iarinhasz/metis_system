@@ -104,6 +104,14 @@ task do estágio                      <app>/workflow.py monta o Workflow
 
 O `UsageSink` real fica no pipeline (`pipeline/usage.py`) e grava um `LLMCall` por chamada, ligado ao run e ao estágio.
 
+Na curadoria (2.6), `questions/curation.py` chama `question_drafter()` com
+`agents/schemas/curation.py`. A entrada contém somente a taxonomia e os critérios
+registrados em código. O agente usa `meta_reviewer`; o rascunho exige revisão e
+ativação humanas no admin. A geração usa runner e limiter da mesma fábrica,
+com até três tentativas de resposta inválida. O formulário mostra falhas do
+provedor e preserva a Question ativa. O fluxo de uso está em
+[Curadoria](questions_and_profiling.md#curadoria-implementada-26).
+
 ### Implementação da etapa 1.3
 
 `MetisSettings` traz os nove specs com padrões de desenvolvimento, conforme a decisão da equipe. Todos podem ser substituídos pelo ambiente; o catálogo é validado na subida, inclusive famílias dos avaliadores A/B e dos juízes, parâmetros de geração, concorrência e timeout menor que o soft limit. Uma configuração explícita nula ou inválida falha antes de construir clientes. As chaves são exigidas somente quando um cliente real é construído.
