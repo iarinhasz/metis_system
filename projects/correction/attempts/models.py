@@ -10,8 +10,8 @@ from django.db.models import Func
 from django.db.models.functions import Now
 from django.utils import timezone
 
-from projects.correction.attempts.status import RunStatus, Stage
 from projects.correction.agents.specs import Provider, Role
+from projects.correction.attempts.status import RunStatus, Stage
 from projects.correction.queries.attempts.article import ArticleManagement
 from projects.correction.queries.attempts.attempt import AttemptManagement
 from projects.correction.queries.attempts.llm_call import LLMCallManagement
