@@ -91,3 +91,11 @@ def test_role_script_is_independent_of_a_shared_model_spec() -> None:
     runner = factory.profiler_field()
     assert not runner.run("primeira chamada").valid
     assert runner.run("segunda chamada").valid
+
+
+def test_dictionary_outside_the_schema_is_reported_as_invalid_output() -> None:
+    sink = MemoryUsageSink()
+    factory = FakeAgentFactory(usage_sink=sink, scripts={"profiler_field": [{"unexpected": True}]})
+    result = factory.profiler_field().run("sintético")
+    assert not result.valid and result.content is None
+    assert sink.calls[0].error == "InvalidOutput" and not sink.calls[0].success

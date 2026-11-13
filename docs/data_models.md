@@ -105,7 +105,8 @@ Os critérios não são model: ficam em código (`EvaluationConfig`), ver [Perfi
 - `Question.taxonomy_node` usa `PROTECT` e só fica vazio quando `is_generic=True`.
   Rascunhos começam com `validated=False`, `active=True` e `version=1`. Há no máximo uma
   Question validada e ativa por nó e método, e uma genérica validada e ativa por método.
-  A resolução e a curadoria entram nas etapas 2.3 e 2.6.
+  A resolução da etapa 2.3 devolve um snapshot imutável com id, versão e textos das
+  rubricas; a curadoria entra na etapa 2.6.
 - `RubricField` é único por `(question, key)`, ordenado por `order` e UUID. O texto
   mantém suas quebras de linha. A exclusão da Question remove seus campos (`CASCADE`).
 

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from agno.metrics import RunMetrics
 from agno.run.agent import RunOutput
 from agno.run.base import RunStatus
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.limits import ProviderLimiter
@@ -114,7 +114,11 @@ class FakeAgentFactory(AgentFactory):
                 )
                 response = output_schema.model_validate(data)
             elif isinstance(response, dict):
-                response = output_schema.model_validate(response)
+                try:
+                    response = output_schema.model_validate(response)
+                except ValidationError:
+                    # Como o Agno: conteúdo fora do schema chega ao runner como saída inválida.
+                    pass
             return RunOutput(
                 run_id=self.task_id,
                 content=response,

@@ -53,3 +53,56 @@ class TaxonomyNodeManagement:
     @classmethod
     def count(cls) -> int:
         return cls.objects.count()
+
+    @classmethod
+    def fields_for_profiling(cls, version: str) -> list[TaxonomyNode]:
+        return list(
+            cls.objects.filter(
+                taxonomy_version=version,
+                level=TaxonomyLevel.FIELD,
+                parent__level=TaxonomyLevel.DOMAIN,
+                parent__taxonomy_version=version,
+            )
+            .select_related("parent")
+            .order_by("code")
+        )
+
+    @classmethod
+    def topics_for_field(cls, version: str, field_code: str) -> list[TaxonomyNode]:
+        return list(
+            cls.objects.filter(
+                taxonomy_version=version,
+                level=TaxonomyLevel.TOPIC,
+                parent__level=TaxonomyLevel.SUBFIELD,
+                parent__taxonomy_version=version,
+                parent__parent__level=TaxonomyLevel.FIELD,
+                parent__parent__taxonomy_version=version,
+                parent__parent__code=field_code,
+            )
+            .select_related("parent")
+            .order_by("code")
+        )
+
+    @classmethod
+    def path_for_topic(cls, version: str, topic_code: str) -> tuple[TaxonomyNode, ...]:
+        topic = (
+            cls.objects.filter(
+                taxonomy_version=version,
+                code=topic_code,
+                level=TaxonomyLevel.TOPIC,
+                parent__level=TaxonomyLevel.SUBFIELD,
+                parent__taxonomy_version=version,
+                parent__parent__level=TaxonomyLevel.FIELD,
+                parent__parent__taxonomy_version=version,
+                parent__parent__parent__level=TaxonomyLevel.DOMAIN,
+                parent__parent__parent__taxonomy_version=version,
+            )
+            .select_related("parent__parent__parent")
+            .first()
+        )
+        if topic is None or topic.parent is None:
+            return ()
+        subfield = topic.parent
+        field = subfield.parent
+        assert field is not None and field.parent is not None
+        return field.parent, field, subfield, topic
