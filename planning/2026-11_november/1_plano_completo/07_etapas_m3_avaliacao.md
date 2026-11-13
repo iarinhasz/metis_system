@@ -165,6 +165,22 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: consolidate evaluations into the final report`
 
+**Implementação (13/11/2026):** E5 real em `evaluation/workflow.py`, agregação
+determinística, narrativa com ids validados e uma retentativa, checkpoints com
+posse e relatório único/imutável. Inclui os contratos e models necessários da
+3.2 (`ReviewRound`, `JudgeVerdict`), pois ainda não existiam nesta branch.
+E4 continua stub e, sem três últimas rodadas finalizadas, E5 usa `waiting_setup`.
+O relatório explicita integridade não verificada e faixas ainda não calibradas.
+Endpoint autenticado JSON/Markdown, `409` antes de `done`, `404` para Runs internos.
+Persistência e constraints cobertas por testes em PostgreSQL 18; agentes usam fakes.
+
+Validação: **594 testes passaram**, com 5 contratos ao vivo excluídos; mypy
+aprovou 219 arquivos, Ruff/formatação aprovados (221 arquivos), checks do Django
+sem problemas e `makemigrations --check --dry-run` sem alterações pendentes.
+As migrations `attempts/0005_run_consolidation.py` e `evaluation/0001_initial.py`
+foram aplicadas pelo pytest em banco PostgreSQL 18 novo. Para atualizar o banco
+de desenvolvimento, executar `uv run python manage.py migrate`.
+
 ---
 
 ## Etapa 3.12 — Rubric check

@@ -200,6 +200,78 @@ O esboço em código (E4 e E5), com a tabela do que cada passo lê, grava e pula
 | `figures` | Problemas encontrados nas figuras (`issues`) |
 | `versions` | Modelos, versões de prompt, modo de avaliação, versão da Question e da taxonomia |
 
+### Consolidação implementada (3.11)
+
+O app `evaluation` inclui os contratos e a persistência de rodadas necessários da
+etapa 3.2 e o workflow real do E5. O E4 permanece stub nesta branch: sem três
+rodadas persistidas, julgadas e finalizadas, o E5 interrompe com `waiting_setup`.
+Ele não transforma uma execução sem avaliações em relatório pronto.
+
+`ReviewRound.store` exige posse do E4 e valida a escala do snapshot do método.
+Após registrar os `JudgeVerdict`, `ReviewRound.finalize` verifica a cobertura de
+vereditos, os ids e as pendências. Uma rodada finalizada não é alterada; revisões
+seguintes criam outra rodada. O E5 usa a última rodada de cada slot, nunca uma
+rodada antiga pronta quando existe uma mais nova ainda incompleta. Exige os três
+slots, o mesmo modo e todas as sínteses dos critérios ativos.
+
+A política inicial `median-v1` usa:
+
+- Mediana das notas válidas; com duas notas, a média aritmética.
+- Exclusão de critério `unresolved`, de voto sem veredito válido e de síntese
+  apoiada em observação/checagem pendente. A exclusão se aplica ao voto daquele
+  slot; os votos válidos dos outros avaliadores continuam disponíveis.
+- Dispersão `max − min` quando há pelo menos dois votos válidos.
+- Total como média ponderada pelas definições do método. Um critério sem votos
+  fica com nota `null` e seu peso sai do denominador. Critério de peso zero não
+  afeta o total; critério inativo nem participa da agregação.
+- Concordância geral como média ponderada de `1 − dispersão/amplitude_da_escala`,
+  apenas nos critérios com dois ou mais votos. É um indicador descritivo, não
+  kappa nem uma estimativa de independência dos modelos. Sem pares, fica `null`.
+- Faixas de desenvolvimento: `≥4 accept`, `≥3 minor`, `≥2 major`, abaixo de 2
+  `reject`. Os limiares são provisórios, versionados no snapshot e aguardam
+  calibração no A/B do M3. Não há arredondamento antes da escolha da faixa.
+
+Sem nota válida em nenhum critério, total, concordância e recomendação ficam
+`null`; o relatório exige revisão humana. Votos excluídos e pouca cobertura
+também ficam sinalizados. A integridade aparece como `not_checked`, com risco
+desconhecido, enquanto o E3 for pass-through.
+
+O E5 congela os inputs, a política, o ModelSpec do meta-revisor e seu template
+no primeiro processamento. Usa o `evaluation_config` do Run; para rodadas legadas
+sem esse snapshot, captura o método registrado e identifica a origem como
+`registry_at_consolidation`. Novos executores do E4 devem guardar esse config
+antes das chamadas. Agregação, tentativas de narrativa e narrativa validada têm
+checkpoints em `Run.consolidation`, protegidos pela posse da task.
+
+O meta-revisor recebe somente a agregação e o catálogo validado. Os ids são
+qualificados, como `a:observation:obs-1`, evitando colisões entre os slots.
+Sua saída não aceita notas. Referência desconhecida ou schema inválido recebe
+uma nova tentativa; se persistir, o ponto inteiro é removido e a ocorrência fica
+no relatório. Uma falha de transporte usa o retry do Celery sem reiniciar o
+orçamento de duas respostas nem repetir uma narrativa já guardada. Tokens e
+custo passam pelo mesmo `DatabaseUsageSink` dos outros estágios.
+
+O JSON inclui `criteria`, `sections`, `evidence`, `integrity`, `figures`, narrativa,
+pendências e `versions`. O catálogo `evidence` permite resolver os ids citados.
+Versões incluem Question em snapshot, taxonomia, modo, rodadas escolhidas,
+ModelSpecs e todos os hashes de prompt registrados. Os Decimals são serializados
+como strings para preservar precisão; as colunas auxiliares no banco usam seis
+casas, sem alterar os valores do JSON. O relatório é único por Run e imutável.
+
+O endpoint autenticado aceita:
+
+```text
+GET /api/runs/{id}/report
+GET /api/runs/{id}/report?format=markdown
+```
+
+Retorna `409` antes de `done`, inclusive se o relatório foi salvo mas a task ainda
+não concluiu a transição. Run inexistente ou interno (`rubric_check`, `ab_test`)
+retorna `404`. JSON e Markdown usam `Cache-Control: private, no-store`; Markdown
+é baixado como arquivo, com texto do manuscrito e do modelo escapado. O admin
+expõe rodadas, vereditos e relatório apenas para leitura. A saída em PDF continua
+fora do escopo desta etapa, que exige render Markdown.
+
 ## Custo
 
 | | `whole_document` | `sectioned` (proposta) |

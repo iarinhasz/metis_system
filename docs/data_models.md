@@ -148,6 +148,22 @@ As figuras e as descrições ficam dentro do `content` da `Extraction` (1.6 e 1.
 | `JudgeVerdict` | `round`, `item_type` (observação, checagem ou critério), `item_key`, `verdict`, `issues` (categoria, trecho, motivo), `source` (`validator` ou `judge`), `judge_model` (vazio quando é validador). Único por (rodada, tipo, item) |
 | `FinalReport` | `run` (1:1), `recommendation`, `total_score`, `agreement`, `content` (JSON completo, ver [Avaliadores e juiz](evaluators_and_judge.md#consolidação-e5)) |
 
+Os três models de `evaluation` estão implementados como dependência da consolidação
+3.11. `ReviewRound` também guarda `unresolved` e `ready`: só a última rodada
+finalizada de cada slot chega ao E5. `JudgeVerdict` registra ids e origem, exigindo
+snapshot do modelo quando a origem é `judge`. Ambos exigem posse do E4 para escrita.
+As unicidades e os enums das colunas de slot, modo, veredito e origem têm
+constraints no PostgreSQL. Os conteúdos JSON passam pelos schemas e pela
+escala do método antes da gravação.
+
+`Run.consolidation` guarda inputs e checkpoints do E5. `FinalReport` usa FK 1:1 com
+`PROTECT`, `content` JSON e `markdown`. As colunas auxiliares permitem nota,
+concordância e recomendação nulas quando não há votos válidos; isso não produz
+nota zero nem rejeição automática. A gravação trava o Run e confere a task dona
+do E5. Um retry reaproveita o relatório existente; ele não é editável no admin.
+
+As migrations são `attempts/0005_run_consolidation.py` e `evaluation/0001_initial.py`.
+
 ## Estados do Run
 
 | Status | Tipo | Significado |

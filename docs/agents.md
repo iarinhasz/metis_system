@@ -349,6 +349,14 @@ Workflow(name="consolidation", telemetry=False, steps=[
 
 - Uma meta-revisão que cita um id inexistente volta ao `meta_reviewer` uma vez, com o motivo. Se persistir, o item citado é removido e o fato é registrado no relatório.
 
+Implementado na etapa 3.11: quatro executors em `evaluation/workflow.py`, com
+checkpoints em `Run.consolidation` e `FinalReport` imutável. A retomada respeita
+o modelo/template congelado e o orçamento de respostas inválidas. Cada ponto
+cita critérios ativos e ids qualificados do catálogo de evidências, que também
+fica no relatório. A agregação e os números não são saída do meta-revisor.
+O E4 ainda depende das etapas 3.3–3.10; sem rodadas finalizadas o E5 não chama LLM
+e retorna `waiting_setup`. Os contratos e models necessários da 3.2 estão incluídos.
+
 ### Curadoria, rubric check e A/B (D18)
 
 | Fluxo | Como roda |
