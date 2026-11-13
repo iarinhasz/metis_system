@@ -19,8 +19,8 @@ class ModelPrice:
     long_context_threshold: int | None = None
     long_input_multiplier: Decimal = Decimal(1)
     long_output_multiplier: Decimal = Decimal(1)
-    
-def __post_init__(self) -> None:
+
+    def __post_init__(self) -> None:
         values = (
             self.input_usd_per_million,
             self.output_usd_per_million,
@@ -72,6 +72,7 @@ def standard_prices(on: date) -> dict[tuple[Provider, str], ModelPrice]:
         ),
     }
 
+
 class Pricing:
     def __init__(
         self,
@@ -102,7 +103,6 @@ class Pricing:
         if (price := prices.get((provider, model_id))) is None:
             logger.warning("Preço não cadastrado: provedor=%s modelo=%s", provider, model_id)
             return None
-        uncached = max(0, input_tokens - cached_tokens)
         cached = min(cached_tokens, input_tokens)
         writes = min(cache_write_tokens, input_tokens - cached)
         uncached = input_tokens - cached - writes
