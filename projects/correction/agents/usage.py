@@ -1,4 +1,4 @@
-"""Medição por chamada; a persistência é injetada pelo pipeline na etapa 1.4."""
+"""Medição por chamada; a persistência é injetada pelo pipeline."""
 
 from dataclasses import dataclass
 from decimal import Decimal
@@ -24,16 +24,15 @@ class LLMUsage:
     success: bool
     error: str | None = None
     cost_usd: Decimal | None = None
-
+    cache_write_tokens: int = 0
+    reasoning_tokens: int = 0
 
 class UsageSink(Protocol):
     def record(self, call: LLMUsage) -> None: ...
 
-
 class NullUsageSink:
     def record(self, call: LLMUsage) -> None:
-        """Usado onde a persistência de LLMCall ainda não foi implementada."""
-
+        """Sessões avulsas, sem run do pipeline, não têm onde persistir a medição."""
 
 class MemoryUsageSink:
     """Sink de teste que também aceita chamadas concorrentes."""
