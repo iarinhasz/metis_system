@@ -63,6 +63,19 @@ Uso e fontes em [Perfil e Questions](../../../docs/questions_and_profiling.md#ca
 
 **Commit sugerido:** `feat: classify articles and resolve the evaluation question`
 
+**Situação (13/11/2026):** implementada. Profiler em dois passos com schemas dinâmicos,
+validação de parentesco, confiança conservadora e tentativas limitadas; resolver por
+método e versão, somente Questions validadas e ativas, com fallback e snapshot
+imutável de todos os textos da rubrica. Limite de tentativas e limiar configuráveis
+em `metis/config.py`. Testes com fakes, SDKs contra HTTP local e PostgreSQL real.
+O teste de estágio cobre o status `error_llm` ao esgotar as respostas inválidas;
+a integração com o workflow e o Run continua na 2.5.
+
+**Verificação (13/11):** 509 testes passaram com PostgreSQL 18 e Python 3.14.10,
+com 5 casos `llm` excluídos. Ruff (172 arquivos), mypy (170 arquivos),
+`manage.py check` e `makemigrations --check --dry-run` passaram. Os contratos dos
+dois provedores usam HTTP local; não exigem chaves nem chamadas a LLMs externos.
+
 ---
 
 ## Etapa 2.4 — Papéis das seções e mapa do documento

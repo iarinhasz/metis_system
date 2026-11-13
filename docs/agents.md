@@ -205,6 +205,13 @@ answers = {sid: ask_section(session, config, prompt(sid), local_text[sid])   # c
 
 ### E2 — Perfil (`questions/workflow.py`)
 
+Na etapa 2.3, `questions/profiler.py` executa `profiler_field()` e `profiler_topic(field)`
+pela fábrica, com schemas de `agents/schemas/profiling.py` fechados em uma versão da
+taxonomia. O schema do topic valida também o par topic/subfield. Respostas inválidas
+voltam com motivo sanitizado até o orçamento local; o esgotamento termina em `error_llm`.
+`questions/resolver.py` produz a Question e seu snapshot pela cadeia de fallback.
+A composição abaixo e a persistência no Run entram na etapa 2.5.
+
 ```python
 Workflow(name="profiling", telemetry=False, steps=[
     stage_step(name="classify_field", executor=ClassifyFieldStep(deps)),     # profiler_field

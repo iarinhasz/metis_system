@@ -23,6 +23,36 @@ O agente `ArticleProfiler` lê título, abstract e palavras-chave e devolve (`ou
 
 A classificação roda em **2 passos**: primeiro o field, depois subfield e topic dentro dele. Cada escolha fica num enum pequeno e fechado, o que reduz erro e impede rótulo inventado.
 
+### Profiler implementado (2.3)
+
+`questions.profiler.profile_article(article, factory=..., taxonomy_version=...)` recebe
+o `ExtractedArticle` do E1 e usa somente título, seção `abstract` e palavras-chave
+opcionais. Os dois agentes usam o papel `fast`; título e abstract vão no payload
+delimitado como dados, fora das instruções. Título ou abstract vazio gera `InvalidSubmission`.
+
+O primeiro schema aceita apenas os fields da versão indicada. Depois da escolha,
+`pydantic.create_model` monta o schema com os topics descendentes daquele field,
+seus subfields e a relação obrigatória entre eles. Uma combinação de topic e
+subfield incoerente é inválida mesmo que os dois códigos existam. Áreas secundárias
+são fields da mesma versão e não participam da resolução principal.
+
+A saída `ArticleProfile` traz o caminho completo com códigos e nomes, versão da
+taxonomia, tipo do artigo, idioma, palavras-chave, áreas secundárias e as duas
+confianças. A confiança final é a menor dos dois passos. O perfil é imutável e
+serializa com `model_dump(mode="json")` para o futuro `Run.profile`.
+
+Cada passo aceita até `METIS_PROFILING_MAX_ATTEMPTS` respostas (padrão: **3**).
+Uma resposta inválida provoca outra chamada com os nomes dos campos e os códigos de
+erro, sem copiar valores recusados do manuscrito. Esgotado o limite, `InvalidProfile`
+é um erro permanente de estágio com status `error_llm`. A indisponibilidade do provedor
+continua usando `LLMUnavailable` e o retry do Celery. Cada chamada passa pelo runner
+e pelo sink fornecidos à fábrica; não se repete o field quando só o topic é inválido.
+
+A versão é um argumento obrigatório: uma nova carga da taxonomia não altera o
+catálogo no meio da classificação. Versão ausente ou field sem topics gera
+`SetupRequired`. A execução com Agno Workflow e a persistência/retomada no Run entram
+na etapa 2.5.
+
 ## Taxonomia
 
 - **Origem:** a taxonomia do OpenAlex (CC0), em quatro níveis: domain, field, subfield e topic.
@@ -79,6 +109,25 @@ topic ──▶ subfield ──▶ field ──▶ genérica
 - **Confiança abaixo do limiar** → genérica, com a flag "classificação incerta".
 - **Nem a genérica disponível** → `waiting_setup`. A equipe configura e reprocessa.
 - **O Run grava** `area_path`, confiança, o caminho percorrido e o snapshot da Question (id + versão + textos).
+
+### Resolver implementado (2.3)
+
+`questions.resolver.resolve_question(profile, method=...)` verifica o caminho na
+mesma versão da taxonomia e consulta apenas Questions `validated=True`, `active=True`
+e do método solicitado. O método é explícito, sem depender do registro de critérios
+da etapa 2.2. A cadeia procura topic, subfield, field e genérica; domain não entra
+no fallback. Questions de outras versões, métodos ou áreas não são candidatas.
+
+Com confiança abaixo de `METIS_PROFILING_CONFIDENCE_THRESHOLD` (padrão: **0.7**),
+vai direto à genérica e marca `uncertain=True`. Confiança igual ao limiar já pode
+usar a área. Sem candidata válida, levanta `SetupRequired` (`waiting_setup`).
+
+`ResolvedQuestion` contém a versão da taxonomia, a flag de incerteza, todos os
+degraus tentados e um `QuestionSnapshot` imutável. O snapshot leva id, versão, nome,
+método, nó de origem e todos os campos da rubrica em ordem, preservando quebras de
+linha. `model_dump(mode="json")` produz o conteúdo para o `config_snapshot` do Run.
+As consultas ficam nos Managements de `queries/questions/`; as rubricas são
+carregadas em lote para não fazer uma consulta por campo.
 
 Exemplo, com nomes ilustrativos: um artigo sobre correção de erros em qubits supercondutores cai num topic de computação quântica. Se esse topic não tem Question própria, o resolver sobe para o subfield e o field de física. Se também não houver Question ali, usa a genérica.
 
