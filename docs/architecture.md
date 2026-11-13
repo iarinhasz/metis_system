@@ -87,7 +87,7 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 | `queries/` | pacote | Todo acesso ao banco: uma pasta por app (`queries/attempts/`…) e um Management por model, que o model herda (`Run.claim_stage(...)`) |
 | `agents/` | pacote | `ModelSpec`, `ModelFactory`, `AgentFactory`, schemas de saída, prompts, limites de concorrência, registro de uso, fakes |
 | `scholarly/` | pacote | Clientes de Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, com rate limit e cache |
-| `evals/` | pacote | Amostras e medições offline; `bench_profiling` compara fields e papéis sem gravar Runs |
+| `evals/` | app sem models | Amostras e relatórios offline versionados, persistência sem sobrescrita e `compare_evals`; `bench_profiling` compara fields e papéis sem gravar Runs |
 
 Regras:
 - `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda, e os erros de estágio (`pipeline/errors.py`), que um estágio levanta para dizer ao pipeline como tratar a falha.

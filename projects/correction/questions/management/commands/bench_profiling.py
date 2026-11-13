@@ -6,8 +6,9 @@ from typing import Any
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from projects.correction.agents.errors import MissingProviderKey
-from projects.correction.evals.profiling import run_benchmark
+from projects.correction.evals.profiling import evaluation_report, run_benchmark
 from projects.correction.evals.profiling_data import DATASET_PATH, read_dataset
+from projects.correction.evals.reports import output_path, write_artifact
 from projects.correction.metis.config import settings
 from projects.correction.questions.models import TaxonomyNode
 
@@ -38,10 +39,12 @@ class Command(BaseCommand):
         if not options["execute"]:
             self.stdout.write("Dry-run: sem chamadas ou escrita. Use --execute para medir.")
             return
-        if (output := options["output"]) and (output.exists() or not output.parent.is_dir()):
+        try:
+            destination = output_path("bench_profiling", output=options["output"])
+        except (OSError, ValueError) as exc:
             raise CommandError(
                 "Escolha um arquivo novo em um diretório existente para o relatório."
-            )
+            ) from exc
         version = None
         if options["mode"] == "llm":
             version = (
@@ -69,19 +72,14 @@ class Command(BaseCommand):
             raise CommandError(
                 "Configure a chave do provedor do papel fast antes da medição."
             ) from exc
-        serialized = report.model_dump_json(indent=2) + "\n"
-        if path := options["output"]:
-            try:
-                # Relatórios históricos são imutáveis; use outro nome para uma nova rodada.
-                with path.open("x", encoding="utf-8", newline="\n") as stream:
-                    stream.write(serialized)
-            except OSError as exc:
-                raise CommandError(
-                    "Não foi possível criar o relatório; confira o caminho."
-                ) from exc
-            self.stdout.write(f"Relatório: {path}")
-        else:
-            self.stdout.write(serialized)
+        try:
+            artifact = evaluation_report(report)
+            write_artifact(artifact, destination)
+        except (OSError, ValueError) as exc:
+            raise CommandError(
+                "Não foi possível criar o relatório; confira o caminho e os metadados."
+            ) from exc
+        self.stdout.write(f"Relatório: {destination}; variante: {artifact.variant_id}")
         summary = report.overall
         field = (
             f"{summary.field_accuracy:.2%}" if summary.field_accuracy is not None else "não medido"

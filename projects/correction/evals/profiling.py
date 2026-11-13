@@ -11,10 +11,17 @@ from pydantic import Field
 
 from projects.correction.agents.errors import LLMUnavailable
 from projects.correction.agents.factory import AgentFactory
+from projects.correction.agents.prompts import template
 from projects.correction.agents.schemas.profiling import PaperType
 from projects.correction.agents.schemas.section_roles import SectionRole
 from projects.correction.agents.specs import ModelSpec, Role
 from projects.correction.agents.usage import MemoryUsageSink
+from projects.correction.evals.contracts import (
+    DatasetIdentity,
+    EvaluationReport,
+    Metric,
+    UsageSummary,
+)
 from projects.correction.evals.profiling_data import ProfilingCase, ProfilingDataset
 from projects.correction.extractor.article import ExtractedArticle
 from projects.correction.pipeline.errors import StageError
@@ -62,6 +69,7 @@ class BenchmarkReport(FrozenModel):
     confidence_threshold: float
     model_specs: dict[Role, ModelSpec]
     prompt_versions: tuple[str, ...]
+    named_prompt_versions: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     source_sha256: dict[str, str]
     calls: int
     input_tokens: int
@@ -71,6 +79,7 @@ class BenchmarkReport(FrozenModel):
     overall: Scores
     by_area: dict[str, Scores]
     predictions: tuple[Prediction, ...]
+    usage: UsageSummary | None = None
 
 
 def scores(
@@ -153,10 +162,21 @@ def run_benchmark(
         raise ValueError("Limites e limiar do benchmark inválidos.")
     if mode == "llm" and not taxonomy_version:
         raise ValueError("O benchmark com LLM precisa de uma versão da taxonomia.")
+    source = Path(__file__).parents[1] / "questions"
+    source_hashes = {
+        name: hashlib.sha256((source / name).read_text(encoding="utf-8").encode()).hexdigest()
+        for name in ("profiler.py", "section_roles.py")
+    } | {
+        f"evals/{name}": hashlib.sha256(
+            (Path(__file__).parent / name).read_text(encoding="utf-8").encode()
+        ).hexdigest()
+        for name in ("profiling.py", "profiling_data.py")
+    }
     cases = dataset.cases[:limit]
     sink = MemoryUsageSink()
     predictions = []
     specs: dict[Role, ModelSpec] = {}
+    templates: dict[str, str] | None = None
     for case in cases:
         if progress is not None:
             progress(case.id)
@@ -169,7 +189,16 @@ def run_benchmark(
                 if factory_builder
                 else AgentFactory(case.id, "bench_profiling", usage_sink=sink)
             )
-            specs[Role.FAST] = factory.models.specs[Role.FAST]
+            if not specs:
+                specs[Role.FAST] = factory.models.specs[Role.FAST].model_copy(deep=True)
+                templates = {
+                    name: factory.prompt_templates.get(name, template(name))
+                    for name in ("profiler_field", "profiler_topic", "section_role_classifier")
+                }
+            # Todas as amostras usam a mesma configuração, mesmo em factories distintas.
+            factory.models.specs[Role.FAST] = specs[Role.FAST]
+            assert templates is not None
+            factory.prompt_templates = dict(templates)
         try:
             if factory is None:
                 # Baseline condicional: o tipo de referência é conhecido, o field não é medido.
@@ -202,7 +231,7 @@ def run_benchmark(
                 )
             )
     measured = tuple(predictions)
-    source = Path(__file__).parents[1] / "questions"
+    usage = UsageSummary.from_calls(sink.calls)
     return BenchmarkReport(
         created_at=datetime.now(UTC).isoformat(),
         mode=mode,
@@ -214,17 +243,17 @@ def run_benchmark(
         confidence_threshold=confidence_threshold,
         model_specs=specs,
         prompt_versions=tuple(sorted({call.prompt_version for call in sink.calls})),
-        source_sha256={
-            name: hashlib.sha256((source / name).read_text(encoding="utf-8").encode()).hexdigest()
-            for name in ("profiler.py", "section_roles.py")
+        named_prompt_versions={
+            name: tuple(sorted({call.prompt_version for call in sink.calls if call.agent == name}))
+            for name in sorted({call.agent for call in sink.calls})
         },
-        calls=len(sink.calls),
-        input_tokens=sum(call.input_tokens for call in sink.calls),
-        output_tokens=sum(call.output_tokens for call in sink.calls),
-        cost_usd=sum((call.cost_usd or Decimal(0) for call in sink.calls), Decimal(0))
-        if all(call.cost_usd is not None for call in sink.calls)
-        else None,
-        unpriced_calls=sum(call.cost_usd is None for call in sink.calls),
+        source_sha256=source_hashes,
+        calls=usage.calls,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cost_usd=usage.cost_usd,
+        unpriced_calls=usage.unpriced_calls,
+        usage=usage,
         overall=scores(cases, measured, mode=mode),
         by_area={
             area: scores(
@@ -239,4 +268,64 @@ def run_benchmark(
             for area in sorted({case.area for case in cases})
         },
         predictions=measured,
+    )
+
+
+def evaluation_report(report: BenchmarkReport, *, legacy: bool = False) -> EvaluationReport:
+    """Adapta a medição de profiling para o contrato compartilhado das evals."""
+    if report.schema_version != 1:
+        raise ValueError("Versão de relatório de profiling não suportada.")
+    metrics = {}
+    for prefix, group in [
+        ("overall", report.overall),
+        *[(f"area.{name}", group) for name, group in report.by_area.items()],
+    ]:
+        for name, value in group.model_dump().items():
+            is_ratio = name.endswith(("accuracy", "precision", "recall", "f1"))
+            direction = (
+                "higher"
+                if is_ratio
+                else "lower"
+                if name in {"failures", "ambiguous_sections"}
+                else "informational"
+            )
+            metrics[f"{prefix}.{name}"] = Metric(
+                value=value, unit="fraction" if is_ratio else "count", direction=direction
+            )
+    return EvaluationReport(
+        benchmark="bench_profiling",
+        benchmark_version="profiling-1",
+        created_at=report.created_at,
+        dataset=DatasetIdentity(
+            name="profiling",
+            version=report.dataset_version,
+            sha256=report.dataset_sha256,
+            case_ids=tuple(item.case_id for item in report.predictions),
+        ),
+        parameters={
+            "mode": report.mode,
+            "max_attempts": report.max_attempts,
+            "confidence_threshold": report.confidence_threshold,
+            "taxonomy_version": report.taxonomy_version,
+            "annotation_status": report.annotation_status,
+        },
+        model_specs=report.model_specs,
+        prompt_versions=report.named_prompt_versions
+        or ({"legacy_rendered": report.prompt_versions} if report.prompt_versions else {}),
+        source_sha256=report.source_sha256,
+        metrics=metrics,
+        failures=report.overall.failures,
+        usage=report.usage
+        or UsageSummary(
+            calls=report.calls,
+            input_tokens=report.input_tokens,
+            output_tokens=report.output_tokens,
+            cost_usd=report.cost_usd,
+            known_cost_usd=report.cost_usd,
+            unpriced_calls=report.unpriced_calls,
+        ),
+        details={"predictions": [item.model_dump(mode="json") for item in report.predictions]},
+        notes=("Relatório legado: preserva apenas os hashes e contadores disponíveis no original.",)
+        if legacy
+        else (),
     )

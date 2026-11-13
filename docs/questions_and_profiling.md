@@ -381,6 +381,12 @@ de acerto exato dos papéis e **F1 micro 0,7885**, sem falhas nem chamadas de LL
 Computação: 44/61; Física: 34/40; Medicina: 41/51. O field não é medido nesse modo.
 O relatório `evals/data/baseline_rules.json` registra os resultados e os hashes.
 
+Na base da 6.1, `bench_profiling --execute` passou a gravar sempre no
+[formato compartilhado das evals](evals.md), com destino padrão em
+`projects/correction/evals/results/`. `--output` continua escolhendo um arquivo novo.
+O relatório preserva a amostra selecionada, os specs, os prompts utilizados e os
+contadores de consumo. `compare_evals` aceita também o baseline da 2.7 sem alterá-lo.
+
 Os rótulos são provisórios: fields do OpenAlex e papéis anotados pelo Codex,
 ainda sem revisão humana independente. O número é a referência de desenvolvimento
 para este conjunto e este modo, não uma estimativa geral ou uma validação do LLM.

@@ -22,6 +22,26 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add offline evaluation commands`
 
+**Base implementada (13/11/2026, `agentes/6.1-evals-base`):** contrato comum de
+relatório com amostra, parâmetros, hashes de prompt, `ModelSpec`, código, métricas
+e consumo; persistência sem sobrescrita em `evals/results/`; `bench_profiling`
+integrado; comando `compare_evals` com verificação de compatibilidade e leitura
+do baseline legado. Medições de desempenho continuam fora do CI.
+Ver [operação e contrato](../../../docs/evals.md).
+
+Os runners específicos `bench_reviews`, `bench_judge`, `bench_plagiarism` e os
+benchmarks da Fase 2 permanecem como próximas integrações do plano completo.
+
+**Verificação da base:** 654 testes passaram em Python 3.14 e PostgreSQL 18, com
+5 contratos `llm` excluídos e o aviso de depreciação já existente do SDK Google.
+Mypy aprovou 237 arquivos; Ruff e formatação passaram (239 arquivos); checks do
+Django e `makemigrations --check --dry-run` sem problemas ou alterações pendentes.
+
+Foi executado o comando real de regras locais nos 30 artigos, gerando um novo
+relatório e sua comparação em `evals/results/`: 119/152 papéis corretos (78,29%),
+zero chamadas de LLM e diferença zero em relação ao baseline da 2.7. O arquivo
+histórico permaneceu intacto; os artefatos locais gerados estão fora do Git.
+
 ---
 
 ## Etapa 6.2 — Custo no admin

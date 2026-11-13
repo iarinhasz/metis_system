@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "projects.correction.extractor.apps.ExtractorAppConfig",
     "projects.correction.questions.apps.QuestionsConfig",
     "projects.correction.evaluation.apps.EvaluationConfig",
+    "projects.correction.evals.apps.EvalsConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

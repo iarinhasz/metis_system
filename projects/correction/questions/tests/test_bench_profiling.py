@@ -13,8 +13,9 @@ from pydantic import ValidationError
 from projects.correction.agents.errors import LLMUnavailable
 from projects.correction.agents.fakes import FakeAgentFactory
 from projects.correction.agents.schemas.section_roles import SectionRole
+from projects.correction.agents.specs import Role
 from projects.correction.agents.usage import MemoryUsageSink
-from projects.correction.evals.profiling import Prediction, run_benchmark, scores
+from projects.correction.evals.profiling import Prediction, evaluation_report, run_benchmark, scores
 from projects.correction.evals.profiling_data import read_dataset
 from projects.correction.questions.management.commands.load_taxonomy import read_catalog
 from projects.correction.questions.models import Question, TaxonomyNode
@@ -74,7 +75,9 @@ def test_command_is_dry_run_by_default_and_protects_existing_reports(tmp_path: P
     call_command("bench_profiling", mode="llm", output=path, stdout=output)
     assert "Dry-run" in output.getvalue() and not path.exists()
     call_command("bench_profiling", execute=True, output=path, stdout=StringIO(), stderr=StringIO())
-    assert json.loads(path.read_text(encoding="utf-8"))["overall"]["field_accuracy"] is None
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["format"] == "metis.evals"
+    assert saved["metrics"]["overall.field_accuracy"]["value"] is None
     with pytest.raises(CommandError, match="arquivo novo"):
         call_command("bench_profiling", execute=True, output=path, stdout=StringIO())
     with pytest.raises(CommandError, match="positivos"):
@@ -128,12 +131,34 @@ def test_llm_path_uses_both_profiler_steps_and_never_supplies_reference_labels()
     )
     assert report.overall.field_accuracy == 1 and report.calls >= 2
     assert report.model_specs and report.prompt_versions and report.input_tokens > 0
+    exported = evaluation_report(report)
+    assert {"profiler_field", "profiler_topic"} <= exported.prompt_versions.keys()
+    assert exported.model_specs == report.model_specs
     assert report.taxonomy_version == snapshot.version and Question.for_curation() == []
     calls = factories[0].calls
     assert [call.name for call in calls[:2]] == ["profiler_field", "profiler_topic"]
     for call in calls[:2]:
         assert call.payload.article is not None
         assert set(json.loads(call.payload.article)) == {"title", "abstract", "keywords"}
+
+    captured: list[MemoryUsageSink] = []
+
+    def drift(case_id: str, sink: MemoryUsageSink) -> FakeAgentFactory:
+        factory = build(case_id, sink)
+        if captured:
+            factory.models.specs[Role.FAST] = factory.models.specs[Role.FAST].model_copy(
+                update={"model_id": "changed-during-benchmark"}
+            )
+            factory.prompt_templates["profiler_field"] = "Changed prompt."
+        captured.append(sink)
+        return factory
+
+    consistent = run_benchmark(
+        dataset, mode="llm", taxonomy_version=snapshot.version, limit=2, factory_builder=drift
+    )
+    assert consistent.model_specs[Role.FAST] == report.model_specs[Role.FAST]
+    assert {call.model_id for call in captured[0].calls} == {report.model_specs[Role.FAST].model_id}
+    assert len(consistent.named_prompt_versions["profiler_field"]) == 1
 
     def down(case_id: str, sink: MemoryUsageSink) -> FakeAgentFactory:
         return FakeAgentFactory(
