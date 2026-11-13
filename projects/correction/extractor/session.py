@@ -18,6 +18,7 @@ from projects.correction.agents.models import ModelFactory
 from projects.correction.agents.prompts import RenderedPrompt
 from projects.correction.agents.runner import AgentPayload
 from projects.correction.agents.specs import Family, ModelSpec, Provider, Role
+from projects.correction.agents.usage import UsageSink
 from projects.correction.extractor.config import DocumentConfig, InputStrategy
 from projects.correction.extractor.errors import (
     InvalidModelAnswer,
@@ -49,6 +50,9 @@ class AgnoSession:
         *,
         client_params: dict[str, Any] | None = None,
         factory: AgentFactory | None = None,
+        run_id: str = "extraction",
+        usage_sink: UsageSink | None = None,
+        task_id: str | None = None,
     ) -> None:
         key = settings.google_api_key or settings.gemini_key
         if factory is None and not key:
@@ -64,8 +68,10 @@ class AgnoSession:
             factory
             if factory is not None
             else AgentFactory(
+                run_id,
                 "extraction",
-                "extraction",
+                usage_sink,
+                task_id=task_id,
                 model_factory=ModelFactory(
                     settings.model_specs,
                     openai_api_key=settings.openai_api_key,
