@@ -27,12 +27,15 @@ class LLMUsage:
     cache_write_tokens: int = 0
     reasoning_tokens: int = 0
 
+
 class UsageSink(Protocol):
     def record(self, call: LLMUsage) -> None: ...
+
 
 class NullUsageSink:
     def record(self, call: LLMUsage) -> None:
         """Sessões avulsas, sem run do pipeline, não têm onde persistir a medição."""
+
 
 class MemoryUsageSink:
     """Sink de teste que também aceita chamadas concorrentes."""
