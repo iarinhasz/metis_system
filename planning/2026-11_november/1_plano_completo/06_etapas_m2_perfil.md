@@ -22,6 +22,14 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add questions app and OpenAlex taxonomy loader`
 
+**Situação (12/11/2026):** implementada. App registrado, três models e migração inicial;
+Managements em `queries/questions/`; cliente paginado em `scholarly/openalex.py`.
+`load_taxonomy` valida a árvore inteira, mostra o SHA-256 da versão e só grava com
+`--execute`, numa transação. Aceita JSON local com `--file`, preserva versões anteriores
+e não duplica nós na repetição. Admin da taxonomia somente de leitura. Testes com resposta
+real gravada cobrem níveis, repetição, versões, falhas HTTP, dados incompletos e permissões.
+Uso e fontes em [Perfil e Questions](../../../docs/questions_and_profiling.md#carga-implementada-21).
+
 ---
 
 ## Etapa 2.2 — Critérios em código

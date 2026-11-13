@@ -86,6 +86,8 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 
 ## `questions`
 
+Implementado na etapa 2.1. Os três models herdam UUIDv7 e timestamps da base comum.
+
 | Model | Campos principais |
 |---|---|
 | `TaxonomyNode` | `code`, `level` (domain, field, subfield, topic), `name`, `parent`, `taxonomy_version` |
@@ -93,6 +95,19 @@ Todos os models herdam de uma base com PK **UUIDv7** (ordenável no tempo), `cre
 | `RubricField` | `question`, `key`, `label`, `rubric_text` (contexto do domínio, com quebras de linha), `order` |
 
 Os critérios não são model: ficam em código (`EvaluationConfig`), ver [Perfil e Questions](questions_and_profiling.md#critérios-em-código).
+
+- `TaxonomyNode.code` guarda a URL canônica do OpenAlex, com unicidade por
+  `(code, taxonomy_version)`. A versão é o SHA-256 da árvore normalizada. O pai usa
+  `PROTECT`; domains não têm pai e cada outro nível aponta para o nível imediatamente
+  anterior da mesma versão. A carga valida todos os caminhos antes de gravar.
+- Uma carga de conteúdo diferente cria outra versão inteira, preservando os UUIDs e nomes
+  da anterior. Repetir conteúdo idêntico não altera os registros existentes.
+- `Question.taxonomy_node` usa `PROTECT` e só fica vazio quando `is_generic=True`.
+  Rascunhos começam com `validated=False`, `active=True` e `version=1`. Há no máximo uma
+  Question validada e ativa por nó e método, e uma genérica validada e ativa por método.
+  A resolução e a curadoria entram nas etapas 2.3 e 2.6.
+- `RubricField` é único por `(question, key)`, ordenado por `order` e UUID. O texto
+  mantém suas quebras de linha. A exclusão da Question remove seus campos (`CASCADE`).
 
 ## `extractor`
 

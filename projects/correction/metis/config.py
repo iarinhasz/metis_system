@@ -34,6 +34,9 @@ class MetisSettings(BaseSettings):
     media_root: str = "media"
     max_upload_mb: int = 50
 
+    # Opcional: amplia a cota de leitura da taxonomia pública do OpenAlex.
+    openalex_api_key: str = ""
+
     stage_max_retries: int = 3
     stage_retry_backoff_seconds: int = 60
     stage_retry_backoff_max_seconds: int = 900

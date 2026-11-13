@@ -29,6 +29,46 @@ A classificação roda em **2 passos**: primeiro o field, depois subfield e topi
 - **Carga:** um comando de gestão grava a taxonomia como `TaxonomyNode`. Por padrão ele só mostra o que faria (dry-run); grava com `--execute`.
 - **Versão:** fica registrada, e cada Run guarda com qual versão foi classificado.
 
+### Carga implementada (2.1)
+
+```bash
+uv run python manage.py migrate
+uv run python manage.py load_taxonomy            # confere e mostra a versão, sem gravar
+uv run python manage.py load_taxonomy --execute  # grava a árvore numa única transação
+```
+
+O cliente fica em `scholarly/openalex.py`. Ele lê `/domains`, `/fields`, `/subfields`
+e `/topics`, em páginas de até 100 itens e no máximo uma requisição por segundo.
+Ler os quatro endpoints preserva também os subfields que não têm topics associados.
+Recusa contagens divergentes, páginas repetidas ou incompletas e parentescos
+inconsistentes antes de escrever. Em falha HTTP, encerra sem gravar; basta repetir o
+comando. A chave opcional vem de `METIS_OPENALEX_API_KEY`, em `metis/config.py`.
+
+Também é possível carregar sem rede:
+
+```bash
+uv run python manage.py load_taxonomy --file /caminho/topics.json
+uv run python manage.py load_taxonomy --file /caminho/topics.json --execute
+```
+
+Para preservar a árvore inteira, o JSON deve ter as chaves `domains`, `fields`,
+`subfields` e `topics`, cada uma com a lista de objetos OpenAlex daquele nível.
+Também aceita uma lista de topics com `id`, `display_name`, `domain`, `field` e
+`subfield`, útil para recortes de desenvolvimento. Uma resposta da API é aceita se
+`meta.count` corresponder a todos os resultados no arquivo; uma página isolada da
+coleção é recusada. Listas permitem importar um recorte explícito para desenvolvimento.
+
+`taxonomy_version` é o SHA-256 dos códigos, nomes, níveis e pais normalizados; a ordem
+da resposta e os metadados da API não mudam a versão. Repetir a carga preserva os UUIDs.
+Conteúdo diferente cria outra versão, sem apagar a árvore anterior nem suas Questions.
+O admin oferece busca, filtros por nível e versão e leitura dos pais; criação, edição,
+exclusão e ações em lote ficam bloqueadas. A ligação com o Run vem na etapa 2.5.
+
+Fontes do contrato: [objeto topic e hierarquia](https://help.openalex.org/data/topics/)
+e [paginação do OpenAlex](https://help.openalex.org/api/paging/), conferidas em 12/11/2026.
+As respostas gravadas e os testes ficam em `questions/tests/`; o CI usa PostgreSQL real
+e não consulta APIs externas.
+
 ## Resolução da Question
 
 ```text
