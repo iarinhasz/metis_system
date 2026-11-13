@@ -18,6 +18,37 @@ PDF_V1 = b"%PDF-1.7\nconteudo de teste\n"
 
 
 @pytest.mark.django_db
+def test_report_requires_done_and_returns_json_or_markdown(
+    run: Run, authenticated_client: Client
+) -> None:
+    from projects.correction.agents.fakes import FakeAgentFactory
+    from projects.correction.evaluation.tests.helpers import prepare_evaluated
+    from projects.correction.evaluation.workflow import run_consolidation
+
+    url = f"/api/runs/{run.pk}/report"
+    assert Client().get(url).status_code == 401
+    assert authenticated_client.get(url).status_code == 409
+    prepare_evaluated(run)
+    Run.claim_stage(run.pk, Stage.CONSOLIDATION, "e5")
+    run_consolidation(str(run.pk), "e5", factory=FakeAgentFactory())
+    assert authenticated_client.get(url).status_code == 409
+    Run.complete_stage(run.pk, "e5", RunStatus.DONE)
+    response = authenticated_client.get(url)
+    assert response.status_code == 200
+    assert response.json()["run_id"] == str(run.pk)
+    assert response.json()["recommendation"] == "accept"
+    assert {"criteria", "sections", "integrity", "versions"} <= response.json().keys()
+    assert response.headers["Cache-Control"] == "private, no-store"
+    markdown = authenticated_client.get(url + "?format=markdown")
+    assert markdown.status_code == 200 and markdown.headers["Content-Type"].startswith(
+        "text/markdown"
+    )
+    assert "# Artigo" in markdown.content.decode()
+    assert authenticated_client.get(url + "?format=invalid").status_code == 422
+    assert authenticated_client.get(f"/api/runs/{uuid.uuid4()}/report").status_code == 404
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("purpose", [RunPurpose.RUBRIC_CHECK, RunPurpose.AB_TEST])
 def test_internal_runs_are_hidden_from_public_routes(
     run: Run,
@@ -26,6 +57,7 @@ def test_internal_runs_are_hidden_from_public_routes(
 ) -> None:
     internal = Run.create(attempt=run.attempt, purpose=purpose)
     assert authenticated_client.get(f"/api/runs/{internal.pk}").status_code == 404
+    assert authenticated_client.get(f"/api/runs/{internal.pk}/report").status_code == 404
     assert (
         authenticated_client.post(
             f"/api/runs/{internal.pk}/decision",

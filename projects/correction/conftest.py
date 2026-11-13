@@ -71,8 +71,21 @@ def fake_profiling(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def eager_celery(fake_extraction: None, fake_profiling: None, eager_mode: None) -> None:
-    """Pipeline eager com os provedores de E1 e E2 substituídos nos testes de orquestração."""
+def fake_consolidation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A máquina de estados isola E5; o relatório real tem integração própria."""
+    from projects.correction.pipeline.stages import ConsolidationStage, StageContext, StageOutcome
+
+    def consolidate(self: ConsolidationStage, ctx: StageContext) -> StageOutcome:
+        return StageOutcome()
+
+    monkeypatch.setattr(ConsolidationStage, "execute", consolidate)
+
+
+@pytest.fixture
+def eager_celery(
+    fake_extraction: None, fake_profiling: None, fake_consolidation: None, eager_mode: None
+) -> None:
+    """Pipeline eager isolado dos estágios reais nos testes da máquina de estados."""
 
 
 @pytest.fixture

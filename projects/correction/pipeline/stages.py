@@ -1,4 +1,4 @@
-"""Base dos estágios (Template Method); E1 e E2 reais, E3 a E5 ainda stubs.
+"""Base dos estágios (Template Method); E1, E2 e E5 reais, E3 e E4 ainda stubs.
 
 Ciclo de uma task: claim → execute() → complete → publica o próximo estágio após o commit.
 Cada estágio implementa só o execute(). A posse do run é pelo id da task Celery, que se
@@ -22,6 +22,7 @@ from projects.correction.attempts.status import (
     Stage,
     StageSpec,
 )
+from projects.correction.evaluation.workflow import run_consolidation
 from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.session import AgnoSession, DocumentSession
@@ -202,4 +203,9 @@ class ConsolidationStage(StageTask):
     stage = Stage.CONSOLIDATION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        return StageOutcome()
+        result = run_consolidation(
+            ctx.run_id,
+            ctx.task_id,
+            factory=AgentFactory(ctx.run_id, ctx.stage, DatabaseUsageSink(), task_id=ctx.task_id),
+        )
+        return StageOutcome(payload=result.model_dump(mode="json"))

@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     "projects.correction.pipeline.apps.PipelineConfig",
     "projects.correction.extractor.apps.ExtractorAppConfig",
     "projects.correction.questions.apps.QuestionsConfig",
+    "projects.correction.evaluation.apps.EvaluationConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

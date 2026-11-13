@@ -84,6 +84,7 @@ class Run(RunManagement, TimeStampModel):
     )
     profile = models.JSONField(default=dict, blank=True)
     config_snapshot = models.JSONField(default=dict, blank=True)
+    consolidation = models.JSONField(default=dict, blank=True)
     status = models.CharField(
         max_length=40,
         choices=[(status.value, status.value) for status in RunStatus],

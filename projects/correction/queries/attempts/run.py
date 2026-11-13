@@ -60,6 +60,65 @@ class RunManagement:
     objects: ClassVar[models.Manager[Run]]
 
     @classmethod
+    def lock_for_stage(cls, run_id: Any, task_id: str, status: RunStatus) -> Run:
+        """O chamador mantém transaction.atomic durante toda a escrita do estágio."""
+        run = cls._locked(run_id)
+        if run.status != status or run.current_task_id != task_id:
+            raise RunConflict("A task perdeu a posse do estágio.")
+        return run
+
+    @classmethod
+    def for_consolidation(cls, run_id: Any, task_id: str) -> Run:
+        run = (
+            cls.objects.select_related("extraction")
+            .filter(pk=run_id, current_task_id=task_id, status=RunStatus.CONSOLIDATING)
+            .first()
+        )
+        if run is None:
+            raise RunConflict("A task perdeu a posse da consolidação.")
+        return run
+
+    @classmethod
+    @transaction.atomic
+    def initialize_consolidation(
+        cls, run_id: Any, task_id: str, *, snapshot: dict[str, Any], inputs: dict[str, Any]
+    ) -> Run:
+        run = cls.lock_for_stage(run_id, task_id, RunStatus.CONSOLIDATING)
+        if not run.consolidation:
+            run.config_snapshot = {**run.config_snapshot, **snapshot}
+            run.consolidation = inputs
+            run.updated_at = timezone.now()
+            run.save(update_fields=["config_snapshot", "consolidation", "updated_at"])
+        return run
+
+    @classmethod
+    @transaction.atomic
+    def checkpoint_consolidation(cls, run_id: Any, task_id: str, key: str, value: Any) -> None:
+        run = cls.lock_for_stage(run_id, task_id, RunStatus.CONSOLIDATING)
+        run.consolidation = {**run.consolidation, key: value}
+        run.updated_at = timezone.now()
+        run.save(update_fields=["consolidation", "updated_at"])
+
+    @classmethod
+    @transaction.atomic
+    def record_consolidation_prompt(
+        cls, run_id: Any, task_id: str, name: str, version: str
+    ) -> None:
+        run = cls.lock_for_stage(run_id, task_id, RunStatus.CONSOLIDATING)
+        prompts = {**run.config_snapshot.get("prompt_versions", {}), name: version}
+        run.config_snapshot = {**run.config_snapshot, "prompt_versions": prompts}
+        run.updated_at = timezone.now()
+        run.save(update_fields=["config_snapshot", "updated_at"])
+
+    @classmethod
+    def public_report_state(cls, run_id: Any) -> Run | None:
+        return (
+            cls.objects.select_related("final_report")
+            .filter(pk=run_id, purpose=RunPurpose.EVALUATION)
+            .first()
+        )
+
+    @classmethod
     def get_by_id(cls, run_id: Any) -> Run:
         return cls.objects.get(pk=run_id)
 
