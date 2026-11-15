@@ -10,7 +10,7 @@ from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.runner import AgentPayload
 from projects.correction.agents.schemas.profiling import PaperType
 from projects.correction.agents.schemas.section_roles import SectionRole, SectionRoleChoice
-from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
+from projects.correction.extractor.contract import DocumentSection, ExtractedDocument
 
 type Roles = tuple[SectionRole, ...]
 
@@ -93,7 +93,7 @@ class SectionAssignment(BaseModel):
 
 
 def rule_based_roles(
-    article: ExtractedArticle, paper_type: PaperType
+    article: ExtractedDocument, paper_type: PaperType
 ) -> tuple[SectionAssignment, ...]:
     assignments = []
     for section in article.sections:
@@ -122,7 +122,7 @@ def rule_based_roles(
 
 
 def classify_role(
-    section: ExtractedSection,
+    section: DocumentSection,
     paper_type: PaperType,
     *,
     factory: AgentFactory,

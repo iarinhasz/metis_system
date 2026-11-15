@@ -58,6 +58,16 @@ class DocumentReference(ContractModel):
     arxiv_id: str | None = None
 
 
+class DocumentFigureDescription(ContractModel):
+    figure_class: str
+    description: str
+    data_read: tuple[str, ...] = ()
+    supports_claims: bool | None = None
+    support_rationale: str = ""
+    issues: tuple[str, ...] = ()
+    table_markdown: str | None = None
+
+
 class CitationMention(ContractModel):
     reference_id: str | None = None
     marker: str | None = None
@@ -87,6 +97,7 @@ class DocumentFigure(ContractModel):
     caption: str = Field(min_length=1)
     section_id: str | None = None
     offset: int | None = Field(default=None, ge=0)
+    description: DocumentFigureDescription | None = None
 
 
 class ExtractedDocument(ContractModel):

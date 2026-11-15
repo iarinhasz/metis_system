@@ -3,7 +3,7 @@
 import re
 from typing import Literal
 
-from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
 from projects.correction.questions.profile import FrozenModel
 from projects.correction.questions.section_roles import Roles, SectionAssignment
 
@@ -31,15 +31,14 @@ class DocumentMap(FrozenModel):
 
 
 def build_document_map(
-    article: ExtractedArticle, assignments: tuple[SectionAssignment, ...]
+    article: ExtractedDocument, assignments: tuple[SectionAssignment, ...]
 ) -> DocumentMap:
     roles = {assignment.section_id: assignment.roles for assignment in assignments}
     if set(roles) != {section.id for section in article.sections}:
         raise ValueError("Toda seção precisa de papéis para montar o mapa.")
-    abstract = article.section("abstract")
     return DocumentMap(
         title=article.title,
-        abstract=abstract.text if abstract else "",
+        abstract=article.abstract,
         sections=tuple(
             MapSection(
                 id=section.id,

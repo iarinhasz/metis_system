@@ -1,6 +1,8 @@
 """Dados sintéticos do manuscrito e respostas dos dois classificadores."""
 
 from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
+from projects.correction.extractor.contract import ExtractedDocument
+from projects.correction.extractor.document_adapter import to_extracted_document
 
 FIELD = "https://openalex.org/fields/19"
 OTHER_FIELD = "https://openalex.org/fields/31"
@@ -31,8 +33,23 @@ def article() -> ExtractedArticle:
                 coverage=None,
                 fidelity=None,
             ),
+            ExtractedSection(
+                id="sec_2",
+                title="Introdução",
+                level=1,
+                parent_id=None,
+                key=None,
+                text="Texto do corpo para os testes.",
+                has_footnotes=False,
+                coverage=None,
+                fidelity=None,
+            ),
         ),
     )
+
+
+def document() -> ExtractedDocument:
+    return to_extracted_document(article())
 
 
 def field_answer(*, field: str = FIELD, confidence: float = 0.95) -> dict[str, object]:

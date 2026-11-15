@@ -12,7 +12,7 @@ from projects.correction.agents.schemas.profiling import (
     topic_choice_schema,
 )
 from projects.correction.attempts.status import RunStatus
-from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import InvalidSubmission, SetupRequired, StageError
 from projects.correction.questions.models import TaxonomyNode
@@ -27,7 +27,7 @@ class InvalidProfile(StageError):
 
 
 def profile_article(
-    article: ExtractedArticle,
+    article: ExtractedDocument,
     *,
     factory: AgentFactory,
     taxonomy_version: str,
@@ -58,18 +58,17 @@ def _attempts(max_attempts: int | None) -> int:
     return attempts
 
 
-def _manuscript(article: ExtractedArticle, keywords: tuple[str, ...]) -> str:
-    abstract = article.section("abstract")
-    if not article.title.strip() or abstract is None or not abstract.text.strip():
+def _manuscript(article: ExtractedDocument, keywords: tuple[str, ...]) -> str:
+    if not article.title.strip() or not article.abstract.strip():
         raise InvalidSubmission("O profiler precisa de título e abstract não vazios.")
     return json.dumps(
-        {"title": article.title, "abstract": abstract.text, "keywords": keywords},
+        {"title": article.title, "abstract": article.abstract, "keywords": keywords},
         ensure_ascii=False,
     )
 
 
 def classify_field(
-    article: ExtractedArticle,
+    article: ExtractedDocument,
     *,
     factory: AgentFactory,
     taxonomy_version: str,
@@ -97,7 +96,7 @@ def classify_field(
 
 
 def classify_topic(
-    article: ExtractedArticle,
+    article: ExtractedDocument,
     field_choice: FieldChoice,
     *,
     factory: AgentFactory,
