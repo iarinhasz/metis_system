@@ -23,6 +23,10 @@ class LLMUnavailable(TransientStageError):
     failure_status = RunStatus.ERROR_LLM
 
 
+class InvalidEvaluationOutput(LLMUnavailable):
+    """Saída do avaliador fora do schema ou incompatível com a seção solicitada."""
+
+
 class InvalidSubmission(StageError):
     """O PDF não pode ser avaliado (sem texto, sem abstract, criptografado). Sem retry."""
 

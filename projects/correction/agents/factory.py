@@ -158,9 +158,14 @@ class AgentFactory:
         return self.build("section_role_classifier", Role.FAST, output_schema)
 
     def section_reviewer(
-        self, slot: Slot, role: str, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        role: str,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build(f"sections/{role}", self._slot(slot), output_schema)
+        return self.build(f"sections/{role}", self._slot(slot), output_schema, spec=spec)
 
     def cross_checker(
         self, slot: Slot, kind: str, *, output_schema: type[BaseModel] = PendingOutput

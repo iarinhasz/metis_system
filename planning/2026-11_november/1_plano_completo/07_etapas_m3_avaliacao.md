@@ -48,6 +48,14 @@ Caminhos relativos a `projects/correction/`.
 - Rodar de novo não chama o agente.
 - Uma observação `missing` incerta vem com `possibly_elsewhere`.
 
+**Implementação nesta branch:** `SectionPassStep` executa os passes por seção
+com concorrência limitada, usa o `ModelSpec` congelado no Run, valida e
+checkpointa observações em `ReviewRound(round=1)`, e retoma sem repetir seções
+já concluídas. Cada subseção extraída é uma unidade de avaliação; quando o texto
+de uma unidade excede o limite, os trechos terminam preferencialmente no último
+parágrafo que couber, com fallback para linha, palavra e limite exato. O executor
+é testável isoladamente; sua conexão ao workflow E4 fica para a etapa 3.10.
+
 **Commit sugerido:** `feat: run section passes for each evaluator`
 
 ---
