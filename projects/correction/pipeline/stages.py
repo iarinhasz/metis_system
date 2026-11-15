@@ -22,6 +22,7 @@ from projects.correction.attempts.status import (
     Stage,
     StageSpec,
 )
+from projects.correction.evaluation.context import EvaluationContextBuilder
 from projects.correction.evaluation.workflow import run_consolidation
 from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
 from projects.correction.extractor.config import DocumentConfig
@@ -201,7 +202,17 @@ class EvaluationStage(StageTask):
     stage = Stage.EVALUATION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        return StageOutcome()
+        run = Run.for_evaluation(ctx.run_id, ctx.task_id)
+        builder = EvaluationContextBuilder(run)
+        snapshot = builder.snapshot()
+        Run.initialize_evaluation(ctx.run_id, ctx.task_id, snapshot)
+        context = EvaluationContextBuilder(Run.for_evaluation(ctx.run_id, ctx.task_id)).build()
+        return StageOutcome(
+            payload={
+                "context_ready": True,
+                "evaluators": [item.slot.value for item in context.evaluators],
+            }
+        )
 
 
 class ConsolidationStage(StageTask):

@@ -161,6 +161,30 @@ class RunManagement:
         return run
 
     @classmethod
+    def for_evaluation(cls, run_id: Any, task_id: str) -> Run:
+        run = (
+            cls.objects.select_related("extraction")
+            .filter(pk=run_id, current_task_id=task_id, status=RunStatus.EVALUATING)
+            .first()
+        )
+        if run is None:
+            raise RunConflict("A task perdeu a posse da avaliação.")
+        return run
+
+    @classmethod
+    @transaction.atomic
+    def initialize_evaluation(cls, run_id: Any, task_id: str, snapshot: dict[str, Any]) -> Run:
+        run = cls._locked(run_id)
+        if run.status != RunStatus.EVALUATING or run.current_task_id != task_id:
+            raise RunConflict("A task perdeu a posse da avaliação.")
+        missing = {key: value for key, value in snapshot.items() if key not in run.config_snapshot}
+        if missing:
+            run.config_snapshot = {**run.config_snapshot, **missing}
+            run.updated_at = timezone.now()
+            run.save(update_fields=["config_snapshot", "updated_at"])
+        return run
+
+    @classmethod
     @transaction.atomic
     def initialize_profiling(cls, run_id: Any, task_id: str, snapshot: dict[str, Any]) -> Run:
         run = cls._locked(run_id)
