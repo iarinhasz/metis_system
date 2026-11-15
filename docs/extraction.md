@@ -1,6 +1,7 @@
 # Extração (E1)
 
-**Revisão de 13/11/2026:** E1 implementado sobre `ExtractedArticle`.
+**Revisão de 15/11/2026:** E1 implementado sobre `ExtractedArticle`; o contrato
+agnóstico `ExtractedDocument` da etapa 1.1 está definido em `extractor/contract.py`.
 Os números de 11–12/11 ao fim são ensaios históricos, sem nova chamada paga
 nesta revisão. [Metas revistas e pendências](status_and_metrics.md).
 
@@ -112,7 +113,40 @@ Desde a 1.6, também `figures[]` (cada `Figure` com `id`, `kind`, `label`, `numb
 
 Desde a 1.8, cada `Figure` traz `description`, nula quando a chamada falhou: um `FigureDescription` com `figure_class`, `description`, `data_read[]`, `supports_claims` (sim, não ou nulo), `support_rationale`, `issues[]` e `table_markdown` (nulo para figura).
 
-O contrato `ExtractedDocument` da 1.1 (módulo Avaliação) ainda não existe; quando existir, é montado a partir deste resultado.
+`ExtractedArticle` continua sendo o resultado persistido pelo E1. O contrato
+`ExtractedDocument` é separado e não altera o formato salvo no banco nesta etapa;
+a conversão do resultado real do E1 para esse contrato pertence à 1.11.
+
+## Contrato `ExtractedDocument` (M1.1)
+
+O modelo congelado em `extractor/contract.py` valida título, autores, idioma,
+abstract, seções hierárquicas, referências, citações e figuras/tabelas. Ele não
+contém configuração de provedor nem campos específicos de uma resposta de LLM.
+Offsets e páginas são opcionais porque os dados `parsed_pdfs` do PeerRead e o
+`ExtractedArticle` atual não os fornecem de forma consistente. Offsets de citações
+e figuras são relativos ao texto da seção.
+
+`render_for_llm()` devolve uma tupla de blocos independentes, com título e abstract
+em cada bloco. Mantém as subseções, coloca figuras/tabelas junto ao texto quando
+há seção e offset conhecidos, e limita blocos longos separando primeiro por seção
+e depois por parágrafo. O conteúdo de referências é incluído no fim do artigo.
+
+`peerread_to_document()` converte registros `parsed_pdfs` sem chamadas externas.
+O comando `make_peerread_fixtures` lê os JSONs de um zip do PeerRead ou de uma
+árvore extraída em `dataset_project/raw`, valida 10 a 20 documentos e apenas mostra
+o plano por padrão. Para gravar as
+fixtures em `extractor/tests/fixtures/peerread/`, é necessário passar `--execute`:
+
+```bash
+uv run python manage.py make_peerread_fixtures
+uv run python manage.py make_peerread_fixtures --execute
+```
+
+O PeerRead não traz o texto original integral das entradas bibliográficas; para
+essas fixtures, `raw` é uma composição determinística dos metadados disponíveis.
+O corpus não está versionado no repositório: as fixtures reais só podem ser
+geradas quando o zip do PeerRead estiver em `dataset_project/raw` ou os dados
+estiverem extraídos nessa pasta.
 
 ## Cache e ligação ao run
 

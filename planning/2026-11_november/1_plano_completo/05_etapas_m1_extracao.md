@@ -31,6 +31,19 @@ O contrato é o que E2–E5 leem. Com ele e as fixtures, as trilhas A e I começ
 
 **Commit sugerido:** `feat: add ExtractedDocument contract and PeerRead fixtures`
 
+**Implementação (15/11/2026, branch `avaliacao/1.1-extracted-document`):**
+`extractor/contract.py` define modelos Pydantic congelados para o documento,
+seções hierárquicas, referências, citações e figuras/tabelas; offsets e páginas
+são opcionais quando a fonte não os fornece. `render_for_llm()` preserva a
+hierarquia, inclui os elementos visuais nas posições conhecidas e devolve blocos
+limitados por tamanho. `peerread_to_document()` converte `parsed_pdfs` sem LLM,
+e `make_peerread_fixtures` é dry-run por padrão, gravando só com `--execute`.
+
+**Ainda pendente para o pronto:** o checkout não contém os JSONs do PeerRead em
+`dataset_project/raw`, então não foi possível gerar e validar 10–20 fixtures reais.
+O contrato, a conversão sintética e o dry-run/execução do comando têm testes; a
+conversão do `ExtractedArticle` real continua na etapa 1.11.
+
 ---
 
 ## Etapa 1.2 — Spike do Agno 3 em Python 3.14

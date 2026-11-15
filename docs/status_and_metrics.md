@@ -10,7 +10,7 @@ fakes comprova comportamento de software, não qualidade de uma avaliação cien
 | Parte | Implementado | Limite atual e evidência |
 |---|---|---|
 | Plataforma | API autenticada, estados, posse da task, retries, gate, reconciliador, Docker e admin | O gate existe, mas E3 ainda não produz achados reais. [Estágios](../projects/correction/pipeline/stages.py), [transições](../projects/correction/queries/attempts/run.py) |
-| E1 | `ExtractedArticle`, seções, referências, ligações de citações, figuras e descrições, cache e retomada | Sem recorte de imagem, scan de texto oculto ou contrato `ExtractedDocument` da 1.1/1.11. [Extração](extraction.md) |
+| E1 | `ExtractedArticle`, seções, referências, ligações de citações, figuras e descrições, cache e retomada; contrato `ExtractedDocument` da 1.1 definido | Sem fixtures reais PeerRead para fechar a 1.1, sem conversão do E1 para o contrato (1.11), recorte de imagem ou scan de texto oculto. [Extração](extraction.md) |
 | E2 | Profiler field/topic, fallback, papéis de seções, mapa, snapshots e retomada | Exige taxonomia carregada e Question validada/ativa; a genérica não é criada na subida. [Workflow](../projects/correction/questions/workflow.py), [operação](questions_and_profiling.md) |
 | Questions | Rascunho por agente, revisão/validação/ativação humanas, catálogo inicial | Genérica, Computação, Física/Quântica e Medicina são propostas inativas após `seed_questions`; aprovação especialista não está demonstrada. [Catálogo](../projects/correction/questions/data/initial_questions.json) |
 | E3 | Task que deixa o run seguir com `risk=low` | **Stub**: sem `integrity/`, corpus, embeddings, consulta de citações ou `IntegrityReport`. O relatório E5 declara `not_checked`, com risco desconhecido. [Stage](../projects/correction/pipeline/stages.py), [schema](../projects/correction/evaluation/report.py) |
@@ -54,7 +54,7 @@ permanecem sem piso até a primeira medição.
 | Marco | Meta após esta revisão | O que falta para fechar |
 |---|---|---|
 | M0 | Preservar idempotência, posse, recuperação e gate nos testes; repetir I1 com o compose quando o fluxo mudar | O I1 histórico com stubs não substitui I3; carga e capacidade diária continuam sem medição |
-| M1 | No protocolo histórico de citações, não regredir em relação a 244/263 de recall e 244/264 de precisão | Guardar amostra/protocolo para nova execução comparável; texto oculto, recortes e `ExtractedDocument` seguem pendentes. Sem limite de páginas calibrado |
+| M1 | No protocolo histórico de citações, não regredir em relação a 244/263 de recall e 244/264 de precisão | Guardar amostra/protocolo para nova execução comparável; fixtures reais PeerRead da 1.1, conversão E1 → `ExtractedDocument` (1.11), texto oculto, recortes e limite de páginas seguem pendentes |
 | M2 | Na mesma amostra e modo `rules`, manter ao menos 119/152 e o F1 micro do baseline (≈0,78846); acompanhar os três recortes de área | Revisão humana dos rótulos e rubricas; executar `--mode llm` para estabelecer a primeira meta de field/papéis do profiler real |
 | M3 | Validar E4 real + E5 em PDF real; medir A/B, qualidade, custo e tempo antes de escolher modo/produção | Sem Spearman, QWK, recall do juiz, custo médio por artigo ou tempo real de E4 registrados. Escala 1–5, pesos 1 e faixas 4/3/2 do E5 são valores de desenvolvimento |
 | M4 | Estabelecer precisão, recall e falso positivo por tipo no plágio sintético antes de fixar N/X/K | Detector, corpus, regras, benchmark e I4 ainda não implementados |
