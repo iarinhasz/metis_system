@@ -82,8 +82,23 @@ def fake_consolidation(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
+def fake_evaluation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Os testes do ciclo do Celery isolam E4; o contexto real é coberto na avaliação."""
+    from projects.correction.pipeline.stages import EvaluationStage, StageContext, StageOutcome
+
+    def evaluate(self: EvaluationStage, ctx: StageContext) -> StageOutcome:
+        return StageOutcome()
+
+    monkeypatch.setattr(EvaluationStage, "execute", evaluate)
+
+
+@pytest.fixture
 def eager_celery(
-    fake_extraction: None, fake_profiling: None, fake_consolidation: None, eager_mode: None
+    fake_extraction: None,
+    fake_profiling: None,
+    fake_evaluation: None,
+    fake_consolidation: None,
+    eager_mode: None,
 ) -> None:
     """Pipeline eager isolado dos estágios reais nos testes da máquina de estados."""
 
