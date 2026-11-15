@@ -29,8 +29,8 @@ jobs:
       METIS_POSTGRES_USER: metis
       METIS_POSTGRES_PASSWORD: metis
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           version: "0.13.8"
           enable-cache: true
