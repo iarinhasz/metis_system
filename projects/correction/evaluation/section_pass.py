@@ -5,8 +5,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from agno.workflow.types import StepInput, StepOutput
-
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.runner import AgentPayload
 from projects.correction.agents.schemas.evaluation import (
@@ -63,10 +61,6 @@ class SectionPassStep:
         map_sections = {section.id for section in self.context.document_map.sections}
         if article_sections != map_sections:
             raise ValueError("O mapa e o artigo precisam ter as mesmas seções.")
-
-    def __call__(self, step_input: StepInput) -> StepOutput:
-        del step_input
-        return StepOutput(content=self.execute())
 
     def execute(self) -> ReviewState:
         state = self.checkpoints.read_state()
