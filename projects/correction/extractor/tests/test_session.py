@@ -52,6 +52,14 @@ def parts(server: StubServer) -> list[dict[str, Any]]:
     return parts
 
 
+def inline_document_parts(server: StubServer) -> list[dict[str, Any]]:
+    return [
+        part.get("inlineData", part.get("inline_data", {}))
+        for part in parts(server)
+        if "inlineData" in part or "inline_data" in part
+    ]
+
+
 @pytest.mark.usefixtures("gemini_key")
 def test_sends_the_pdf_and_returns_the_schema(stub_server: StubServer) -> None:
     stub_server.queue(answer(SCAN))
@@ -62,7 +70,10 @@ def test_sends_the_pdf_and_returns_the_schema(stub_server: StubServer) -> None:
     assert scan == HeadingScan.model_validate(SCAN)
     sent = parts(stub_server)
     assert {"text": "Liste os títulos."} in sent
-    assert any(part.get("inlineData", {}).get("mimeType") == "application/pdf" for part in sent)
+    assert any(
+        part.get("mimeType", part.get("mime_type")) == "application/pdf"
+        for part in inline_document_parts(stub_server)
+    )
     config = stub_server.requests[0].json()["generationConfig"]
     assert config["temperature"] == 0
     # A SDK manda o nome do proto (snake_case); a API aceita esse nome e o camelCase.
@@ -77,7 +88,7 @@ def test_text_strategy_sends_the_text_instead_of_the_pdf(stub_server: StubServer
     session(stub_server, make_pdf(ARTICLE_LINES), InputStrategy.TEXT).ask("Liste.", HeadingScan)
 
     sent = parts(stub_server)
-    assert not any("inlineData" in part for part in sent)
+    assert not inline_document_parts(stub_server)
     [text] = [part["text"] for part in sent]
     assert text.startswith("<artigo>\n") and ARTICLE_LINES[3] in text and text.endswith("Liste.")
 
@@ -89,7 +100,7 @@ def test_pdf_too_big_to_go_inline_goes_as_text(stub_server: StubServer) -> None:
 
     session(stub_server, big).ask("Liste.", HeadingScan)
 
-    assert not any("inlineData" in part for part in parts(stub_server))
+    assert not inline_document_parts(stub_server)
 
 
 @pytest.mark.usefixtures("gemini_key")

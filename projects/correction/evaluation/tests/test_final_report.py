@@ -46,8 +46,8 @@ def test_report_contains_structured_sections_integrity_versions_and_fixed_scores
     content = ReportContent.model_validate(row.content)
     assert set(content.strengths[0].evidence_ids) <= content.evidence.keys()
     assert content.total_score == 4 and content.recommendation == "accept"
-    assert len(content.criteria) == 7 and len(content.sections) == 2
-    assert content.sections[1].observations[0].id == "a:observation:obs-1"
+    assert len(content.criteria) == 7 and len(content.sections) == 1
+    assert content.sections[0].observations[0].id == "a:observation:obs-1"
     assert content.integrity.status == "not_checked" and content.integrity.risk_level is None
     assert content.versions.review_rounds == {"a": 1, "b": 1, "c": 1}
     assert content.versions.question.id == consolidating_run.question_id

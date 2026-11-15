@@ -48,9 +48,9 @@ def sample_attempt(name: str) -> Attempt:
 
 def cache_attempt(attempt: Attempt) -> Extraction:
     document = article()
-    section = document.sections[0].model_copy(
+    section = document.sections[1].model_copy(
         update={
-            "id": "sec_2",
+            "id": "sec_3",
             "title": "Método",
             "key": None,
             "text": "Os parâmetros foram definidos.",
