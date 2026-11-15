@@ -1,4 +1,4 @@
-"""Base dos estágios (Template Method) e os cinco estágios; o E1 é real, os demais ainda stub.
+"""Base dos estágios (Template Method); E1, E2 e E5 reais, E3 e E4 ainda stubs.
 
 Ciclo de uma task: claim → execute() → complete → publica o próximo estágio após o commit.
 Cada estágio implementa só o execute(). A posse do run é pelo id da task Celery, que se
@@ -13,18 +13,24 @@ from celery import Task
 from celery.utils.time import get_exponential_backoff_interval
 from django.db import transaction
 
+from projects.correction.agents.factory import AgentFactory
 from projects.correction.attempts.models import Run
 from projects.correction.attempts.status import (
-    NEXT_STAGE,
     STAGE_BY_NAME,
+    RunPurpose,
     RunStatus,
     Stage,
     StageSpec,
 )
+from projects.correction.evaluation.workflow import run_consolidation
 from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
+from projects.correction.extractor.config import DocumentConfig
+from projects.correction.extractor.session import AgnoSession, DocumentSession
 from projects.correction.metis.config import settings
-from projects.correction.pipeline.errors import StageError, TransientStageError
-from projects.correction.pipeline.publishing import publish_stage_on_commit
+from projects.correction.pipeline.errors import SetupRequired, StageError, TransientStageError
+from projects.correction.pipeline.publishing import publish_checkpoint_stage
+from projects.correction.pipeline.usage import DatabaseUsageSink
+from projects.correction.questions.workflow import run_profiling
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +109,8 @@ class StageTask(_TaskBase):
             if run is None:
                 logger.info("Posse perdida antes de concluir: run=%s", ctx.run_id)
                 return
-            next_stage = NEXT_STAGE[self.stage]
-            if not outcome.halt and next_stage is not None:
-                publish_stage_on_commit(ctx.run_id, next_stage)
+            if not outcome.halt:
+                publish_checkpoint_stage(run)
 
     def _fail(self, ctx: StageContext, status: RunStatus, exc: BaseException) -> None:
         Run.fail_stage(
@@ -152,7 +157,22 @@ class ExtractionStage(StageTask):
     stage = Stage.EXTRACTION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        extraction, reused = extract_attempt(ctx.attempt_id)
+        run = Run.get_by_id(ctx.run_id)
+        if run.purpose == RunPurpose.RUBRIC_CHECK:
+            if run.extraction is None:
+                raise SetupRequired("O rubric check precisa de uma extração em cache.")
+            return StageOutcome(payload=extraction_payload(run.extraction, reused=True))
+
+        def open_session(config: DocumentConfig, pdf: bytes) -> DocumentSession:
+            return AgnoSession(
+                config,
+                pdf,
+                run_id=ctx.run_id,
+                usage_sink=DatabaseUsageSink(),
+                task_id=ctx.task_id,
+            )
+
+        extraction, reused = extract_attempt(ctx.attempt_id, opener=open_session)
         Run.attach_extraction(ctx.run_id, ctx.task_id, extraction)
         return StageOutcome(payload=extraction_payload(extraction, reused=reused))
 
@@ -161,7 +181,12 @@ class ProfilingStage(StageTask):
     stage = Stage.PROFILING
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        return StageOutcome()
+        result = run_profiling(
+            ctx.run_id,
+            ctx.task_id,
+            factory=AgentFactory(ctx.run_id, ctx.stage, DatabaseUsageSink(), task_id=ctx.task_id),
+        )
+        return StageOutcome(payload=result.model_dump(mode="json"))
 
 
 class IntegrityStage(StageTask):
@@ -183,4 +208,9 @@ class ConsolidationStage(StageTask):
     stage = Stage.CONSOLIDATION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        return StageOutcome()
+        result = run_consolidation(
+            ctx.run_id,
+            ctx.task_id,
+            factory=AgentFactory(ctx.run_id, ctx.stage, DatabaseUsageSink(), task_id=ctx.task_id),
+        )
+        return StageOutcome(payload=result.model_dump(mode="json"))

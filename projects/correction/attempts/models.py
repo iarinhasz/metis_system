@@ -10,9 +10,11 @@ from django.db.models import Func
 from django.db.models.functions import Now
 from django.utils import timezone
 
-from projects.correction.attempts.status import RunStatus, Stage
+from projects.correction.agents.specs import Provider, Role
+from projects.correction.attempts.status import RunPurpose, RunStatus, Stage
 from projects.correction.queries.attempts.article import ArticleManagement
 from projects.correction.queries.attempts.attempt import AttemptManagement
+from projects.correction.queries.attempts.llm_call import LLMCallManagement
 from projects.correction.queries.attempts.run import RunManagement
 from projects.correction.queries.attempts.run_event import RunEventManagement
 
@@ -71,6 +73,18 @@ class Attempt(AttemptManagement, TimeStampModel):
 
 class Run(RunManagement, TimeStampModel):
     attempt = models.ForeignKey(Attempt, on_delete=models.PROTECT, related_name="runs")
+    purpose = models.CharField(
+        max_length=16,
+        choices=[(purpose.value, purpose.value) for purpose in RunPurpose],
+        default=RunPurpose.EVALUATION,
+        db_index=True,
+    )
+    question = models.ForeignKey(
+        "questions.Question", on_delete=models.PROTECT, null=True, blank=True, related_name="runs"
+    )
+    profile = models.JSONField(default=dict, blank=True)
+    config_snapshot = models.JSONField(default=dict, blank=True)
+    consolidation = models.JSONField(default=dict, blank=True)
     status = models.CharField(
         max_length=40,
         choices=[(status.value, status.value) for status in RunStatus],
@@ -99,6 +113,12 @@ class Run(RunManagement, TimeStampModel):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(purpose__in=[purpose.value for purpose in RunPurpose]),
+                name="run_purpose_valid",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"Run {self.pk} ({self.status})"
@@ -130,3 +150,36 @@ class RunEvent(RunEventManagement, TimeStampModel):
 
     def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
         raise ValidationError("RunEvent é append-only e não pode ser removido.")
+
+
+class LLMCall(LLMCallManagement, TimeStampModel):
+    """Uma execução do runner, com uso medido e custo calculado na data da chamada."""
+
+    run = models.ForeignKey(Run, on_delete=models.PROTECT, related_name="llm_calls")
+    stage = models.CharField(max_length=24, choices=[(stage.value, stage.value) for stage in Stage])
+    role = models.CharField(max_length=32, choices=[(role.value, role.value) for role in Role])
+    agent = models.CharField(max_length=128)
+    provider = models.CharField(
+        max_length=16, choices=[(provider.value, provider.value) for provider in Provider]
+    )
+    model = models.CharField(max_length=128)
+    prompt_version = models.CharField(max_length=64)
+    input_tokens = models.PositiveBigIntegerField()
+    output_tokens = models.PositiveBigIntegerField()
+    cached_tokens = models.PositiveBigIntegerField()
+    cache_write_tokens = models.PositiveBigIntegerField(default=0)
+    reasoning_tokens = models.PositiveBigIntegerField(default=0)
+    cost_usd = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
+    latency_ms = models.PositiveBigIntegerField()
+    success = models.BooleanField()
+    error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["run", "stage"], name="llm_call_run_stage_idx")]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(cost_usd__gte=0) | models.Q(cost_usd__isnull=True),
+                name="llm_call_cost_nonnegative",
+            ),
+        ]

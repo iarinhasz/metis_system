@@ -165,6 +165,22 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: consolidate evaluations into the final report`
 
+**Implementação (13/11/2026):** E5 real em `evaluation/workflow.py`, agregação
+determinística, narrativa com ids validados e uma retentativa, checkpoints com
+posse e relatório único/imutável. Inclui os contratos e models necessários da
+3.2 (`ReviewRound`, `JudgeVerdict`), pois ainda não existiam nesta branch.
+E4 continua stub e, sem três últimas rodadas finalizadas, E5 usa `waiting_setup`.
+O relatório explicita integridade não verificada e faixas ainda não calibradas.
+Endpoint autenticado JSON/Markdown, `409` antes de `done`, `404` para Runs internos.
+Persistência e constraints cobertas por testes em PostgreSQL 18; agentes usam fakes.
+
+Validação: **594 testes passaram**, com 5 contratos ao vivo excluídos; mypy
+aprovou 219 arquivos, Ruff/formatação aprovados (221 arquivos), checks do Django
+sem problemas e `makemigrations --check --dry-run` sem alterações pendentes.
+As migrations `attempts/0005_run_consolidation.py` e `evaluation/0001_initial.py`
+foram aplicadas pelo pytest em banco PostgreSQL 18 novo. Para atualizar o banco
+de desenvolvimento, executar `uv run python manage.py migrate`.
+
 ---
 
 ## Etapa 3.12 — Rubric check
@@ -179,6 +195,23 @@ Caminhos relativos a `projects/correction/`.
 - O run usa a Question rascunho, e não a resolvida pela árvore.
 
 **Commit sugerido:** `feat: run rubric checks with draft questions`
+
+**Implementação (13/11/2026):** ação e formulário no admin para amostras de 1–20
+attempts com cache do E1, criação atômica e idempotente de lotes internos,
+snapshot do rascunho e da configuração de avaliação, desvio auditado do E3 e
+comparação dos relatórios lado a lado. A Question ativa e avaliações anteriores
+permanecem intactas. O desvio também vale para a retomada pelo reconciliador.
+
+**Dependência pendente nesta branch:** E4 ainda é um stub; os relatórios completos
+dependem das rodadas julgadas da etapa 3.10. A tela mostra `waiting_setup` quando
+elas faltam. A integração substitui apenas E4 por rodadas julgadas sintéticas e
+executa E2/E5 reais, com fakes no limite dos provedores.
+Ver [operação no admin](../../../docs/questions_and_profiling.md#rubric-check-no-admin-312).
+
+**Verificação:** 633 testes passaram em Python 3.14 e PostgreSQL 18, com 5 contratos
+`llm` excluídos e apenas o aviso de depreciação existente do SDK Google. Mypy
+aprovou 225 arquivos; Ruff e formatação passaram (227 arquivos); checks do Django
+sem problemas e `makemigrations --check --dry-run` sem mudanças pendentes.
 
 ---
 

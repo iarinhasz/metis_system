@@ -1,5 +1,11 @@
 # Checagem de integridade (E3)
 
+**Desenho planejado, revisto em 13/11/2026.** O app `integrity/`, seus modelos,
+corpus, detectores e APIs acadêmicas abaixo ainda não estão implementados.
+`IntegrityStage` hoje apenas retorna `risk=low` para seguir o pipeline. O gate
+existe na máquina de estados; esse risco de stub não é uma checagem do artigo.
+E5 declara `not_checked`, com risco desconhecido. [Estado e metas](status_and_metrics.md).
+
 ## Objetivo e princípios
 
 O E3 procura sinais de plágio, de citações problemáticas e de manipulação, e guarda evidência para cada achado.

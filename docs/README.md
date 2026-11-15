@@ -1,6 +1,10 @@
 # Documentação do Metis
 
-Estes documentos descrevem **o desenho aprovado em 25/10/2026**. O código ainda não existe. Quando existir, ele passa a ser a fonte de verdade e estes documentos acompanham as mudanças.
+Revisados contra o código em **13/11/2026** (base `32ff4e6`, branch `agents`).
+E1, E2 e E5 têm implementação; E3 e E4 permanecem stubs. As partes ainda
+planejadas estão identificadas nos documentos. O código é a fonte de verdade;
+o [estado do módulo e as metas medidas](status_and_metrics.md) distinguem
+implementação, testes com fakes, resultados históricos e verificações pendentes.
 
 O plano de construção (decisões, marcos, riscos) está em [planning/2026-10_october/1_desenho_inicial](../planning/2026-10_october/1_desenho_inicial/00_sumario.md). O plano completo, com as etapas de todos os marcos e as trilhas da equipe, está em [planning/2026-11_november/1_plano_completo](../planning/2026-11_november/1_plano_completo/00_sumario.md).
 
@@ -8,23 +12,26 @@ Os caminhos de código citados nos docs (`metis/config.py`, `attempts/`, `agents
 
 ## Ordem recomendada
 
-1. [Arquitetura](architecture.md): componentes, responsabilidades e limites.
-2. [Fluxo de uma avaliação](evaluation_flow.md): o que acontece com um artigo, da submissão ao relatório. Em diagramas: [Grafo do fluxo](flow_graph.md), com as entidades e as ligações entre elas.
-3. [Orquestração](orchestration.md): como Celery e Agno dividem o trabalho, retries e recuperação.
-4. [Agentes e workflows](agents.md): o pacote `agents/`, o catálogo de agentes e o workflow Agno de cada estágio.
-5. Os estágios, na ordem do pipeline:
+1. [Estado e métricas](status_and_metrics.md): o que funciona, medições e metas revistas por marco.
+2. [Arquitetura](architecture.md): componentes, responsabilidades e limites.
+3. [Fluxo de uma avaliação](evaluation_flow.md): o que acontece com um artigo, da submissão ao relatório. Em diagramas: [Grafo do fluxo](flow_graph.md), com as entidades e as ligações entre elas.
+4. [Orquestração](orchestration.md): como Celery e Agno dividem o trabalho, retries e recuperação.
+5. [Agentes e workflows](agents.md): o pacote `agents/`, o catálogo de agentes e os fluxos implementados e planejados.
+6. Os estágios, na ordem do pipeline:
    1. [Extração](extraction.md)
    2. [Perfil e Questions](questions_and_profiling.md)
    3. [Checagem de integridade](integrity_check.md)
    4. [Avaliadores, juiz e consolidação](evaluators_and_judge.md)
-6. [Modelos de dados](data_models.md): entidades e máquina de estados.
-7. [Infraestrutura](infrastructure.md): serviços do Docker, configuração e chaves.
-8. [Convenções](conventions.md): organização do código, padrões, prompts e testes.
+7. [Modelos de dados](data_models.md): entidades e máquina de estados.
+8. [Infraestrutura](infrastructure.md): serviços do Docker, configuração e chaves.
+9. [Convenções](conventions.md): organização do código, padrões, prompts e testes.
 
 ## Índice
 
 | Documento | Conteúdo |
 |---|---|
+| [Estado e métricas](status_and_metrics.md) | Implementação atual, referências medidas, metas revistas e pendências |
+| [Evals offline](evals.md) | Executar benchmarks, guardar e comparar relatórios por prompt e ModelSpec |
 | [Arquitetura](architecture.md) | Componentes, divisão Celery × Agno, apps e regras de dependência, segurança, limites conhecidos |
 | [Fluxo de uma avaliação](evaluation_flow.md) | Submissão, estágios E1–E5, gate humano, versões, reprocessamento, endpoints da API |
 | [Orquestração](orchestration.md) | Estágios e checkpoints, ciclo de uma task, posse do estágio, erros, retries, reconciliador, regras do Agno |
@@ -50,7 +57,7 @@ Os caminhos de código citados nos docs (`metis/config.py`, `attempts/`, `agents
 | Question | O perfil de avaliação de uma área (ex.: computação quântica): rubricas com o contexto do domínio + método de avaliação |
 | RubricField | Um campo da rubrica de uma Question, com o texto de contexto do domínio (`rubric_text`) |
 | Critério | O que é pontuado (ex.: originalidade, solidez). Definido em código, com notas discretas |
-| Avaliador | Um dos 3 modelos de linguagem que avaliam o artigo, cada um de uma família diferente |
+| Avaliador | Um dos 3 slots: A = GPT, B = Gemini, C = outro modelo de uma das duas famílias (E4 planejado) |
 | Papel da seção | A função de uma seção no artigo (introdução, método, resultados…). Define o prompt e os critérios do passe |
 | Mapa do documento | Abstract, seções com papel e primeira frase, legendas de figuras e tabelas. Montado em código; vai em todo passe |
 | Passe por seção | Uma chamada de um avaliador sobre uma seção. Produz observações, sem nota |

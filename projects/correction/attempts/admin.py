@@ -10,8 +10,10 @@ from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllow
 from django.shortcuts import redirect
 from django.urls import URLPattern, path, reverse
 
-from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
+from projects.correction.attempts.costs import cost_panel
+from projects.correction.attempts.models import Article, Attempt, LLMCall, Run, RunEvent
 from projects.correction.attempts.status import RECOVERABLE, HumanDecision, RunStatus
+from projects.correction.metis.config import settings
 from projects.correction.pipeline.services import decide_run, recover_run
 from projects.correction.queries.attempts.run import RunConflict
 
@@ -57,8 +59,9 @@ class AttemptAdmin(ReadOnlyModelAdmin):
 class RunAdmin(ReadOnlyModelAdmin):
     """Página do run com os botões do gate (continuar, encerrar) e do reprocessamento."""
 
-    list_display = ("id", "attempt", "status", "stage", "version", "created_at")
-    list_filter = ("status", "stage")
+    list_display = ("id", "attempt", "purpose", "status", "stage", "question", "created_at")
+    list_filter = ("purpose", "status", "stage")
+    list_select_related = ("attempt", "question")
     search_fields = ("id", "attempt__article__external_id")
 
     def get_urls(self) -> list[URLPattern]:
@@ -107,6 +110,10 @@ class RunAdmin(ReadOnlyModelAdmin):
         obj: Run | None = None,
     ) -> HttpResponse:
         context["run_panel"] = self.action_panel(request, obj)
+        if obj is not None and request.user.has_perm("attempts.view_llmcall"):
+            context["cost_panel"] = cost_panel(
+                LLMCall.cost_report(run_id=obj.pk), settings.llm_run_budget_usd, single_run=True
+            )
         return super().render_change_form(request, context, add, change, form_url, obj)
 
     def run_action_view(self, request: HttpRequest, object_id: str) -> HttpResponse:
@@ -148,3 +155,48 @@ class RunEventAdmin(ReadOnlyModelAdmin):
     list_display = ("run", "event_type", "from_status", "to_status", "actor", "created_at")
     list_filter = ("event_type", "actor")
     search_fields = ("run__id", "event_key", "task_id")
+
+
+@admin.register(LLMCall)
+class LLMCallAdmin(ReadOnlyModelAdmin):
+    change_list_template = "admin/attempts/llmcall/change_list.html"
+    date_hierarchy = "created_at"
+    list_display = (
+        "run",
+        "stage",
+        "role",
+        "agent",
+        "provider",
+        "model",
+        "input_tokens",
+        "output_tokens",
+        "cached_tokens",
+        "cost_usd",
+        "latency_ms",
+        "success",
+        "created_at",
+    )
+    list_filter = ("stage", "role", "provider", "model", "success", "created_at")
+    search_fields = ("run__id", "model", "agent", "prompt_version")
+    list_select_related = ("run",)
+    actions = None
+
+    def changelist_view(
+        self, request: HttpRequest, extra_context: dict[str, Any] | None = None
+    ) -> HttpResponse:
+        response = super().changelist_view(request, extra_context)
+        # Redirecionamentos de filtros inválidos não carregam um ChangeList.
+        if (
+            hasattr(response, "context_data")
+            and response.context_data
+            and "cl" in response.context_data
+        ):
+            response.context_data["cost_panel"] = cost_panel(
+                LLMCall.cost_report(response.context_data["cl"].queryset),
+                settings.llm_run_budget_usd,
+                single_run=False,
+            )
+        return response
+
+    def has_change_permission(self, request: HttpRequest, obj: Model | None = None) -> bool:
+        return False

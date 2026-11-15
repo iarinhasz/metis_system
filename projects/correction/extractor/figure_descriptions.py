@@ -12,7 +12,6 @@ novo, e as descrições que já tinham dado certo voltam guardadas (resumable_se
 
 import re
 from collections.abc import Sequence
-from concurrent.futures import ThreadPoolExecutor
 from typing import Final
 
 from projects.correction.extractor.article import Figure, FigureDescription, FigureMention
@@ -23,6 +22,7 @@ from projects.correction.extractor.figures import NUMBER
 from projects.correction.extractor.prompts import load_prompt, render_prompt
 from projects.correction.extractor.schemas import DescribedFigure
 from projects.correction.extractor.session import DocumentSession
+from projects.correction.metis.concurrency import bounded_map
 
 MAX_MENTIONS: Final = 5
 NO_MENTIONS: Final = "(o texto não cita esta figura)"
@@ -46,11 +46,12 @@ def describe_figures(
 ) -> tuple[Figure, ...]:
     if not figures or not config.describe_figures:
         return tuple(figures)
-    with ThreadPoolExecutor(max_workers=config.max_parallel_calls) as pool:
-        # O modelo fora do ar numa figura sobe daqui, depois que as outras em andamento terminam.
-        outcomes = list(
-            pool.map(lambda figure: _describe(session, config, figure, mentions), figures)
-        )
+    # O modelo fora do ar sobe depois que as outras tarefas em andamento fecham suas conexões.
+    outcomes = bounded_map(
+        lambda figure: _describe(session, config, figure, mentions),
+        figures,
+        max_workers=config.max_parallel_calls,
+    )
     return tuple(
         figure
         if isinstance(outcome, InvalidModelAnswer)

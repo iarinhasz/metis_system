@@ -22,6 +22,7 @@ def stub_server() -> Iterator[StubServer]:
 def gemini_key(monkeypatch: pytest.MonkeyPatch) -> str:
     """Uma chave qualquer: os testes falam com o servidor local, nunca com o Google."""
     monkeypatch.setattr(settings, "gemini_key", "chave-de-teste")
+    monkeypatch.setattr(settings, "google_api_key", "chave-de-teste")
     return "chave-de-teste"
 
 

@@ -4,6 +4,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+class RunPurpose(StrEnum):
+    EVALUATION = "evaluation"
+    RUBRIC_CHECK = "rubric_check"
+    AB_TEST = "ab_test"
+
+
 class RunStatus(StrEnum):
     RECEIVED = "received"
     EXTRACTING = "extracting"
@@ -141,7 +147,12 @@ TRANSITIONS: dict[RunStatus, frozenset[RunStatus]] = {
         {RunStatus.PROFILED, RunStatus.EXTRACTED, *_failures, RunStatus.SUPERSEDED}
     ),
     RunStatus.PROFILED: frozenset(
-        {RunStatus.CHECKING_INTEGRITY, RunStatus.SUPERSEDED, RunStatus.ERROR_UNEXPECTED}
+        {
+            RunStatus.CHECKING_INTEGRITY,
+            RunStatus.INTEGRITY_CHECKED,
+            RunStatus.SUPERSEDED,
+            RunStatus.ERROR_UNEXPECTED,
+        }
     ),
     RunStatus.CHECKING_INTEGRITY: frozenset(
         {

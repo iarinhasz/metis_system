@@ -23,7 +23,7 @@ def publisher(monkeypatch: pytest.MonkeyPatch) -> Mock:
 def fake_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
     """Troca a extração do E1 (chamadas ao modelo) por uma fixa, guardada no banco."""
 
-    def extract(attempt_id: object) -> tuple[Extraction, bool]:
+    def extract(attempt_id: object, **kwargs: object) -> tuple[Extraction, bool]:
         attempt = Attempt.get_by_id(attempt_id)
         section = ExtractedSection(
             id="sec_1",
@@ -45,8 +45,8 @@ def fake_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def eager_celery(fake_extraction: None) -> Iterator[None]:
-    """Roda as tasks na hora, no mesmo processo, com a extração do E1 fixa (sem modelo).
+def eager_mode() -> Iterator[None]:
+    """Roda as tasks na hora, no mesmo processo; as fixtures escolhem os provedores.
 
     Sem propagar exceções: com propagate, o Celery repassa o Retry ao chamador em vez de
     reexecutar a task. O StageTask registra no run todo erro do execute(), e os testes
@@ -57,6 +57,35 @@ def eager_celery(fake_extraction: None) -> Iterator[None]:
     app.conf.task_eager_propagates = False
     yield
     app.conf.task_always_eager, app.conf.task_eager_propagates = previous
+
+
+@pytest.fixture
+def fake_profiling(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Os testes da máquina de estados isolam o E2; o workflow tem integração própria."""
+    from projects.correction.pipeline.stages import ProfilingStage, StageContext, StageOutcome
+
+    def profile(self: ProfilingStage, ctx: StageContext) -> StageOutcome:
+        return StageOutcome()
+
+    monkeypatch.setattr(ProfilingStage, "execute", profile)
+
+
+@pytest.fixture
+def fake_consolidation(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A máquina de estados isola E5; o relatório real tem integração própria."""
+    from projects.correction.pipeline.stages import ConsolidationStage, StageContext, StageOutcome
+
+    def consolidate(self: ConsolidationStage, ctx: StageContext) -> StageOutcome:
+        return StageOutcome()
+
+    monkeypatch.setattr(ConsolidationStage, "execute", consolidate)
+
+
+@pytest.fixture
+def eager_celery(
+    fake_extraction: None, fake_profiling: None, fake_consolidation: None, eager_mode: None
+) -> None:
+    """Pipeline eager isolado dos estágios reais nos testes da máquina de estados."""
 
 
 @pytest.fixture

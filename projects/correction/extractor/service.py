@@ -5,8 +5,6 @@ as chamadas no texto a ela (citations.py). Por fim, uma chamada lista as figuras
 (figures.py), o código acha as frases que as citam (figure_mentions.py), e uma chamada por
 figura, em paralelo, descreve cada uma (figure_descriptions.py)."""
 
-from concurrent.futures import Future, ThreadPoolExecutor
-
 from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
 from projects.correction.extractor.citations import find_citations
 from projects.correction.extractor.config import DocumentConfig
@@ -33,6 +31,7 @@ from projects.correction.extractor.section_map import (
     section_target,
 )
 from projects.correction.extractor.session import AgnoSession, DocumentSession, SessionOpener
+from projects.correction.metis.concurrency import bounded_map
 
 
 def extract_article(
@@ -100,10 +99,11 @@ def _extract_sections(
     """Uma chamada por seção, até `max_parallel_calls` ao mesmo tempo. Uma falha cancela o resto
     e sobe: quem tenta de novo é o Celery."""
     footnotes = load_prompt("footnotes_ignore" if config.ignore_footnotes else "footnotes_keep")
-    with ThreadPoolExecutor(max_workers=config.max_parallel_calls) as pool:
-        futures: dict[str, Future[SectionAnswer]] = {
-            section_id: pool.submit(
-                ask_section,
+
+    def extract(section_id: str) -> tuple[str, SectionAnswer]:
+        return (
+            section_id,
+            ask_section(
                 session,
                 config,
                 render_prompt(
@@ -113,15 +113,10 @@ def _extract_sections(
                     footnotes=footnotes,
                 ),
                 local_texts[section_id],
-            )
-            for section_id in section_map
-        }
-        try:
-            return {section_id: future.result() for section_id, future in futures.items()}
-        except BaseException:
-            for future in futures.values():
-                future.cancel()
-            raise
+            ),
+        )
+
+    return dict(bounded_map(extract, section_map, max_workers=config.max_parallel_calls))
 
 
 def _reference_text(pdf: bytes) -> str | None:

@@ -19,6 +19,7 @@
 {% endblock %}
 
 {% block field_sets %}
+  {% include "admin/attempts/cost_panel.html" %}
   {% if run_panel %}
     <fieldset class="module aligned">
       <h2>{{ run_panel.title }}</h2>

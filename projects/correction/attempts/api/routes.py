@@ -1,9 +1,9 @@
 """Rotas HTTP do app attempts: recebem a requisição, chamam o caso de uso e respondem."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
-from django.http import Http404, HttpRequest
+from django.http import Http404, HttpRequest, HttpResponse
 from ninja import File, Form, Router, Status
 from ninja.files import UploadedFile
 
@@ -13,7 +13,9 @@ from projects.correction.attempts.api.schemas import (
     SubmissionResponse,
 )
 from projects.correction.attempts.models import Run
+from projects.correction.attempts.status import RunStatus
 from projects.correction.attempts.uploads import InvalidUpload
+from projects.correction.evaluation.report import ReportContent
 from projects.correction.metis.authentication import ServiceBearerAuth
 from projects.correction.pipeline.services import decide_run, submit_attempt
 from projects.correction.queries.attempts.run import RunConflict
@@ -21,6 +23,36 @@ from projects.correction.queries.attempts.run import RunConflict
 router = Router(auth=ServiceBearerAuth())
 
 RUN_NOT_FOUND = Status(404, {"detail": "Run não encontrado."})
+
+
+@router.get(
+    "/runs/{run_id}/report", response={200: ReportContent, 404: dict[str, str], 409: dict[str, str]}
+)
+def get_report(
+    request: HttpRequest,
+    response: HttpResponse,
+    run_id: UUID,
+    format: Literal["json", "markdown"] = "json",
+) -> ReportContent | Status[dict[str, str]] | HttpResponse:
+    """Retorna o JSON final ou seu Markdown; saídas parciais permanecem privadas."""
+    del request
+    response.headers["Cache-Control"] = "private, no-store"
+    run = Run.public_report_state(run_id)
+    if run is None:
+        return RUN_NOT_FOUND
+    report = getattr(run, "final_report", None)
+    if run.status != RunStatus.DONE or report is None:
+        return Status(409, {"detail": "O relatório final ainda não está disponível."})
+    if format == "markdown":
+        return HttpResponse(
+            report.markdown,
+            content_type="text/markdown; charset=utf-8",
+            headers={
+                "Cache-Control": "private, no-store",
+                "Content-Disposition": f'attachment; filename="report-{run.pk}.md"',
+            },
+        )
+    return ReportContent.model_validate(report.content)
 
 
 @router.post(
@@ -48,7 +80,7 @@ def create_attempt(
 def get_run(request: HttpRequest, run_id: UUID) -> RunResponse:
     """Estado atual do run e a trilha de eventos em ordem cronológica."""
     del request
-    run = Run.get_with_events(run_id)
+    run = Run.get_with_events(run_id, public=True)
     if run is None:
         raise Http404("Run não encontrado.")
     return RunResponse.from_run(run)
@@ -63,6 +95,8 @@ def decide_gate(
 ) -> Status[RunResponse] | Status[dict[str, str]]:
     """Decisão do gate humano: `continue` segue para o E4, `close` encerra o run."""
     del request
+    if Run.get_with_events(run_id, public=True) is None:
+        return RUN_NOT_FOUND
     try:
         decide_run(run_id, body.decision, actor="service-api", note=body.note)
     except Run.DoesNotExist:

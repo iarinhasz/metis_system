@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "method": "standard",
+  "questions": [
+    {
+      "field_code": null,
+      "draft": {
+        "name": "Genérica — avaliação científica",
+        "rubric_fields": [
+          {
+            "key": "originality",
+            "label": "Originalidade",
+            "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+          },
+          {
+            "key": "soundness",
+            "label": "Solidez",
+            "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+          },
+          {
+            "key": "substance",
+            "label": "Substância",
+            "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+          },
+          {
+            "key": "clarity",
+            "label": "Clareza",
+            "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+          },
+          {
+            "key": "meaningful_comparison",
+            "label": "Comparação",
+            "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+          },
+          {
+            "key": "impact",
+            "label": "Impacto",
+            "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+          },
+          {
+            "key": "replicability",
+            "label": "Reprodutibilidade",
+            "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+          }
+        ]
+      }
+    },
+    {
+      "field_code": "https://openalex.org/fields/17",
+      "draft": {
+        "name": "Computação — métodos e sistemas",
+        "rubric_fields": [
+          {
+            "key": "originality",
+            "label": "Originalidade",
+            "rubric_text": "Identifique o avanço algorítmico, de sistema, recurso ou conhecimento em relação ao estado da arte. Diferencie uma nova aplicação de uma nova técnica e verifique se a alegação é sustentada."
+          },
+          {
+            "key": "soundness",
+            "label": "Solidez",
+            "rubric_text": "Confira separação entre treino, validação e teste, vazamento de dados, pressupostos e análise estatística. Para algoritmos e sistemas, verifique correção, complexidade, recursos e condições de execução."
+          },
+          {
+            "key": "substance",
+            "label": "Substância",
+            "rubric_text": "Avalie cobertura de cenários, ablações pertinentes, variabilidade e casos de falha. Em trabalhos teóricos, considere as demonstrações e o alcance dos resultados em vez de exigir benchmarks."
+          },
+          {
+            "key": "clarity",
+            "label": "Clareza",
+            "rubric_text": "Confira notação, pseudocódigo, configuração experimental e apresentação de métricas. Figuras e tabelas devem permitir relacionar cada resultado ao procedimento que o produziu."
+          },
+          {
+            "key": "meaningful_comparison",
+            "label": "Comparação",
+            "rubric_text": "Verifique baselines relevantes, ajuste de hiperparâmetros e orçamento computacional comparáveis. Resultados publicados em datasets ou divisões diferentes não devem ser comparados como se fossem equivalentes."
+          },
+          {
+            "key": "impact",
+            "label": "Impacto",
+            "rubric_text": "Avalie utilidade, escalabilidade, limitações e público beneficiado. Separe ganhos medidos de promessas sobre desempenho, generalização, custo ou aplicação em outros contextos."
+          },
+          {
+            "key": "replicability",
+            "label": "Reprodutibilidade",
+            "rubric_text": "Confira código ou especificação suficiente, versões, sementes, divisões dos dados, dependências e hardware quando pertinentes. Registre restrições de licença, privacidade e acesso sem exigir publicação indevida de dados."
+          }
+        ]
+      }
+    },
+    {
+      "field_code": "https://openalex.org/fields/31",
+      "draft": {
+        "name": "Física e Astronomia — sistemas quânticos",
+        "rubric_fields": [
+          {
+            "key": "originality",
+            "label": "Originalidade",
+            "rubric_text": "Identifique a contribuição física ou conceitual e a relação com modelos, previsões ou técnicas anteriores. Não confunda uso de terminologia quântica com demonstração de vantagem ou novidade física."
+          },
+          {
+            "key": "soundness",
+            "label": "Solidez",
+            "rubric_text": "Verifique hipóteses, unidades, aproximações e regimes de validade. Em sistemas quânticos, examine normalização, evolução e observáveis; confronte inferências com derivações, simulações ou medidas efetivamente apresentadas."
+          },
+          {
+            "key": "substance",
+            "label": "Substância",
+            "rubric_text": "Avalie derivações, controles, convergência numérica e incertezas pertinentes à contribuição. Um artigo teórico pode ser suficiente sem experimento quando suas conclusões se limitam ao que foi demonstrado."
+          },
+          {
+            "key": "clarity",
+            "label": "Clareza",
+            "rubric_text": "Confira definição de símbolos, estados, operadores, unidades e convenções. As figuras devem explicitar grandezas, escalas e condições de cálculo ou medida necessárias à interpretação."
+          },
+          {
+            "key": "meaningful_comparison",
+            "label": "Comparação",
+            "rubric_text": "Confira a comparação com limites clássicos, modelos anteriores ou dispositivos equivalentes quando aplicável. Alegações de vantagem quântica precisam explicitar hipótese, recurso e regime de comparação."
+          },
+          {
+            "key": "impact",
+            "label": "Impacto",
+            "rubric_text": "Avalie a consequência do resultado para o problema físico e a viabilidade das aplicações alegadas. Diferencie prova de princípio, simulação e realização experimental sem presumir equivalência entre elas."
+          },
+          {
+            "key": "replicability",
+            "label": "Reprodutibilidade",
+            "rubric_text": "Confira Hamiltoniano ou modelo, condições iniciais e de contorno, parâmetros numéricos e configuração experimental quando aplicáveis. Em trabalhos exclusivamente teóricos, a cobertura ativa segue o método e não exige dados inexistentes."
+          }
+        ]
+      }
+    },
+    {
+      "field_code": "https://openalex.org/fields/27",
+      "draft": {
+        "name": "Medicina — evidência clínica e saúde",
+        "rubric_fields": [
+          {
+            "key": "originality",
+            "label": "Originalidade",
+            "rubric_text": "Identifique a contribuição para a pergunta clínica ou de saúde e sua relação com evidência anterior. Distinga novo achado, validação externa, revisão e replicação, sem desvalorizar replicação clinicamente relevante."
+          },
+          {
+            "key": "soundness",
+            "label": "Solidez",
+            "rubric_text": "Examine desenho, seleção, desfechos, confundimento, perdas, vieses e adequação da análise. Confronte linguagem causal com o desenho; em revisões, confira busca, elegibilidade e avaliação de risco de viés."
+          },
+          {
+            "key": "substance",
+            "label": "Substância",
+            "rubric_text": "Verifique tamanho e representatividade da amostra, precisão, dados ausentes e consistência dos resultados. Em revisões, examine cobertura, heterogeneidade e limites da síntese em vez de exigir novos participantes."
+          },
+          {
+            "key": "clarity",
+            "label": "Clareza",
+            "rubric_text": "Confira definição de população, intervenção ou exposição, comparador e desfechos quando pertinentes. Relate claramente medidas de efeito, incerteza, fluxos de seleção e limitações."
+          },
+          {
+            "key": "meaningful_comparison",
+            "label": "Comparação",
+            "rubric_text": "Verifique comparador apropriado, cuidado usual e discussão equilibrada da literatura. Diferencie ausência de significância de equivalência e evite extrapolar entre populações ou desenhos incompatíveis."
+          },
+          {
+            "key": "impact",
+            "label": "Impacto",
+            "rubric_text": "Relacione efeito, incerteza e relevância clínica aos benefícios, danos e aplicabilidade. Não transforme significância estatística em recomendação clínica sem sustentação no estudo."
+          },
+          {
+            "key": "replicability",
+            "label": "Reprodutibilidade",
+            "rubric_text": "Confira protocolo ou registro quando pertinente, critérios, instrumentos e procedimentos de análise. Dados de pacientes exigem proteção e podem ter acesso controlado; não exija compartilhamento identificável nem invente aprovação ética ausente."
+          }
+        ]
+      }
+    }
+  ]
+}

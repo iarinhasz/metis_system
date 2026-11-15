@@ -35,6 +35,8 @@ O contrato é o que E2–E5 leem. Com ele e as fixtures, as trilhas A e I começ
 
 ## Etapa 1.2 — Spike do Agno 3 em Python 3.14
 
+**Situação (12/11/2026):** dependências e testes de contrato implementados. Python 3.14.5 e Agno 3.1.12 conferidos localmente com as SDKs OpenAI e Google. O [resultado do spike](../../../docs/agents.md#resultado-do-spike-12) registra as políticas de erro de `Step`/`Condition`, falhas de `Parallel`, schemas, métricas, retries e telemetria. A validação com respostas reais e chaves válidas permanece pendente; a equipe optou por seguir com os testes locais. Não marcar a etapa como totalmente concluída antes dessa validação.
+
 **O que fazer**
 - Adicionar `agno>=3.1,<4`, `openai` e `google-genai` ao `pyproject.toml` e conferir a instalação em Python 3.14.
 - Escrever `agents/tests/test_agno_contract.py`, marcado para rodar fora do CI (precisa de chave), conferindo cada item de [O que confirmar no Agno 3](01_diagnostico.md#o-que-confirmar-no-agno-3):
@@ -53,6 +55,10 @@ O Agno 3 é recente (R8), e o Python 3.14 não está confirmado (R15). Tudo que 
 ---
 
 ## Etapa 1.3 — Pacote `agents/`
+
+**Situação (12/11/2026):** implementada. O catálogo tem padrões de desenvolvimento substituíveis por papel no ambiente, conforme decisão da equipe. Entraram `ModelSpec`, fábricas, runner com medição, prompts e exemplos gerados dos schemas, limiter compartilhado, fakes e a fronteira de imports. A sessão do E1 usa a fábrica preservando a `DocumentConfig` e zero retries; seus pools de seções e figuras usam `bounded_map`. Os contratos definitivos de M2–M5 continuam em suas etapas; o catálogo usa `PendingOutput` onde ainda não há schema real.
+
+**Verificação:** **412 testes passaram**, com 5 casos `llm` excluídos, em Linux com Python 3.14.10 e PostgreSQL 18. Passaram também lock/sync com `--locked`, Ruff (137 arquivos), mypy (135 arquivos) e `manage.py check`. Os testes de concorrência verificam conexões reais fechadas inclusive quando uma tarefa falha. Detalhe e configuração em [docs/agents.md](../../../docs/agents.md#implementação-da-etapa-13). A validação com chaves válidas da 1.2 continua pendente; `LLMCall`, preços de produção e persistência de uso ficam na 1.4.
 
 **O que fazer**
 - `specs.py`, `models.py`, `factory.py`, `runner.py`, `prompts/`, `schemas/`, `usage.py`, `pricing.py`, `limits.py`, `errors.py` e `fakes.py`, como em [docs/agents.md](../../../docs/agents.md#o-pacote-agents).
@@ -84,6 +90,10 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 ---
 
 ## Etapa 1.4 — LLMCall, preços e registro de uso
+
+**Situação (12/11/2026):** implementada. `LLMCall` e a migração `attempts.0003_llmcall` registram uso por run e estágio; o admin é somente leitura. `pipeline.usage.DatabaseUsageSink` grava pelo Management de `queries/attempts/llm_call.py`. O E1 recebe o sink e o run real na sessão; respostas retomadas e extrações reaproveitadas não geram novas linhas. A tabela Standard cobre os modelos de desenvolvimento e o E1, com cache, raciocínio faturável, faixa de contexto longo e a mudança de preço do Gemini 3.8 em janeiro. Modelo sem tarifa mantém custo nulo e aviso no log. Fontes e limites em [docs/agents.md](../../../docs/agents.md#implementação-da-etapa-14).
+
+**Verificação:** **437 testes passaram**, com 5 casos `llm` excluídos, em Linux com Python 3.14.10 e PostgreSQL 18. Passaram Ruff (143 arquivos), mypy (141 arquivos), `manage.py check`, aplicação da migração e `makemigrations --check --dry-run`. Sem mudanças de dependências. A validação com chaves válidas da 1.2 continua pendente; as agregações de custo por run e período permanecem na 6.2.
 
 **O que fazer**
 - Model `LLMCall` em `attempts/`, com os campos de [Modelos de dados](../../../docs/data_models.md#attempts); admin somente leitura.

@@ -2,6 +2,10 @@
 
 Como o pipeline anda, falha e se recupera. Os estados citados aqui estão definidos em [Modelos de dados](data_models.md#estados-do-run).
 
+**Estado de 13/11/2026:** E1, E2 e E5 reais; E3 e E4 stubs. A máquina de
+estados/gate está implementada, mas E3 ainda não detecta risco e E4 não produz
+rodadas. E5 sem rodadas completas para em `waiting_setup`. [Evidências](status_and_metrics.md).
+
 ## Princípios
 
 - **O banco é a fonte da verdade.** A mensagem Celery leva só o `run_id`; a task lê o que precisa do Postgres e grava o que produz.
@@ -20,6 +24,13 @@ Como o pipeline anda, falha e se recupera. Os estados citados aqui estão defini
 | E5 consolidation | `evaluated` | `consolidating` | `done` | `evaluation` | `pipeline.consolidate_report` |
 
 O E2 roda na fila `evaluation` porque é uma chamada de LLM, não um parse.
+
+Nos runs internos `purpose=rubric_check`, E1 usa a extração em cache ligada na
+criação, E2 usa o rascunho congelado e E3 é pulado. `RunManagement` registra a
+transição de `profiled` para `integrity_checked` com `skipped=true` antes de
+publicar E4 após o commit. O desvio só é permitido para esse propósito; mensagens
+de E3 para rubric checks têm o claim negado. A publicação normal e o reconciliador
+passam pela mesma regra. Ver [Rubric check no admin](questions_and_profiling.md#rubric-check-no-admin-312).
 
 A fila e o nome da task de cada estágio ficam no `STAGES` (`attempts/status.py`). As rotas do Celery (`CELERY_TASK_ROUTES`) e a publicação (`pipeline/publishing.py`) são geradas a partir dele.
 
@@ -65,7 +76,7 @@ O Celery mantém o mesmo id da task em `retry()` e na reentrega depois da morte 
 
 - **Backoff:** exponencial com jitter completo, calculado pelo próprio Celery (`get_exponential_backoff_interval`). Valores iniciais: 3 retries, base de 60 s, teto de 15 min.
 - **Registro:** cada retry gera um `RunEvent` `retry_scheduled` com o erro e o tempo de espera.
-- **Dentro do Agno:** `Step(max_retries=0)`, porque o retry de step do Agno não tem backoff. O retry de uma chamada fica no modelo (`retries` + `exponential_backoff=True`, só para 429/5xx), e o do estágio inteiro fica no Celery.
+- **Dentro do Agno:** `Step(max_retries=0)`, porque o retry de step não tem backoff. O modelo trata falhas transitórias (429/5xx, timeout/conexão), com retry da SDK desligado; o retry do estágio fica no Celery. E1 mantém zero retry do modelo.
 
 ## Gate humano e reprocessamento
 
@@ -121,7 +132,7 @@ O `metis/config.py` recusa subir com valores contraditórios:
 | Fila | Worker | Concorrência inicial | Por quê |
 |---|---|---|---|
 | `extraction` | `worker-extraction` | baixa (1–2), com limite de memória | Cada E1 já faz até `max_parallel_calls` chamadas ao modelo ao mesmo tempo |
-| `integrity` | `worker-integrity` | 2 | Rede (APIs acadêmicas com rate limit) + embeddings locais |
+| `integrity` | `worker-integrity` | 2 | Hoje stub; rede e embeddings planejados para E3 |
 | `evaluation` | `worker-evaluation` | 4 | Chamadas de LLM, limitadas por I/O |
 | `default` | `worker-evaluation` | — | Manutenção (reconciliador) |
 
@@ -129,7 +140,9 @@ Todos usam a mesma imagem, com `prefetch_multiplier=1` e `acks_late`.
 
 ## Agno dentro dos estágios
 
-O `execute()` de cada estágio monta o Workflow Agno do estágio e chama `workflow.run()`. O desenho completo (fronteiras, `agents/`, catálogo de agentes, workflow por estágio, estado, concorrência, custo e testes) está em [Agentes e workflows](agents.md). As regras que tocam a orquestração:
+E2 e E5 montam o Workflow Agno e chamam `workflow.run()`. E1 executa sessão e
+`bounded_map`, sem Workflow; E3/E4 ainda não têm executores reais. O desenho e
+as regras estão em [Agentes e workflows](agents.md). Para os workflows implementados:
 
 - **Construção por task.** O workflow e os agentes são criados dentro de cada task, nunca como singletons de módulo: o cliente HTTP do modelo fica preso ao event loop em que nasceu. Cada ramo de um `Parallel` recebe uma instância própria de Agent.
 - **Execução síncrona.** `workflow.run()` nos workers prefork. O `background=True` do Agno não é usado: o Celery já é a camada de background.
@@ -147,7 +160,7 @@ O `execute()` de cada estágio monta o Workflow Agno do estágio e chama `workfl
 | API | Unicidade de (artigo, sha256): o reenvio idêntico devolve 200 com a attempt existente |
 | Publicação | `on_commit` + reconciliador para a janela "commitou, mas não publicou" |
 | Claim | Lock da linha + checkpoint ou posse pelo id da task |
-| Passos de um estágio | Cada passo persiste e pula o que já existe (ex.: um passe por seção que já tem observações na rodada não é chamado de novo) |
+| Passos de um estágio | E1 reaproveita `ExtractionStep`; E2 e E5 pulam checkpoints persistidos. Passes por seção do E4 ainda são planejados |
 | Eventos | `event_key` único: `{run}:{version}` nas transições, `{run}:retry:{task}:{n}` nos retries |
 
 ## Auditoria e custo

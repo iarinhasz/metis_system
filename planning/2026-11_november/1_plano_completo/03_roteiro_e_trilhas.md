@@ -4,6 +4,12 @@ Sem datas: a ordem, as dependências e o critério de pronto. A equipe tem 3 ou 
 
 ## Marcos
 
+Esta seção define o **alvo** dos marcos, não uma lista de entregas concluídas.
+A [revisão de 13/11/2026](../../../docs/status_and_metrics.md#metas-revistas-por-marco)
+confronta cada pronto com o código e os números disponíveis. E1/E2/E5 têm
+implementação, E3/E4 são stubs; correlação PeerRead, A/B, integridade real,
+carga e retenção ainda não estão demonstrados.
+
 ```text
 M0 Fundação ─▶ M1 Extração ─▶ M2 Perfil + Questions ─▶ M3 Avaliação ─┬─▶ M4 Integridade, Fase 1 ─┐
                                                                      └─▶ M5 Integridade, Fase 2 ─┴─▶ M6 Qualidade
@@ -67,10 +73,10 @@ Quem fica em cada trilha é a questão aberta Q15.
 
 Cada ponto é um E2E com `docker compose`, feito com as três trilhas juntas, e só fecha quando o roteiro de [12](12_testes_e_verificacao.md#verificação-manual-por-ponto-de-integração) passa.
 
-| Ponto | O que roda de verdade | O que ainda é stub |
+| Ponto (alvo) | O que deve rodar de verdade | O que pode ser stub nesse ponto |
 |---|---|---|
 | I1 | API, pipeline, gate, reconciliador, Docker | E1–E5 |
-| I2 | E1 real (divisão do artigo; figuras em aberto), `LLMCall` | E2–E5 |
+| I2 | E1 real, `LLMCall`; requisitos de recorte/texto oculto permanecem no pronto de M1 | E2–E5 |
 | I3 | E1, E2, E4, E5 reais | E3 (*pass-through*) |
 | I4 | E3 com a Fase 1 | Fase 2 |
 | I5 | Pipeline completo; A/B decidido | — |

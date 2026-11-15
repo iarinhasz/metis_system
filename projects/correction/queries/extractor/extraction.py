@@ -21,6 +21,13 @@ class ExtractionManagement:
         return cls.objects.filter(sha256=sha256, version=version).first()
 
     @classmethod
+    def cached_sample(cls, hashes: tuple[str, ...], version: str) -> dict[str, Extraction]:
+        return {
+            extraction.sha256: extraction
+            for extraction in cls.objects.filter(sha256__in=hashes, version=version)
+        }
+
+    @classmethod
     def store(cls, sha256: str, version: str, article: ExtractedArticle) -> Extraction:
         """Guarda a extração; se outro run guardou a mesma antes, devolve a que já existe."""
         extraction, _ = cls.objects.get_or_create(

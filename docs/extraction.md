@@ -1,5 +1,9 @@
 # Extração (E1)
 
+**Revisão de 13/11/2026:** E1 implementado sobre `ExtractedArticle`.
+Os números de 11–12/11 ao fim são ensaios históricos, sem nova chamada paga
+nesta revisão. [Metas revistas e pendências](status_and_metrics.md).
+
 ## Objetivo
 
 Dividir o PDF em seções, com título, nível e texto literal, e guardar o resultado (`Extraction`) que os estágios seguintes leem, sem voltar ao PDF. A estrutura vem de chamadas a um modelo de linguagem, e o texto devolvido é conferido contra o texto do próprio PDF.
@@ -13,7 +17,10 @@ O código fica em `extractor/` (caminhos relativos a `projects/correction/`).
 | **Gemini 2.5 Flash**, pelo Agno (`session.py`) | Lê o PDF: mapeia as seções (chamada 1) e copia o texto de cada uma (chamada 2) |
 | **pypdf** (Python puro) | Lê o texto do PDF aqui: é a referência para conferir as respostas e o texto enviado na estratégia `text` |
 
-Nenhum serviço à parte. O GROBID chegou a ser implementado na 1.5 e foi descartado em 11/11/2026: a imagem tem 1,7 GB, ele ocupa 3,6 GB de RAM, e a divisão por chamada ao modelo bastou. O Docling, previsto para figuras, tabelas e fórmulas, está em aberto pelo mesmo motivo (usa modelos do torch).
+Nenhum serviço à parte. O GROBID chegou a ser implementado na 1.5 e foi
+descartado em 11/11/2026 após medir imagem de 1,7 GB e uso de 3,6 GB de RAM.
+Na 1.6 decidiu-se usar Gemini também para figuras, sem Docling; o recorte da
+imagem foi adiado. Esses consumos são registros daquele ensaio, não do build atual.
 
 ## Passo a passo
 
@@ -123,14 +130,14 @@ Se o modelo cai no meio (fora do ar, cota, timeout), o Celery tenta o estágio d
 - **Chave:** o hash do prompt, do schema pedido e de `with_document`, junto do sha256 do PDF e da versão do extractor. Mudar um prompt, a config ou um schema não reaproveita a resposta antiga.
 - **`ExtractionStep`** (`sha256`, `version`, `key`, `answer`), único pelos três primeiros. As respostas guardadas são lidas uma vez, na thread principal; cada thread das chamadas em paralelo grava a sua e fecha a própria conexão (o Django abre uma conexão por thread e não a fecha sozinho).
 - **Quando os passos são apagados:** quando a `Extraction` é guardada, e quando o estágio falha com `InvalidModelAnswer` (seção obrigatória vazia, referências sem entrada). Neste caso, as respostas guardadas levariam à mesma falha no retry.
-- **Quando ficam:** num run que terminou em `error_llm` depois de todas as tentativas. Reprocessar no gate retoma deles. A limpeza das sobras entra no comando de retenção da 6.4.
+- **Quando ficam:** num run que terminou em `error_llm` depois das tentativas. Reprocessar no admin retoma deles. Prazo de guarda e comando de limpeza com dry-run continuam pendentes na Q7/6.4; esta revisão não apaga checkpoints.
 - Dois runs do mesmo PDF ao mesmo tempo podem chamar o modelo para o mesmo passo; fica a primeira resposta gravada.
 
 ## Falhas
 
 | Situação | Resultado |
 |---|---|
-| Falta a `GEMINI_KEY` | `MissingModelKey` → `waiting_setup` |
+| Faltam `GEMINI_KEY` e `METIS_GOOGLE_API_KEY` | `MissingModelKey` → `waiting_setup` |
 | Chamada ao modelo falhou (fora do ar, cota, timeout de `METIS_LLM_TIMEOUT_SECONDS`) | `ModelUnavailable` → retry do estágio, que retoma das respostas guardadas → `error_llm` |
 | Resposta vazia, cortada, fora do schema ou seção obrigatória vazia | `InvalidModelAnswer` → as respostas guardadas são apagadas → retry do estágio, do zero → `error_llm` |
 | Sem abstract ou sem referências no mapa | `MissingRequiredSections` → `rejected_invalid_submission`, sem as chamadas por seção |
@@ -145,6 +152,10 @@ O Agno não refaz chamadas (`retries=0`): quem tenta de novo, com backoff, é o 
 - O Agno registra em warning a resposta que não bateu com o schema, com texto do manuscrito. Um filtro no logger `agno` deixa passar só os erros.
 
 ## Limitações conhecidas
+
+Não há limite de páginas nem timeout separado do pypdf. Upload é limitado a
+50 MiB por padrão; chamada e estágio têm seus próprios timeouts. A 6.3 ainda
+precisa medir o limite de páginas e fazer a verificação de carga.
 
 - **Algoritmos:** uma seção só com pseudocódigo pode ficar vazia, porque a transcrição do modelo não bate com o texto do pypdf e conta como texto de fora.
 - **Símbolos:** letras gregas podem mudar ("α" virou "a" num teste), e fórmulas vêm como texto corrido.

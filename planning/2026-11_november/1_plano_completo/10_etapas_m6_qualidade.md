@@ -22,6 +22,26 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add offline evaluation commands`
 
+**Base implementada (13/11/2026, `agentes/6.1-evals-base`):** contrato comum de
+relatório com amostra, parâmetros, hashes de prompt, `ModelSpec`, código, métricas
+e consumo; persistência sem sobrescrita em `evals/results/`; `bench_profiling`
+integrado; comando `compare_evals` com verificação de compatibilidade e leitura
+do baseline legado. Medições de desempenho continuam fora do CI.
+Ver [operação e contrato](../../../docs/evals.md).
+
+Os runners específicos `bench_reviews`, `bench_judge`, `bench_plagiarism` e os
+benchmarks da Fase 2 permanecem como próximas integrações do plano completo.
+
+**Verificação da base:** 654 testes passaram em Python 3.14 e PostgreSQL 18, com
+5 contratos `llm` excluídos e o aviso de depreciação já existente do SDK Google.
+Mypy aprovou 237 arquivos; Ruff e formatação passaram (239 arquivos); checks do
+Django e `makemigrations --check --dry-run` sem problemas ou alterações pendentes.
+
+Foi executado o comando real de regras locais nos 30 artigos, gerando um novo
+relatório e sua comparação em `evals/results/`: 119/152 papéis corretos (78,29%),
+zero chamadas de LLM e diferença zero em relação ao baseline da 2.7. O arquivo
+histórico permaneceu intacto; os artefatos locais gerados estão fora do Git.
+
 ---
 
 ## Etapa 6.2 — Custo no admin
@@ -33,6 +53,18 @@ Caminhos relativos a `projects/correction/`.
 **Teste** (`attempts/tests/test_cost_admin.py`): a soma por run bate com as chamadas.
 
 **Commit sugerido:** `feat: show LLM cost aggregates in the admin`
+
+**Implementação (13/11/2026):** painel na lista de `LLMCall` e no detalhe do `Run`,
+com somas históricas em `Decimal`, filtros por período e desdobramentos por run,
+estágio, papel, provedor/modelo e dia. O orçamento de alerta por run é opcional
+(`METIS_LLM_RUN_BUDGET_USD`); o alerta sempre usa o histórico completo do run,
+mesmo com filtros ativos. Valores sem preço são identificados como totais parciais.
+Ver [documentação de custo](../../../docs/agents.md#consulta-no-admin-62).
+
+**Verificação:** 608 testes passaram, com 5 testes `llm` excluídos, em Python 3.14
+e PostgreSQL 18; há somente o aviso de depreciação já existente do SDK Google.
+Ruff passou (223 arquivos formatados), mypy passou (221 arquivos), `manage.py check`
+não apontou problemas e `makemigrations --check --dry-run` não encontrou alterações.
 
 ---
 
@@ -48,6 +80,24 @@ Caminhos relativos a `projects/correction/`.
 ---
 
 ## Etapa 6.4 — Retenção e docs
+
+**Recorte docs do módulo entregue em 13/11/2026:** revisão contra o código de
+`32ff4e6`, identificação do fluxo alvo e da implementação atual, comandos/API,
+configuração, limites, modelos e metas de M0–M6. Os [números e metas revistas](../../../docs/status_and_metrics.md)
+preservam os ensaios históricos: citações 244/263 de recall e 244/264 de
+precisão no protocolo filtrado; regras locais 119/152 e F1 micro 0,7885, sem LLM.
+Os 654 testes da 6.1 são referência da entrega anterior, não nova execução de 6.4.
+
+**Verificação do recorte:** 21 arquivos Markdown revisados, 181 links/âncoras
+locais conferidos sem erros e `git diff --check` limpo. Baseline, totais por
+área, padrões da configuração, rotas, stubs e sink da curadoria conferidos
+diretamente contra os arquivos locais. Sem alteração de código, banco ou
+chamada a provedor nesta revisão.
+
+**A etapa completa permanece aberta:** Q7 ainda precisa de política de retenção,
+permissões específicas e comando de limpeza com dry-run. Nada foi apagado nesta
+revisão. Medição de LLM/PeerRead, A/B e benchmarks de integridade continuam
+pendentes; este recorte não fecha o pronto do M6.
 
 **O que fazer**
 - Retenção de dados (Q7): por quanto tempo guardar PDFs, recortes e relatórios, e quem vê; comando de limpeza com dry-run.

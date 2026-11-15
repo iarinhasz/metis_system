@@ -1,9 +1,12 @@
 """Centralized environment configuration and startup validation."""
 
+from decimal import Decimal
 from typing import Annotated
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from projects.correction.agents.specs import ModelSpec, Role, development_spec, validate_catalog
 
 
 class MetisSettings(BaseSettings):
@@ -12,6 +15,7 @@ class MetisSettings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        env_nested_delimiter="__",
     )
 
     secret_key: str = "development-only-change-before-deploying"
@@ -30,6 +34,13 @@ class MetisSettings(BaseSettings):
     api_token: str = ""
     media_root: str = "media"
     max_upload_mb: int = 50
+    evaluation_method: str = Field(default="standard", min_length=1, pattern=r"^[a-zA-Z0-9_-]+$")
+    profiling_taxonomy_version: str = ""
+
+    # Opcional: amplia a cota de leitura da taxonomia pública do OpenAlex.
+    openalex_api_key: str = ""
+    profiling_max_attempts: int = Field(default=3, ge=1)
+    profiling_confidence_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
 
     stage_max_retries: int = 3
     stage_retry_backoff_seconds: int = 60
@@ -46,6 +57,38 @@ class MetisSettings(BaseSettings):
     # Chave da API do Gemini, lida do .env sem o prefixo METIS_.
     gemini_key: str = Field(default="", validation_alias="GEMINI_KEY")
     llm_timeout_seconds: int = 600
+    openai_api_key: str = ""
+    google_api_key: str = Field(
+        default="", validation_alias=AliasChoices("METIS_GOOGLE_API_KEY", "GEMINI_KEY")
+    )
+    llm_max_concurrency: int = Field(default=4, ge=1)
+    # Limite de alerta no admin, em USD por run; ausente desativa a comparação.
+    llm_run_budget_usd: Decimal | None = Field(default=None, gt=0, allow_inf_nan=False)
+    evaluator_a: ModelSpec = Field(default_factory=lambda: development_spec(Role.EVALUATOR_A))
+    evaluator_b: ModelSpec = Field(default_factory=lambda: development_spec(Role.EVALUATOR_B))
+    evaluator_c: ModelSpec = Field(default_factory=lambda: development_spec(Role.EVALUATOR_C))
+    judge_openai: ModelSpec = Field(default_factory=lambda: development_spec(Role.JUDGE_OPENAI))
+    judge_google: ModelSpec = Field(default_factory=lambda: development_spec(Role.JUDGE_GOOGLE))
+    meta_reviewer: ModelSpec = Field(default_factory=lambda: development_spec(Role.META_REVIEWER))
+    vision: ModelSpec = Field(default_factory=lambda: development_spec(Role.VISION))
+    fast: ModelSpec = Field(default_factory=lambda: development_spec(Role.FAST))
+    adjudicator: ModelSpec = Field(default_factory=lambda: development_spec(Role.ADJUDICATOR))
+    # Modelos mínimos para os contratos ao vivo; não definem os papéis da etapa 1.3.
+    agno_contract_openai_model: str = "gpt-4o-mini"
+    agno_contract_google_model: str = "gemini-2.5-flash"
+
+    @property
+    def model_specs(self) -> dict[Role, ModelSpec]:
+        return {role: getattr(self, role.value) for role in Role}
+
+    @field_validator(*(role.value for role in Role), mode="before")
+    @classmethod
+    def model_override(cls, value: object, info: ValidationInfo) -> object:
+        if isinstance(value, dict):
+            assert info.field_name is not None
+            defaults = development_spec(Role(info.field_name)).model_dump()
+            return defaults | value
+        return value
 
     @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
     @classmethod
@@ -76,6 +119,10 @@ class MetisSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_task_timing(self) -> MetisSettings:
+        validate_catalog(self.model_specs)
+        for role, spec in self.model_specs.items():
+            if spec.timeout_seconds >= self.stage_soft_time_limit_seconds:
+                raise ValueError(f"O timeout de {role} deve ser menor que o limite soft.")
         if not self.stage_soft_time_limit_seconds < self.stage_time_limit_seconds:
             raise ValueError("O limite soft deve ser menor que o limite hard da task.")
         if not self.stage_time_limit_seconds < self.broker_visibility_timeout_seconds:

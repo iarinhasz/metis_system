@@ -3,12 +3,32 @@
 import pytest
 
 from projects.correction.attempts.models import Article, Attempt, Run, RunEvent
-from projects.correction.attempts.status import STAGES, HumanDecision, RunStatus, Stage
+from projects.correction.attempts.status import STAGES, HumanDecision, RunPurpose, RunStatus, Stage
 from projects.correction.extractor.article import ExtractedArticle
 from projects.correction.extractor.models import Extraction
 from projects.correction.queries.attempts.run import InvalidTransition, RunConflict
 
 ARTICLE = ExtractedArticle(title="A", authors=(), language="pt", model="m", sections=())
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("purpose", [RunPurpose.RUBRIC_CHECK, RunPurpose.AB_TEST])
+def test_internal_runs_do_not_replace_or_supersede_evaluation_runs(
+    run: Run, purpose: RunPurpose
+) -> None:
+    internal = Run.create(attempt=run.attempt, purpose=purpose)
+    assert Run.latest_for_attempt(run.attempt) == run
+    assert Run.get_by_id(run.pk).status == RunStatus.RECEIVED
+    Attempt.create_next(
+        run.attempt.article,
+        sha256="b" * 64,
+        file="v2.pdf",
+        original_filename="v2.pdf",
+        size_bytes=256,
+        submitted_by="test-service",
+    )
+    assert Run.get_by_id(run.pk).status == RunStatus.SUPERSEDED
+    assert Run.get_by_id(internal.pk).status == RunStatus.RECEIVED
 
 
 def events(run: Run, event_type: str | None = None) -> list[RunEvent]:
