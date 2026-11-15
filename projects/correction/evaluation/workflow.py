@@ -191,7 +191,7 @@ class BuildFinalReportStep:
         specs.update({f"evaluator_{review.slot}": review.model_spec for review in reviews})
         content = build_report(
             run_id=run.pk,
-            article=run.extraction.article,
+            article=run.extraction.document,
             reviews=reviews,
             aggregation=self.deps.aggregation(),
             meta=MetaReview.model_validate(run.consolidation["meta"]["review"]),
@@ -246,7 +246,7 @@ def build_workflow(run_id: str, task_id: str, *, factory: AgentFactory) -> Workf
             {item.criterion_key for item in review.state.criteria} != active for review in reviews
         ):
             raise SetupRequired("As rodadas precisam do mesmo modo e de todos os critérios ativos.")
-        sections = {section.id for section in run.extraction.article.sections}
+        sections = {section.id for section in run.extraction.document.sections}
         if any(
             observation.section_id not in sections
             for review in reviews

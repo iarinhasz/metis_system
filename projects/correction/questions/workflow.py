@@ -14,7 +14,7 @@ from projects.correction.agents.schemas.profiling import FieldChoice
 from projects.correction.agents.specs import ModelSpec, Role, validate_catalog
 from projects.correction.attempts.models import Run
 from projects.correction.attempts.status import RunPurpose
-from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import SetupRequired
 from projects.correction.questions.document_map import DocumentMap, build_document_map
@@ -48,7 +48,7 @@ class Dependencies:
     run_id: str
     task_id: str
     factory: AgentFactory
-    article: ExtractedArticle
+    article: ExtractedDocument
     snapshot: dict[str, Any]
 
     def read(self) -> Run:
@@ -281,7 +281,7 @@ def build_workflow(run_id: str, task_id: str, *, factory: AgentFactory) -> Workf
     # initialize_profiling devolve o model travado, sem select_related.
     extraction = Run.for_profiling(run_id, task_id).extraction
     assert extraction is not None
-    deps = Dependencies(run_id, task_id, factory, extraction.article, snapshot)
+    deps = Dependencies(run_id, task_id, factory, extraction.document, snapshot)
 
     def step(name: str, executor: Any) -> Step:
         return Step(

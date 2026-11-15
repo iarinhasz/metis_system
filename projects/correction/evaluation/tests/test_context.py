@@ -14,6 +14,7 @@ from projects.correction.attempts.models import Run
 from projects.correction.attempts.status import RunStatus, Stage
 from projects.correction.evaluation.context import EvaluationContextBuilder, divergence_hints
 from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
+from projects.correction.extractor.document_adapter import to_extracted_document
 from projects.correction.extractor.models import Extraction
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import SetupRequired
@@ -95,14 +96,12 @@ def _question() -> QuestionSnapshot:
 
 def _prepare_run(run: Run) -> Run:
     article = _article()
+    document = to_extracted_document(article)
     extraction = Extraction.store(run.attempt.sha256, "evaluation-context-test", article)
-    assignments = (
-        SectionAssignment(section_id="sec_abstract", roles=(SectionRole.OTHER,)),
-        SectionAssignment(section_id="sec_method", roles=(SectionRole.METHOD,)),
-    )
+    assignments = (SectionAssignment(section_id="sec_method", roles=(SectionRole.METHOD,)),)
     profile = {
         "classification": _classification().model_dump(mode="json"),
-        "document_map": build_document_map(article, assignments).model_dump(mode="json"),
+        "document_map": build_document_map(document, assignments).model_dump(mode="json"),
         "complete": True,
     }
     config_snapshot = {
@@ -135,17 +134,15 @@ def _advance_to_evaluation(run: Run) -> None:
 
 def _context_run() -> Run:
     article = _article()
-    assignments = (
-        SectionAssignment(section_id="sec_abstract", roles=(SectionRole.OTHER,)),
-        SectionAssignment(section_id="sec_method", roles=(SectionRole.METHOD,)),
-    )
+    document = to_extracted_document(article)
+    assignments = (SectionAssignment(section_id="sec_method", roles=(SectionRole.METHOD,)),)
     return cast(
         Run,
         SimpleNamespace(
-            extraction=SimpleNamespace(article=article),
+            extraction=SimpleNamespace(document=document),
             profile={
                 "classification": _classification().model_dump(mode="json"),
-                "document_map": build_document_map(article, assignments).model_dump(mode="json"),
+                "document_map": build_document_map(document, assignments).model_dump(mode="json"),
                 "complete": True,
             },
             config_snapshot={
@@ -169,7 +166,6 @@ def test_builder_combines_article_profile_question_criteria_and_model_slots() ->
     assert context.profile.paper_type is PaperType.EMPIRICAL
     assert context.question.name == "Question de teste"
     assert [section.id for section in context.document_map.sections] == [
-        "sec_abstract",
         "sec_method",
     ]
     assert context.evaluation_config == STANDARD

@@ -16,7 +16,7 @@ from projects.correction.questions.resolver import resolve_question
 from projects.correction.questions.taxonomy import TaxonomyLevel, TaxonomySnapshot
 from projects.correction.questions.tests.profiling_helpers import (
     OTHER_TOPIC,
-    article,
+    document,
     field_answer,
     topic_answer,
 )
@@ -33,7 +33,7 @@ def profile(profiling_taxonomy: TaxonomySnapshot) -> ArticleProfile:
             "profiler_topic": [topic_answer()],
         }
     )
-    return profile_article(article(), factory=factory, taxonomy_version=profiling_taxonomy.version)
+    return profile_article(document(), factory=factory, taxonomy_version=profiling_taxonomy.version)
 
 
 @pytest.mark.parametrize(

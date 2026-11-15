@@ -8,7 +8,7 @@ from pydantic import Field, JsonValue
 from projects.correction.agents.schemas.evaluation import EvaluatorSlot
 from projects.correction.agents.specs import Family, ModelSpec, Role
 from projects.correction.attempts.models import Run
-from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
 from projects.correction.pipeline.errors import SetupRequired
 from projects.correction.questions.criteria import EvaluationConfig, get_method
 from projects.correction.questions.document_map import DocumentMap
@@ -36,7 +36,7 @@ class EvaluatorContext(FrozenModel):
 class EvaluationContext(FrozenModel):
     """Dados estáveis compartilhados pelos passos de avaliação de um Run."""
 
-    article: ExtractedArticle
+    article: ExtractedDocument
     profile: ArticleProfile
     question: QuestionSnapshot
     document_map: DocumentMap
@@ -113,7 +113,7 @@ class EvaluationContextBuilder:
 
         snapshot = run.config_snapshot
         try:
-            article = run.extraction.article
+            article = run.extraction.document
             profile = ArticleProfile.model_validate(run.profile["classification"])
             question = QuestionSnapshot.model_validate(snapshot["question"])
             document_map = DocumentMap.model_validate(run.profile["document_map"])

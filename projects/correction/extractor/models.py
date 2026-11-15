@@ -5,6 +5,7 @@ from django.db import models
 
 from projects.correction.attempts.models import TimeStampModel
 from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
 from projects.correction.queries.extractor.extraction import ExtractionManagement
 from projects.correction.queries.extractor.extraction_step import ExtractionStepManagement
 
@@ -30,6 +31,13 @@ class Extraction(ExtractionManagement, TimeStampModel):
     @property
     def article(self) -> ExtractedArticle:
         return ExtractedArticle.model_validate(self.content)
+
+    @property
+    def document(self) -> ExtractedDocument:
+        """Contrato público do E1, derivado sem alterar o JSON de cache persistido."""
+        from projects.correction.extractor.document_adapter import to_extracted_document
+
+        return to_extracted_document(self.article)
 
 
 class ExtractionStep(ExtractionStepManagement, TimeStampModel):

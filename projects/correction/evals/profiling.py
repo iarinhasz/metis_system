@@ -23,7 +23,8 @@ from projects.correction.evals.contracts import (
     UsageSummary,
 )
 from projects.correction.evals.profiling_data import ProfilingCase, ProfilingDataset
-from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
+from projects.correction.extractor.document_adapter import to_extracted_document
 from projects.correction.pipeline.errors import StageError
 from projects.correction.questions.profile import FrozenModel
 from projects.correction.questions.profiler import profile_article
@@ -123,7 +124,7 @@ def scores(
 
 
 def _roles(
-    article: ExtractedArticle,
+    article: ExtractedDocument,
     paper_type: PaperType,
     *,
     factory: AgentFactory | None,
@@ -205,15 +206,19 @@ def run_benchmark(
                 paper_type, field = case.labels.paper_type, None
             else:
                 assert taxonomy_version is not None
+                document = to_extracted_document(case.article)
                 profile = profile_article(
-                    case.article,
+                    document,
                     factory=factory,
                     taxonomy_version=taxonomy_version,
                     max_attempts=max_attempts,
                 )
                 paper_type, field = profile.paper_type, profile.area_path[1].code
             roles, ambiguous = _roles(
-                case.article, paper_type, factory=factory, threshold=confidence_threshold
+                to_extracted_document(case.article),
+                paper_type,
+                factory=factory,
+                threshold=confidence_threshold,
             )
             predictions.append(
                 Prediction(

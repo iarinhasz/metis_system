@@ -25,7 +25,7 @@ from projects.correction.evaluation.contracts import (
     ReviewedSlot,
     item_id,
 )
-from projects.correction.extractor.article import ExtractedArticle
+from projects.correction.extractor.contract import ExtractedDocument
 from projects.correction.questions.criteria import EvaluationConfig
 from projects.correction.questions.profile import FrozenModel, QuestionSnapshot
 
@@ -146,7 +146,7 @@ def validate_meta_review(
 def build_report(
     *,
     run_id: UUID,
-    article: ExtractedArticle,
+    article: ExtractedDocument,
     reviews: tuple[ReviewedSlot, ...],
     aggregation: Aggregation,
     meta: MetaReview,

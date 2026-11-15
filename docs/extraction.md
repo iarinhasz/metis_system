@@ -1,6 +1,7 @@
 # Extração (E1)
 
-**Revisão de 13/11/2026:** E1 implementado sobre `ExtractedArticle`.
+**Revisão de 15/11/2026:** E1 persiste `ExtractedArticle`; os estágios seguintes
+recebem o contrato agnóstico `ExtractedDocument` por um adaptador de leitura.
 Os números de 11–12/11 ao fim são ensaios históricos, sem nova chamada paga
 nesta revisão. [Metas revistas e pendências](status_and_metrics.md).
 
@@ -112,7 +113,44 @@ Desde a 1.6, também `figures[]` (cada `Figure` com `id`, `kind`, `label`, `numb
 
 Desde a 1.8, cada `Figure` traz `description`, nula quando a chamada falhou: um `FigureDescription` com `figure_class`, `description`, `data_read[]`, `supports_claims` (sim, não ou nulo), `support_rationale`, `issues[]` e `table_markdown` (nulo para figura).
 
-O contrato `ExtractedDocument` da 1.1 (módulo Avaliação) ainda não existe; quando existir, é montado a partir deste resultado.
+`ExtractedArticle` continua sendo o resultado persistido pelo E1. A propriedade
+`Extraction.document` adapta esse resultado para `ExtractedDocument` sob demanda;
+não altera o JSON salvo nem a chave do cache. E2, E4 e o benchmark de profiling
+consomem o contrato adaptado. Os achados de texto oculto da 1.7 ainda não estão
+incluídos: a interface dessa etapa precisa ser acordada com quem a implementa.
+
+## Contrato `ExtractedDocument` (M1.1)
+
+O modelo congelado em `extractor/contract.py` valida título, autores, idioma,
+abstract, seções hierárquicas, referências, citações e figuras/tabelas. Ele não
+contém configuração de provedor nem campos específicos de uma resposta de LLM.
+Offsets e páginas são opcionais porque os dados `parsed_pdfs` do PeerRead e o
+`ExtractedArticle` atual não os fornecem de forma consistente. Offsets de citações
+e figuras são relativos ao texto da seção.
+
+`render_for_llm()` devolve uma tupla de blocos independentes, com título e abstract
+em cada bloco. Mantém as subseções, coloca figuras/tabelas junto ao texto quando
+há seção e offset conhecidos, e limita blocos longos separando primeiro por seção
+e depois por parágrafo. O conteúdo de referências é incluído no fim do artigo.
+
+`peerread_to_document()` converte registros `parsed_pdfs` sem chamadas externas.
+O comando `make_peerread_fixtures` lê os JSONs de um zip do PeerRead ou de uma
+árvore extraída em `dataset_project/raw`, valida 10 a 20 documentos e apenas mostra
+o plano por padrão. Para gravar as
+fixtures em `extractor/tests/fixtures/peerread/`, é necessário passar `--execute`:
+
+```bash
+uv run python manage.py make_peerread_fixtures
+uv run python manage.py make_peerread_fixtures --execute
+```
+
+O PeerRead não traz o texto original integral das entradas bibliográficas; para
+essas fixtures, `raw` é uma composição determinística dos metadados disponíveis.
+O corpus não está versionado no repositório: as fixtures reais só podem ser
+geradas quando o zip do PeerRead estiver em `dataset_project/raw` ou os dados
+estiverem extraídos nessa pasta. As amostras de `ExtractedArticle` já disponíveis
+foram usadas para verificar a adaptação local, mas não substituem as fixtures
+PeerRead exigidas pela etapa 1.1.
 
 ## Cache e ligação ao run
 
@@ -164,7 +202,7 @@ precisa medir o limite de páginas e fazer a verificação de carga.
 - **Citações:** chamada em número sobrescrito ("…doença¹⁻³", comum na área da saúde) não é reconhecida; num artigo numérico, um intervalo como "[1, 2]" no meio de uma fórmula vira citação; no autor-ano, "Silva (2020)" com duas entradas de Silva 2020 que nem o segundo autor nem o "et al." desempatam fica sem ligação.
 - **Tabela cortada no meio:** a conferência só pega a tabela que vem só com o cabeçalho. A Table 11 do ICLR 410 veio com 67 números numa rodada e 181 na seguinte. Os números que vêm estão no PDF (100% nas 16 tabelas conferidas), mas pode faltar linha.
 - **Julgamento brando:** nas 19 figuras e tabelas da calibração, o modelo disse sempre que a figura sustenta as frases e não apontou nenhum problema. Serve de ponto de partida para o E2, não de veredito.
-- **Ainda não feito:** o recorte da imagem (adiado), o texto oculto (1.7, Integridade) e o `ExtractedDocument` da 1.1, montado a partir deste resultado (1.11).
+- **Ainda não feito:** o recorte da imagem (adiado) e a integração dos achados de texto oculto (1.7, Integridade) ao `ExtractedDocument` (1.11). O contrato PeerRead ainda aguarda a geração de fixtures reais quando o corpus estiver disponível.
 
 ## Como testar
 

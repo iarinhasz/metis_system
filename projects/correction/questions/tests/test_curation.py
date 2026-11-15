@@ -25,6 +25,7 @@ from projects.correction.questions.taxonomy import TaxonomySnapshot
 from projects.correction.questions.tests.profiling_helpers import (
     FIELD,
     article,
+    document,
     field_answer,
     topic_answer,
 )
@@ -75,7 +76,7 @@ def test_draft_is_unvalidated_and_uses_only_taxonomy_and_method(
 def test_draft_never_enters_resolution_before_validation_and_activation(node: TaxonomyNode) -> None:
     question = draft(node)
     profile = profile_article(
-        article(), factory=profile_factory(), taxonomy_version=node.taxonomy_version
+        document(), factory=profile_factory(), taxonomy_version=node.taxonomy_version
     )
     with pytest.raises(SetupRequired):
         resolve_question(profile, method="standard")

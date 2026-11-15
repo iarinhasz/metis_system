@@ -31,6 +31,18 @@ O contrato é o que E2–E5 leem. Com ele e as fixtures, as trilhas A e I começ
 
 **Commit sugerido:** `feat: add ExtractedDocument contract and PeerRead fixtures`
 
+**Implementação (15/11/2026, branch `avaliacao/1.1-1.11-extracted-document`):**
+`extractor/contract.py` define modelos Pydantic congelados para o documento,
+seções hierárquicas, referências, citações e figuras/tabelas; offsets e páginas
+são opcionais quando a fonte não os fornece. `render_for_llm()` preserva a
+hierarquia, inclui os elementos visuais nas posições conhecidas e devolve blocos
+limitados por tamanho. `peerread_to_document()` converte `parsed_pdfs` sem LLM,
+e `make_peerread_fixtures` é dry-run por padrão, gravando só com `--execute`.
+
+**Ainda pendente para o pronto:** o checkout não contém os JSONs do PeerRead em
+`dataset_project/raw`, então não foi possível gerar e validar 10–20 fixtures reais.
+O contrato, a conversão sintética e o dry-run/execução do comando têm testes.
+
 ---
 
 ## Etapa 1.2 — Spike do Agno 3 em Python 3.14
@@ -242,6 +254,23 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 - O E1 passa a entregar o `ExtractedDocument` aos estágios seguintes.
 
 **Teste:** um `ExtractedArticle` de fixture vira um `ExtractedDocument` válido; com um achado de texto oculto, ele aparece no documento.
+
+**Implementação (15/11/2026, branch `avaliacao/1.1-1.11-extracted-document`):**
+`extractor/document_adapter.py` converte, sob demanda, o `ExtractedArticle` salvo
+em `Extraction.content` para `ExtractedDocument`. E2 e E4 leem a propriedade
+`Extraction.document`; a serialização persistida e o cache de E1 não mudam. A
+conversão preserva seções de conteúdo, referências, citações e descrições de
+figuras, colocando cada figura na primeira menção conhecida. Testes verificam
+compatibilidade com campos opcionais ausentes e que a conversão não altera a
+extração original.
+
+**Pendente para concluir a 1.11:** integrar achados de texto oculto. A etapa 1.7
+está sendo feita por outra pessoa e ainda não há no repositório um modelo/campo
+de achado acordado para receber essa informação. Também falta exercitar o
+adaptador com o fluxo de avaliação ponta a ponta e o banco de testes. Como
+verificação de compatibilidade, 10 amostras serializadas reais de E1 foram
+adaptadas e renderizadas localmente, sem alterar os arquivos de origem. Não foi
+criado um schema provisório para evitar incompatibilidade entre as etapas.
 
 **Commit sugerido:** `feat: build the ExtractedDocument from the extraction`
 

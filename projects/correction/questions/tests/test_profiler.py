@@ -34,7 +34,7 @@ from projects.correction.questions.tests.profiling_helpers import (
     SUBFIELD,
     SYNTHETIC_SUBFIELD,
     TOPIC,
-    article,
+    document,
     field_answer,
     topic_answer,
 )
@@ -54,7 +54,7 @@ def test_profile_uses_fast_twice_and_returns_an_auditable_path(
         },
     )
     profile = profile_article(
-        article(), factory=factory, taxonomy_version=profiling_taxonomy.version
+        document(), factory=factory, taxonomy_version=profiling_taxonomy.version
     )
     assert [call.name for call in factory.calls] == ["profiler_field", "profiler_topic"]
     assert all(call.role == Role.FAST for call in sink.calls)
@@ -94,7 +94,7 @@ def test_invalid_output_retries_with_a_reason_without_repeating_the_first_step(
     scripts[step].insert(0, InvalidFor(1))
     factory = FakeAgentFactory(scripts=scripts)
     profile = profile_article(
-        article(), factory=factory, taxonomy_version=profiling_taxonomy.version
+        document(), factory=factory, taxonomy_version=profiling_taxonomy.version
     )
     calls = [call for call in factory.calls if call.name == step]
     assert len(calls) == 2 and "Resposta anterior recusada" in calls[1].payload.prompt
@@ -121,7 +121,7 @@ def test_foreign_topic_wrong_pair_and_invalid_confidence_are_retried(
         scripts={"profiler_field": [field_answer()], "profiler_topic": [wrong, topic_answer()]},
     )
     profile = profile_article(
-        article(), factory=factory, taxonomy_version=profiling_taxonomy.version
+        document(), factory=factory, taxonomy_version=profiling_taxonomy.version
     )
     assert profile.area_path[-1].code == TOPIC
     assert len(factory.calls) == len(sink.calls) == 3
@@ -141,7 +141,7 @@ def test_feedback_and_final_error_do_not_copy_invalid_manuscript_values(
     factory = FakeAgentFactory(scripts={"profiler_field": [wrong] * 2})
     with pytest.raises(InvalidProfile) as raised:
         profile_article(
-            article(), factory=factory, taxonomy_version=profiling_taxonomy.version, max_attempts=2
+            document(), factory=factory, taxonomy_version=profiling_taxonomy.version, max_attempts=2
         )
     assert raised.value.failure_status == RunStatus.ERROR_LLM
     assert PRIVATE_TEXT not in str(raised.value)
@@ -152,14 +152,14 @@ def test_feedback_and_final_error_do_not_copy_invalid_manuscript_values(
 def test_provider_failure_propagates_for_celery_retry(profiling_taxonomy: TaxonomySnapshot) -> None:
     factory = FakeAgentFactory(scripts={"profiler_field": [LLMUnavailable("503")]})
     with pytest.raises(LLMUnavailable):
-        profile_article(article(), factory=factory, taxonomy_version=profiling_taxonomy.version)
+        profile_article(document(), factory=factory, taxonomy_version=profiling_taxonomy.version)
     assert len(factory.calls) == 1
 
 
 def test_missing_taxonomy_is_setup_error_without_calling_agents() -> None:
     factory = FakeAgentFactory()
     with pytest.raises(SetupRequired):
-        profile_article(article(), factory=factory, taxonomy_version="desconhecida")
+        profile_article(document(), factory=factory, taxonomy_version="desconhecida")
     assert factory.calls == []
 
 
@@ -167,7 +167,7 @@ def test_missing_abstract_is_invalid_submission(profiling_taxonomy: TaxonomySnap
     factory = FakeAgentFactory()
     with pytest.raises(InvalidSubmission):
         profile_article(
-            article().model_copy(update={"sections": ()}),
+            document().model_copy(update={"abstract": ""}),
             factory=factory,
             taxonomy_version=profiling_taxonomy.version,
         )
@@ -208,7 +208,7 @@ def test_real_sdk_respects_the_dynamic_schema_and_retries_foreign_topics(
             "run-sintetico", Stage.PROFILING, sink, config=config, model_factory=models
         )
         profile = profile_article(
-            article(), factory=factory, taxonomy_version=profiling_taxonomy.version
+            document(), factory=factory, taxonomy_version=profiling_taxonomy.version
         )
         assert profile.area_path[-1].code == TOPIC
         assert len(server.requests) == len(sink.calls) == 3
@@ -226,7 +226,7 @@ def test_profile_confidence_is_the_lower_of_both_steps(
         }
     )
     profile = profile_article(
-        article(), factory=factory, taxonomy_version=profiling_taxonomy.version
+        document(), factory=factory, taxonomy_version=profiling_taxonomy.version
     )
     assert profile.confidence == min(field_confidence, topic_confidence)
 
@@ -258,7 +258,7 @@ def test_exhausted_invalid_answers_end_the_stage_in_error_llm(
 
     def execute(self: ProfilingStage, ctx: StageContext) -> StageOutcome:
         profile_article(
-            article(), factory=factory, taxonomy_version=profiling_taxonomy.version, max_attempts=2
+            document(), factory=factory, taxonomy_version=profiling_taxonomy.version, max_attempts=2
         )
         return StageOutcome()
 

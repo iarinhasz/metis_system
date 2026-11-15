@@ -91,7 +91,7 @@ def test_fixture_reaches_profiled_with_question_and_snapshot(
     assert profiled.profile["classification"]["taxonomy_version"] == profiling_taxonomy.version
     assert profiled.profile["classification"]["confidence"] == 0.9
     assert profiled.profile["document_map"]["abstract"] == PRIVATE_TEXT
-    assert profiled.profile["section_roles"][0]["roles"] == ["other"]
+    assert profiled.profile["section_roles"][0]["roles"] == ["introduction"]
     assert profiled.profile["complete"] is True
     snapshot = profiled.config_snapshot
     assert snapshot["question"]["id"] == str(question.pk)
@@ -183,7 +183,6 @@ def test_retry_in_roles_preserves_resolution_and_each_finished_role(
     profiled = Run.get_by_id(run.pk)
     assert profiled.status == RunStatus.PROFILED and profiled.question_id == question.pk
     assert [role["roles"] for role in profiled.profile["section_roles"]] == [
-        ["other"],
         ["method"],
         ["results"],
     ]
