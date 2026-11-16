@@ -60,7 +60,8 @@ Do mais barato ao mais caro:
    - MinHash-LSH (`datasketch` 2.0, MIT), sobre shingles de palavras, acha os parágrafos candidatos.
    - *Winnowing* localiza os trechos idênticos, com offsets: guarda o menor hash de cada janela de k-gramas, com hash estável (blake2b). Qualquer trecho comum com pelo menos `w + k − 1` palavras é detectado.
 3. **Semântico.**
-   - O modelo é o **BGE-M3** (MIT, mais de 100 idiomas, 8 mil tokens, vetores de 1024 dimensões), rodando **localmente**: o manuscrito não sai da infraestrutura. Cada chunk recebe os k vizinhos mais próximos (índice HNSW do pgvector).
+   - O modelo é o **multilingual-E5-large** via FastEmbed/ONNX (mais de 100 idiomas, limite de 512 tokens, vetores de 1024 dimensões), rodando **localmente**: o manuscrito não sai da infraestrutura. Chunks de até 300 palavras reduzem o risco de truncamento; cada chunk recebe os k vizinhos mais próximos (índice HNSW do pgvector). O BGE-M3 previsto inicialmente não está disponível no FastEmbed compatível com Python 3.14.
+   - A carga inicial usa as fixtures `ExtractedDocument` do PeerRead: `make_peerread_fixtures --execute` prepara pelo menos 10 artigos em `projects/correction/extractor/tests/fixtures/peerread`; `load_peerread` valida cinco por padrão em dry-run. Para gravar documentos e vetores, rode `load_peerread --execute`.
    - **Cópia traduzida** (PT↔EN) aparece como uma sequência de frases alinhadas na mesma ordem (cosseno + vizinho mais próximo nos dois sentidos).
    - O **SPECTER2** não serve aqui: só funciona em inglês e compara artigos inteiros.
    - Os limiares são calibrados com abstracts bilíngues do SciELO e com o plágio sintético do PeerRead. Não existe benchmark público PT↔EN para modelos atuais.
