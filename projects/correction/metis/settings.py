@@ -14,11 +14,13 @@ ALLOWED_HOSTS = config.allowed_hosts
 CSRF_TRUSTED_ORIGINS = config.csrf_trusted_origins
 
 INSTALLED_APPS = [
+    "django.contrib.postgres",
     "projects.correction.attempts.apps.AttemptsConfig",
     "projects.correction.pipeline.apps.PipelineConfig",
     "projects.correction.extractor.apps.ExtractorAppConfig",
     "projects.correction.questions.apps.QuestionsConfig",
     "projects.correction.evaluation.apps.EvaluationConfig",
+    "projects.correction.integrity.apps.IntegrityConfig",
     "projects.correction.evals.apps.EvalsConfig",
     "django.contrib.admin",
     "django.contrib.auth",

@@ -43,9 +43,11 @@ Caminhos relativos a `projects/correction/`.
 
 **O que fazer**
 - Extensão `pgvector` por migration; models `SourceDocument` e `SourceChunk` (`VectorField(1024)` + `HnswIndex` por cosseno).
-- `integrity/embeddings.py`: BGE-M3 local no `worker-integrity` (o manuscrito não sai da infraestrutura); carga do modelo uma vez por processo.
+- `integrity/embeddings.py`: `intfloat/multilingual-e5-large` local via FastEmbed no `worker-integrity` (o manuscrito não sai da infraestrutura); carga do modelo uma vez por processo. O modelo entrega vetores de 1024 dimensões e suporta mais de 100 idiomas; chunks de até 300 palavras reduzem o risco de truncamento no limite de 512 tokens.
 - Comando `load_peerread` (dry-run por padrão): semeia o corpus com os artigos do PeerRead, em chunks com embeddings.
 - Cada attempt processada entra no corpus interno.
+
+**Escolha do modelo:** o FastEmbed compatível com Python 3.14 não distribui BGE-M3. Para manter execução ONNX leve, compatibilidade local e embeddings multilíngues de 1024 dimensões, esta etapa usa multilingual-E5-large. Seu contexto de 512 tokens é menor que o BGE-M3; por isso, os documentos são divididos em chunks curtos.
 
 **Teste** (`integrity/tests/test_corpus.py`)
 - `load_peerread --execute` em 5 artigos cria documentos e chunks; rodar de novo não duplica.
