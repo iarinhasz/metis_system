@@ -18,7 +18,7 @@ from projects.correction.evaluation.models import FinalReport
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.publishing import publish_checkpoint_stage
 from projects.correction.pipeline.reconciler import reconcile_runs
-from projects.correction.pipeline.stages import EvaluationStage, IntegrityStage
+from projects.correction.pipeline.stages import EvaluationStage, IntegrityStage, StageOutcome
 from projects.correction.questions.models import Question
 from projects.correction.questions.rubric_check import start_rubric_check
 from projects.correction.questions.taxonomy import TaxonomySnapshot
@@ -106,8 +106,12 @@ def test_cached_sample_uses_draft_skips_integrity_and_compares_real_final_report
 
 
 def test_missing_e4_leaves_a_visible_recoverable_setup_state(
-    model_fakes: None, admin_client: Client
+    model_fakes: None,
+    admin_client: Client,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Simula E4 ainda não disponível para preservar o cenário de setup do E5.
+    monkeypatch.setattr(EvaluationStage, "execute", lambda self, ctx: StageOutcome())
     source = draft()
     sample = sample_attempt("sample")
     batch = start_rubric_check(

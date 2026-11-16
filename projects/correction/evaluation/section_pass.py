@@ -272,6 +272,7 @@ class RunReviewCheckpoints:
     task_id: str
     slot: EvaluatorSlot
     model_spec: ModelSpec
+    mode: EvaluationMode = EvaluationMode.SECTIONED
 
     def assert_owned(self) -> None:
         Run.for_evaluation(self.run_id, self.task_id)
@@ -295,7 +296,7 @@ class RunReviewCheckpoints:
             self.task_id,
             slot=self.slot,
             round_number=1,
-            mode=EvaluationMode.SECTIONED,
+            mode=self.mode,
             model_spec=self.model_spec,
             state=state,
         )

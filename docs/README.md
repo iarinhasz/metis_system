@@ -1,7 +1,7 @@
 # Documentação do Metis
 
-Revisados contra o código em **13/11/2026** (base `32ff4e6`, branch `agents`).
-E1, E2 e E5 têm implementação; E3 e E4 permanecem stubs. As partes ainda
+Revisados contra o código em **16/11/2026** (etapa 3.10, workflow E4).
+E1, E2, E4 e E5 têm implementação; E3 permanece stub. As partes ainda
 planejadas estão identificadas nos documentos. O código é a fonte de verdade;
 o [estado do módulo e as metas medidas](status_and_metrics.md) distinguem
 implementação, testes com fakes, resultados históricos e verificações pendentes.

@@ -1,43 +1,325 @@
-from typing import Any
+"""Orquestração do E4 com agentes falsos e checkpoints duráveis."""
+
+from time import monotonic
 
 import pytest
 
 from projects.correction.agents.errors import LLMUnavailable
 from projects.correction.agents.fakes import FakeAgentFactory
-from projects.correction.attempts.models import LLMCall, Run, RunEvent
-from projects.correction.attempts.status import RunStatus, Stage
-from projects.correction.evaluation.models import FinalReport
-from projects.correction.pipeline.publishing import publish_stage
-from projects.correction.pipeline.usage import DatabaseUsageSink
+from projects.correction.agents.schemas.evaluation import (
+    EvaluationMode,
+    EvaluatorSlot,
+    Verdict,
+)
+from projects.correction.attempts.models import Run
+from projects.correction.attempts.status import Stage
+from projects.correction.evaluation.context import EvaluationContextBuilder
+from projects.correction.evaluation.models import ReviewRound
+from projects.correction.evaluation.tests.test_context import _advance_to_evaluation, _prepare_run
+from projects.correction.evaluation.workflow import build_evaluation_workflow, run_evaluation
+from projects.correction.metis.config import settings
 
-pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("eager_mode")]
+
+def _whole_document_output(run: Run) -> dict[str, list[dict[str, object]]]:
+    context = EvaluationContextBuilder(run).build()
+    active = next(
+        item
+        for item in context.evaluation_config.paper_types
+        if item.paper_type is context.profile.paper_type
+    ).active
+    return {
+        "criteria": [
+            {
+                "criterion_key": criterion.value,
+                "grade": 3,
+                "justification": f"A evidência sustenta {criterion.value}.",
+                "evidence": [{"quote": "O método usa dados públicos.", "section_id": "sec_method"}],
+                "confidence": 0.8,
+            }
+            for criterion in active
+        ]
+    }
 
 
-def test_e5_retries_provider_failure_then_finishes_with_a_single_report(
-    evaluated_run: Run, monkeypatch: pytest.MonkeyPatch
+def _valid_judge_report(run: Run) -> dict[str, list[dict[str, str]]]:
+    context = EvaluationContextBuilder(run).build()
+    active = next(
+        item
+        for item in context.evaluation_config.paper_types
+        if item.paper_type is context.profile.paper_type
+    ).active
+    return {
+        "items": [
+            {
+                "item_type": "criterion",
+                "item_key": criterion.value,
+                "verdict": Verdict.VALID.value,
+            }
+            for criterion in active
+        ]
+    }
+
+
+def _sectioned_scripts(run: Run) -> dict[str, object]:
+    context = EvaluationContextBuilder(run).build()
+    active = next(
+        item
+        for item in context.evaluation_config.paper_types
+        if item.paper_type is context.profile.paper_type
+    ).active
+    observation_id = "sec_method:method:1:obs"
+    check_id = "method_vs_question:check"
+    return {
+        "sections/method": {
+            "section_id": "sec_method",
+            "observations": [
+                {
+                    "id": "obs",
+                    "section_id": "sec_method",
+                    "role": "method",
+                    "kind": "strength",
+                    "statement": "O método explica os dados utilizados.",
+                    "evidence": [
+                        {"quote": "O método usa dados públicos.", "section_id": "sec_method"}
+                    ],
+                    "criteria": ["soundness", "replicability", "clarity"],
+                    "severity": "minor",
+                    "confidence": 0.8,
+                }
+            ],
+        },
+        "cross_checker": {
+            "id": "check",
+            "kind": "method_vs_question",
+            "verdict": "consistent",
+            "evidence": [],
+            "criteria": ["soundness"],
+            "severity": "minor",
+        },
+        "synthesizer": {
+            "criteria": [
+                {
+                    "criterion_key": criterion.value,
+                    "grade": 3,
+                    "justification": f"A observação sustenta {criterion.value}.",
+                    "observation_ids": (
+                        [observation_id]
+                        if criterion.value in {"soundness", "replicability", "clarity"}
+                        else []
+                    ),
+                    "check_ids": [check_id] if criterion.value == "soundness" else [],
+                    "confidence": 0.8,
+                }
+                for criterion in active
+            ]
+        },
+        "judge": {
+            "items": [
+                {"item_type": "observation", "item_key": observation_id, "verdict": "valid"},
+                {"item_type": "check", "item_key": check_id, "verdict": "valid"},
+                *[
+                    {
+                        "item_type": "criterion",
+                        "item_key": criterion.value,
+                        "verdict": "valid",
+                    }
+                    for criterion in active
+                ],
+            ]
+        },
+    }
+
+
+def _revision_judge_reports(
+    run: Run,
+) -> tuple[
+    str,
+    dict[str, object],
+    dict[str, object],
+    dict[str, object],
+]:
+    context = EvaluationContextBuilder(run).build()
+    active = next(
+        item
+        for item in context.evaluation_config.paper_types
+        if item.paper_type is context.profile.paper_type
+    ).active
+    target = active[0]
+    initial = [
+        {
+            "item_type": "criterion",
+            "item_key": criterion.value,
+            "verdict": "invalid" if criterion is target else "valid",
+            "issues": (
+                [
+                    {
+                        "category": "rubric_mismatch",
+                        "excerpt": "nota 3",
+                        "reason": "A síntese precisa de revisão.",
+                    }
+                ]
+                if criterion is target
+                else []
+            ),
+        }
+        for criterion in active
+    ]
+    revised = {
+        "item_type": "criterion",
+        "item_key": target.value,
+        "verdict": "valid",
+    }
+    replacement = {
+        "criterion_key": target.value,
+        "grade": 4,
+        "justification": f"A evidência revisada sustenta {target.value}.",
+        "observation_ids": [],
+        "check_ids": [],
+        "evidence": [{"quote": "O método usa dados públicos.", "section_id": "sec_method"}],
+        "confidence": 0.9,
+    }
+    response: dict[str, object] = {
+        "item_type": "criterion",
+        "item_key": target.value,
+        "action": "accept",
+        "justification": "A síntese foi corrigida com evidência direta.",
+        "replacement": replacement,
+    }
+    return target.value, {"items": initial}, {"items": [revised]}, response
+
+
+@pytest.mark.django_db(transaction=True)
+def test_e4_creates_and_finalizes_round_one_for_all_slots(
+    run: Run,
 ) -> None:
+    prepared = _prepare_run(run)
+    _advance_to_evaluation(prepared)
+    task_id = "e4"
+    Run.objects.filter(pk=prepared.pk).update(
+        config_snapshot={
+            **prepared.config_snapshot,
+            "evaluation_mode": EvaluationMode.SECTIONED.value,
+        },
+    )
+    active_run = Run.for_evaluation(prepared.pk, task_id)
+    scripts = _sectioned_scripts(active_run)
     factory = FakeAgentFactory(
-        str(evaluated_run.pk),
-        Stage.CONSOLIDATION,
-        DatabaseUsageSink(),
-        scripts={"meta_reviewer": [LLMUnavailable("503"), {}]},
+        str(prepared.pk),
+        Stage.EVALUATION,
+        task_id=task_id,
+        scripts={
+            "sections/method": [scripts["sections/method"]] * len(EvaluatorSlot),
+            "cross_checker": [scripts["cross_checker"]] * len(EvaluatorSlot),
+            "synthesizer": [scripts["synthesizer"]] * len(EvaluatorSlot),
+            "judge": [scripts["judge"]] * len(EvaluatorSlot),
+        },
+    )
+    started = monotonic()
+    result = run_evaluation(str(prepared.pk), task_id, factory=factory)
+    elapsed = monotonic() - started
+
+    rounds = list(ReviewRound.objects.filter(run=prepared).order_by("evaluator_slot"))
+    assert result["evaluators"] == [slot.value for slot in EvaluatorSlot]
+    assert result["review_rounds"] == {slot.value: 1 for slot in EvaluatorSlot}
+    assert len(rounds) == 3 and all(item.ready for item in rounds)
+    assert len(factory.calls) == 12
+    assert elapsed < settings.stage_soft_time_limit_seconds
+
+    # Uma reentrega do estágio retoma pelos checkpoints sem repetir chamadas de modelo.
+    run_evaluation(str(prepared.pk), task_id, factory=factory)
+    assert len(factory.calls) == 12
+
+
+@pytest.mark.django_db(transaction=True)
+def test_e4_revises_invalid_items_then_finalizes_round_two(run: Run) -> None:
+    prepared = _prepare_run(run)
+    _advance_to_evaluation(prepared)
+    task_id = "e4"
+    Run.objects.filter(pk=prepared.pk).update(
+        config_snapshot={
+            **prepared.config_snapshot,
+            "evaluation_mode": EvaluationMode.WHOLE_DOCUMENT.value,
+        },
+    )
+    active_run = Run.for_evaluation(prepared.pk, task_id)
+    response = _whole_document_output(active_run)
+    target, first_judgment, second_judgment, revision = _revision_judge_reports(active_run)
+    factory = FakeAgentFactory(
+        str(prepared.pk),
+        Stage.EVALUATION,
+        task_id=task_id,
+        scripts={
+            "whole_document_reviewer": [response] * len(EvaluatorSlot),
+            "judge": [first_judgment] * len(EvaluatorSlot) + [second_judgment] * len(EvaluatorSlot),
+            "reviser": [revision] * len(EvaluatorSlot),
+        },
     )
 
-    def build(*args: Any, **kwargs: Any) -> FakeAgentFactory:
-        return factory
+    result = run_evaluation(str(prepared.pk), task_id, factory=factory)
 
-    monkeypatch.setattr("projects.correction.pipeline.stages.AgentFactory", build)
-    publish_stage(str(evaluated_run.pk), Stage.CONSOLIDATION)
-    completed = Run.get_by_id(evaluated_run.pk)
-    assert completed.status == RunStatus.DONE
-    row = FinalReport.for_run(completed.pk)
-    assert row is not None and row.total_score == 4
-    calls = LLMCall.for_run(completed.pk)
-    assert [call.success for call in calls] == [False, True]
-    assert completed.config_snapshot["prompt_versions"]["meta_reviewer"] == calls[-1].prompt_version
-    events = RunEvent.for_run(completed.pk)
-    assert len([event for event in events if event.event_type == "retry_scheduled"]) == 1
-    assert "Artigo" not in str(events[-1].payload)
-    publish_stage(str(completed.pk), Stage.CONSOLIDATION)
-    assert FinalReport.for_run(completed.pk).pk == row.pk  # type: ignore[union-attr]
-    assert len(factory.calls) == 2
+    rounds = list(
+        ReviewRound.objects.filter(run=prepared).order_by("evaluator_slot", "round_number")
+    )
+    assert result["review_rounds"] == {slot.value: 2 for slot in EvaluatorSlot}
+    latest = list(ReviewRound.objects.filter(run=prepared, round_number=2))
+    assert len(rounds) == 6
+    assert len(latest) == 3 and all(item.ready for item in latest)
+    grades = [
+        next(
+            criterion
+            for criterion in item.state.criteria
+            if criterion.criterion_key.value == target
+        ).grade
+        for item in latest
+    ]
+    assert grades == [4, 4, 4]
+    assert [call.name for call in factory.calls].count("reviser") == 3
+
+
+@pytest.mark.django_db(transaction=True)
+def test_e4_retry_resumes_after_judge_failure_without_repeating_reviewers(run: Run) -> None:
+    prepared = _prepare_run(run)
+    _advance_to_evaluation(prepared)
+    task_id = "e4"
+    Run.objects.filter(pk=prepared.pk).update(
+        config_snapshot={
+            **prepared.config_snapshot,
+            "evaluation_mode": EvaluationMode.WHOLE_DOCUMENT.value,
+        },
+    )
+    active_run = Run.for_evaluation(prepared.pk, task_id)
+    response = _whole_document_output(active_run)
+    judged = _valid_judge_report(active_run)
+    factory = FakeAgentFactory(
+        str(prepared.pk),
+        Stage.EVALUATION,
+        task_id=task_id,
+        scripts={
+            "whole_document_reviewer": [response] * len(EvaluatorSlot),
+            "judge": [LLMUnavailable("503"), judged, judged, judged],
+        },
+    )
+
+    with pytest.raises(LLMUnavailable):
+        run_evaluation(str(prepared.pk), task_id, factory=factory)
+    reviewer_calls_before_retry = [
+        call for call in factory.calls if call.name == "whole_document_reviewer"
+    ]
+    run_evaluation(str(prepared.pk), task_id, factory=factory)
+
+    assert len(reviewer_calls_before_retry) == len(EvaluatorSlot)
+    assert [call.name for call in factory.calls].count("whole_document_reviewer") == 3
+    assert len(ReviewRound.latest_for_consolidation(prepared.pk)) == 3
+
+
+def test_builder_uses_three_slots_and_snapshot_mode() -> None:
+    from projects.correction.evaluation.tests.test_context import _context_run
+
+    run = _context_run()
+    run.config_snapshot["evaluation_mode"] = EvaluationMode.WHOLE_DOCUMENT.value
+    context = EvaluationContextBuilder(run).build()
+    workflow = build_evaluation_workflow("run", "task", context, factory=FakeAgentFactory())
+
+    assert workflow.name == "evaluation"
+    assert len(context.evaluators) == 3
+    assert context.evaluation_mode is EvaluationMode.WHOLE_DOCUMENT

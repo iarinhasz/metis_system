@@ -1,9 +1,8 @@
 # Estado do módulo e metas medidas
 
-Revisão de **13/11/2026**, etapa **6.4 — docs do módulo**, sobre o commit
-`32ff4e6` da branch `agents`. O código e os artefatos versionados abaixo sustentam
-este retrato. Os desenhos de outubro/novembro continuam como plano; um teste com
-fakes comprova comportamento de software, não qualidade de uma avaliação científica.
+Revisão em **16/11/2026**, durante a etapa **3.10 — workflow E4**. Os dados de
+benchmark abaixo continuam históricos. Testes com fakes comprovam a integração do
+software, não a qualidade científica das avaliações.
 
 ## Implementação e limites
 
@@ -14,14 +13,15 @@ fakes comprova comportamento de software, não qualidade de uma avaliação cien
 | E2 | Profiler field/topic, fallback, papéis de seções, mapa, snapshots e retomada | Exige taxonomia carregada e Question validada/ativa; a genérica não é criada na subida. [Workflow](../projects/correction/questions/workflow.py), [operação](questions_and_profiling.md) |
 | Questions | Rascunho por agente, revisão/validação/ativação humanas, catálogo inicial | Genérica, Computação, Física/Quântica e Medicina são propostas inativas após `seed_questions`; aprovação especialista não está demonstrada. [Catálogo](../projects/correction/questions/data/initial_questions.json) |
 | E3 | Task que deixa o run seguir com `risk=low` | **Stub**: sem `integrity/`, corpus, embeddings, consulta de citações ou `IntegrityReport`. O relatório E5 declara `not_checked`, com risco desconhecido. [Stage](../projects/correction/pipeline/stages.py), [schema](../projects/correction/evaluation/report.py) |
-| E4 | Contratos e persistência de `ReviewRound`/`JudgeVerdict` | **Stub**: executors isolados 3.3–3.9 existem, mas não estão ligados ao estágio. Integração depende da etapa 3.10. A/B 3.13 não implementado. [Stage](../projects/correction/pipeline/stages.py), [models](../projects/correction/evaluation/models.py) |
+| E4 | Workflow por modo com três slots, checkpoints, validação, juiz, revisão e finalização | A/B e correlação com avaliação humana ainda pendentes. [Workflow](../projects/correction/evaluation/workflow.py), [Stage](../projects/correction/pipeline/stages.py) |
 | E5 | Mediana, dispersão, total, concordância descritiva, meta-revisor, `FinalReport` imutável e JSON/Markdown | Exige as últimas rodadas julgadas e finalizadas de A/B/C. Sem elas, `waiting_setup`; integração testada com rodadas sintéticas. [Workflow](../projects/correction/evaluation/workflow.py), [testes](../projects/correction/evaluation/tests/test_workflow.py) |
-| Rubric check | Lotes de 1–20 attempts em cache, rascunho congelado, E3 pulado com auditoria, comparação no admin | Não altera a Question ativa nem publica runs internos na API. Sem E4 real, também para em `waiting_setup`. [Operação](questions_and_profiling.md#rubric-check-no-admin-312) |
+| Rubric check | Lotes de 1–20 attempts em cache, rascunho congelado, E3 pulado com auditoria, comparação no admin | Não altera a Question ativa nem publica runs internos na API. Requer configuração de E4 e provedores. [Operação](questions_and_profiling.md#rubric-check-no-admin-312) |
 | Uso e custo | `LLMCall`, tokens/custo por chamada e agregações no admin | Orçamento é alerta visual opcional, sem bloqueio de chamadas. Custo desconhecido deixa totais parciais. [Custo](agents.md#consulta-no-admin-62) |
 | Evals | Contrato comum, artefatos sem sobrescrita, `bench_profiling` e `compare_evals` | `bench_reviews`, `bench_judge`, `bench_plagiarism` e benchmarks da Fase 2 ainda pendentes. [Evals](evals.md) |
 
-Assim, uma submissão comum pode extrair e perfilar o PDF, mas **ainda não produz
-uma avaliação científica completa**: o E4 não gera as rodadas exigidas pelo E5.
+Uma submissão pode gerar as rodadas de E4 e o relatório de E5 quando os snapshots
+e configurações necessários estão disponíveis. A qualidade das notas dos modelos
+ainda precisa ser medida contra avaliações humanas e no conjunto A/B.
 O `done` do E2E com stubs do M0 foi uma verificação histórica de infraestrutura.
 Não comprova o ponto de integração I3 com avaliadores reais.
 

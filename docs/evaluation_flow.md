@@ -2,9 +2,9 @@
 
 Este documento segue um artigo da submissão ao relatório final. A mecânica de cada passo (claims, retries, recuperação) está em [Orquestração](orchestration.md), e os diagramas com as entidades e as ligações entre elas em [Grafo do fluxo](flow_graph.md).
 
-**Revisão de 13/11/2026:** E1, E2 e E5 implementados; E3 e E4 são stubs.
-O diagrama é o fluxo alvo. Na base atual, sem rodadas julgadas de E4, E5 para
-em `waiting_setup`. [Estado, testes e metas](status_and_metrics.md).
+**Revisão de 16/11/2026:** E1, E2, E4 e E5 implementados; E3 ainda é stub.
+E4 cria e julga rodadas para A/B/C; E5 requer essas rodadas finalizadas.
+[Estado, testes e metas](status_and_metrics.md).
 
 ## Visão em uma página
 
@@ -72,9 +72,9 @@ Detalhe: [Checagem de integridade](integrity_check.md).
 
 ## 4. E4 — Avaliação
 
-**Executors isolados implementados em 3.3–3.9; integração planejada para 3.10.**
-Existem contratos e models de rodadas/vereditos, mas a task atual ainda não
-chama avaliadores nem juiz. O fluxo pretendido é:
+**Workflow integrado na etapa 3.10.** A task conecta os executors por seção ou
+`whole_document`, conforme o snapshot do Run, depois valida, julga, revisa e
+finaliza as rodadas. O fluxo é:
 
 1. Três slots (A = GPT, B = Gemini, C = outro modelo de uma das duas famílias) analisam o artigo **seção por seção**. Cada passe recebe o texto da seção, o prompt do papel dela e o mapa do documento, e devolve observações com trechos literais como evidência, sem nota.
 2. Checagens entre seções conferem o que cruza partes do artigo: promessas × resultados, método × pergunta, figuras × texto.
@@ -83,7 +83,8 @@ chama avaliadores nem juiz. O fluxo pretendido é:
 5. O juiz, com o artigo inteiro, verifica observações, checagens e sínteses. Ele devolve o trecho inconsistente e o motivo.
 6. Só o que foi invalidado volta: o passe daquela seção ou a síntese daquele critério. O avaliador corrige ou mantém com nova evidência. São no máximo 2 rodadas de revisão; o que continuar inválido vira `unresolved`.
 
-O modo por seção é a proposta. O A/B do M3 compara com o artigo inteiro numa chamada antes de fixar o padrão.
+O modo por seção é o padrão configurado. A comparação A/B do M3 ainda precisa
+ser executada antes de fixar uma decisão baseada em resultados.
 
 Detalhe: [Avaliadores, juiz e consolidação](evaluators_and_judge.md).
 
@@ -106,7 +107,7 @@ slot A/B/C. Ausência ou incompletude gera `waiting_setup` antes da meta-revisã
 | `rejected_invalid_submission` | O PDF não é um artigo processável | Corrigir e reenviar (vira uma nova attempt) |
 | `closed_by_reviewer` | Encerrado na revisão humana | Ver a nota da decisão |
 | `superseded` | Chegou uma versão mais nova do artigo | Acompanhar o run da versão nova |
-| `waiting_setup` | Falta chave/configuração, taxonomia, Question ou rodadas completas para E5 | Resolver a pendência do evento e reprocessar; repetir sem E4 real não cria avaliações |
+| `waiting_setup` | Falta chave/configuração, taxonomia, Question ou rodadas completas para E5 | Resolver a pendência do evento e reprocessar |
 | `error_llm`, `error_external`, `error_unexpected` | Falha após as tentativas automáticas | A equipe reprocessa pelo admin |
 
 ## Versões, reavaliação e reprocessamento
