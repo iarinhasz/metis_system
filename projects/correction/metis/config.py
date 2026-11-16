@@ -43,6 +43,7 @@ class MetisSettings(BaseSettings):
     openalex_api_key: str = ""
     profiling_max_attempts: int = Field(default=3, ge=1)
     profiling_confidence_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
+    max_revision_rounds: int = Field(default=2, ge=1)
 
     stage_max_retries: int = 3
     stage_retry_backoff_seconds: int = 60

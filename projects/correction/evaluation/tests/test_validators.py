@@ -12,6 +12,7 @@ from projects.correction.agents.schemas.evaluation import (
     ItemVerdict,
     Observation,
     ReviewState,
+    RevisionResponse,
     Verdict,
     VerdictSource,
 )
@@ -146,6 +147,26 @@ def test_fabricated_quote_is_invalidated_against_its_section() -> None:
 
     assert invalid.item_type is ItemType.OBSERVATION
     assert invalid.item_key == "obs-supported" and invalid.verdict is Verdict.INVALID
+    assert invalid.issues[0].category == "ungrounded"
+
+
+def test_fabricated_rebuttal_evidence_is_invalidated() -> None:
+    context = _context()
+    state = _state(context)
+    response = RevisionResponse(
+        item_type=ItemType.OBSERVATION,
+        item_key=state.observations[0].id,
+        action="rebut",
+        justification="A observação continua correta.",
+        evidence=(Evidence(quote="Trecho novo inventado.", section_id="sec_method"),),
+    )
+
+    [invalid] = ValidatorChain(context).validate(
+        state.model_copy(update={"revisions": (response,)})
+    )
+
+    assert invalid.item_type is ItemType.OBSERVATION
+    assert invalid.item_key == state.observations[0].id
     assert invalid.issues[0].category == "ungrounded"
 
 

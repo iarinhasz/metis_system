@@ -38,6 +38,13 @@ def test_evaluation_mode_is_configurable_and_defaults_to_sectioned() -> None:
     )
 
 
+def test_max_revision_rounds_defaults_to_two_and_requires_positive_value() -> None:
+    assert MetisSettings(_env_file=None).max_revision_rounds == 2
+    assert MetisSettings(_env_file=None, max_revision_rounds=3).max_revision_rounds == 3
+    with pytest.raises(ValidationError):
+        MetisSettings(_env_file=None, max_revision_rounds=0)
+
+
 @pytest.mark.parametrize("budget", ["0", "-1", "NaN", "Infinity", "-Infinity"])
 def test_run_budget_must_be_positive_and_finite(budget: str) -> None:
     with pytest.raises(ValidationError):
