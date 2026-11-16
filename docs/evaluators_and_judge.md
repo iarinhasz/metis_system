@@ -1,10 +1,13 @@
 # Avaliadores, juiz e consolidação (E4 e E5)
 
-**Revisão de 13/11/2026:** contratos/models de rodadas e o E5 estão implementados,
-como detalhado em [Consolidação implementada](#consolidação-implementada-311).
-Passes, checagens, juiz, loop e A/B do E4 neste documento são o **desenho alvo**;
-a task E4 ainda é stub. Não há correlação com notas humanas ou custo médio por
-artigo medidos. [Evidências e metas](status_and_metrics.md).
+**Revisão de 16/11/2026:** contratos/models de rodadas, E5 e os executors isolados
+das etapas 3.3 (passes por seção), 3.4 (checagens entre seções), 3.5 (síntese
+por avaliador), 3.6 (modo `whole_document`), 3.7 (validadores determinísticos),
+3.8 (juiz) e 3.9 (revisão parcial) estão implementados isoladamente. Esses passos
+ainda não foram ligados ao workflow E4. A integração E4 e A/B continuam como
+**desenho alvo**; a task E4 ainda é stub. Não há correlação com notas humanas ou
+custo médio por artigo medidos.
+[Evidências e metas](status_and_metrics.md).
 
 ## Visão geral
 
@@ -31,7 +34,7 @@ por avaliador (A, B e C, independentes):
 
 Cada passe por seção tem uma tarefa pequena e um checklist próprio. Mas parte da avaliação está entre as seções, e por isso existem três peças com visão mais ampla: as checagens entre seções, o mapa do documento em todo passe e o juiz com o artigo inteiro.
 
-**Dois modos de avaliação.** O fluxo por seção (`sectioned`) é a proposta. O artigo inteiro numa chamada por avaliador (`whole_document`) fica como linha de base. Os dois são estratégias do método, escolhidas por config, e o A/B do M3 decide qual vira padrão (ver [Como decidir o modo](#como-decidir-o-modo-ab-no-m3)).
+**Dois modos de avaliação.** O fluxo por seção (`sectioned`) é a proposta. O artigo inteiro numa chamada por avaliador (`whole_document`) fica como linha de base. `METIS_EVALUATION_MODE` escolhe o modo para novos Runs; o valor é salvo no `config_snapshot` e seleciona a strategy do avaliador. O padrão continua `sectioned`. O A/B do M3 decide qual vira padrão (ver [Como decidir o modo](#como-decidir-o-modo-ab-no-m3)).
 
 ## O que cada chamada recebe
 
@@ -135,15 +138,16 @@ O que roda de novo depende de onde está o problema:
 | Síntese de um critério | Só a síntese daquele critério |
 
 - O pedido de revisão (`RevisionPromptBuilder`) leva o item anterior, o trecho apontado e o motivo.
-- O avaliador responde `accept` (corrige) ou `rebut` (mantém e traz nova evidência do artigo). O juiz reavalia na rodada seguinte.
+- O avaliador responde `accept` com um item substituto ou `rebut` com evidência nova, conferida no artigo. A réplica preserva o item avaliado; observações e checagens incorporam a evidência à rodada, enquanto a síntese `sectioned` mantém citações por ID.
+- A nova rodada copia os vereditos válidos que não dependem de itens alterados. Observações e checagens revisadas atualizam apenas as sínteses que as referenciam; o juiz recebe somente itens sem veredito.
 - **Por que existe a réplica.** LLMs tendem a ceder a qualquer crítica (bajulação). Sem a opção de defender a resposta, quem definiria a nota seria, na prática, o juiz.
 
 ## O loop
 
 - **Forma (D17):** a rodada 1 é validada e julgada antes do loop. Se sobrar item pendente, cada iteração do loop é "revisar → validar → julgar", então a última revisão sempre passa pelo juiz.
-- **Limite:** `Loop(max_iterations=2)` no Agno, dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
+- **Limite:** `Loop(max_iterations=settings.max_revision_rounds)` no Agno (padrão 2), dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
 - **Itens que esgotam as rodadas** viram `unresolved`:
-  - uma observação `unresolved` sai das sínteses;
+  - uma observação `unresolved` exclui da agregação cada critério que depende dela;
   - um critério `unresolved` sai da agregação;
   - os dois aparecem no relatório final, sinalizados para revisão humana.
 - **Persistência:** `ReviewRound` (o estado da revisão do avaliador naquela rodada) + `JudgeVerdict` (um por item verificado). É a trilha de auditoria: guarda o trecho que tornou a avaliação inconsistente e o motivo dado pelo juiz.

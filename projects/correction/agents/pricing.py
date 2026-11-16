@@ -62,11 +62,11 @@ def standard_prices(on: date) -> dict[tuple[Provider, str], ModelPrice]:
             long_output_multiplier=Decimal("1.5"),
         ),
         (Provider.GOOGLE, "gemini-3.8-flash"): google_flash,
+        (Provider.GOOGLE, "gemini-3.6-flash"): google_flash,
         (Provider.GOOGLE, "gemini-3.5-flash-lite"): ModelPrice(
             Decimal("0.3"), Decimal("2.5"), Decimal("0.03")
         ),
-        # O E1 ainda usa esse id. A troca de rota anunciada para 01/12/2026 tem
-        # as mesmas tarifas de texto, imagem e vídeo no 3.5 Flash-Lite.
+        # Compatibilidade com registros históricos que guardam esse model_id.
         (Provider.GOOGLE, "gemini-2.5-flash"): ModelPrice(
             Decimal("0.3"), Decimal("2.5"), Decimal("0.03")
         ),

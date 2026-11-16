@@ -68,6 +68,13 @@ parágrafo que couber, com fallback para linha, palavra e limite exato. O execut
 
 **Teste** (`evaluation/tests/test_cross_checks.py`): cada tipo recebe só as seções certas; resultado gravado na rodada.
 
+**Implementação nesta branch:** a lista inicial fica fixada nos três tipos acima,
+com pares de papéis ajustados ao tipo de artigo. A checagem de figuras usa apenas
+seções ligadas às figuras pela extração. Tipos sem evidência suficiente são
+ignorados; os resultados válidos são checkpointados e não são chamados de novo
+no retry. O executor pode ser testado isoladamente; a conexão ao workflow E4
+continua para a etapa 3.10.
+
 **Commit sugerido:** `feat: add cross-section checks`
 
 ---
@@ -93,6 +100,13 @@ parágrafo que couber, com fallback para linha, palavra e limite exato. O execut
 
 **Commit sugerido:** `feat: add whole-document evaluation mode`
 
+**Implementação nesta branch:** `WholeDocumentStep` envia o documento inteiro
+uma vez por avaliador, exige uma síntese por critério com evidência direta em
+seções existentes e checkpointa a rodada no modo `whole_document`. O modo é
+configurável por `METIS_EVALUATION_MODE`, congelado no snapshot do Run, e a
+strategy escolhe entre os passos sectioned (3.3–3.5) e whole-document. A ligação
+ao workflow E4 continua para 3.10.
+
 ---
 
 ## Etapa 3.7 — Validadores determinísticos
@@ -104,6 +118,14 @@ parágrafo que couber, com fallback para linha, palavra e limite exato. O execut
 **Teste** (`evaluation/tests/test_validators.py`): um caso por validador; quote com hifenização diferente passa; quote inventado é recusado.
 
 **Commit sugerido:** `feat: add deterministic validators for evaluator output`
+
+**Implementação nesta branch:** `ValidatorChain` valida o schema antes das
+regras determinísticas de escala, critérios, evidências, referências e
+justificativas; `ValidateStep` grava `JudgeVerdict(source=validator)` por item
+recusado e retoma sem regravar vereditos. A evidência é conferida em ambos os
+modos, com referências por ID em `sectioned` e trechos diretos em
+`whole_document`. Critérios ativos ausentes impedem a etapa porque não há um
+item persistido ao qual associar um veredito.
 
 ---
 
@@ -120,6 +142,14 @@ parágrafo que couber, com fallback para linha, palavra e limite exato. O execut
 - Itens já julgados na rodada não vão de novo.
 
 **Commit sugerido:** `feat: add the judge with cross-family assignment`
+
+**Implementação nesta branch:** `JudgeStep` envia ao juiz cruzado somente itens
+sem veredito; itens recusados pelos validadores da 3.7 seguem diretamente para a
+revisão. O juiz recebe o artigo inteiro, a revisão do slot e dicas calculadas de
+divergência. O `excerpt` de cada apontamento é conferido como substring do item;
+uma saída com trecho incorreto recebe uma chamada corretiva, e apontamentos ainda
+inválidos são descartados. Vereditos e snapshot do modelo julgador são persistidos
+por item com checkpoints de posse e retomada.
 
 ---
 
@@ -139,6 +169,15 @@ parágrafo que couber, com fallback para linha, palavra e limite exato. O execut
 - A revisão de uma observação não roda de novo as outras seções.
 
 **Commit sugerido:** `feat: add partial revision loop with rebuttal`
+
+**Implementação nesta branch:** `RevisionStep` abre rodadas imutáveis para itens
+recusados por validador ou juiz. `accept` substitui o item com a mesma identidade;
+`rebut` mantém a avaliação e acrescenta evidência conferida no artigo. Vereditos
+válidos independentes são copiados sem nova chamada; a revisão de observação ou
+checagem atualiza somente as sínteses dependentes. O limite `METIS_MAX_REVISION_ROUNDS`
+tem padrão 2; `MarkUnresolvedStep` marca as recusas restantes, e a agregação exclui
+critérios que dependam de observações unresolved. A integração ao Workflow E4 segue
+para a etapa 3.10.
 
 ---
 

@@ -8,7 +8,12 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from projects.correction.agents.schemas.evaluation import EvaluatorSlot, ItemType, Verdict
+from projects.correction.agents.schemas.evaluation import (
+    EvaluatorSlot,
+    ItemRef,
+    ItemType,
+    Verdict,
+)
 from projects.correction.attempts.models import Run
 from projects.correction.attempts.status import RunStatus
 from projects.correction.evaluation.contracts import ReviewedSlot
@@ -94,6 +99,40 @@ class ReviewRoundManagement:
         row.ready = True
         row.updated_at = timezone.now()
         row.save(update_fields=["ready", "updated_at"])
+        return row
+
+    @classmethod
+    @transaction.atomic
+    def mark_unresolved(
+        cls,
+        round_id: Any,
+        task_id: str,
+        items: tuple[ItemRef, ...],
+    ) -> ReviewRound:
+        """Marca somente itens ainda inválidos, sem reescrever a trilha da rodada."""
+        row = cls.objects.select_related("run").get(pk=round_id)
+        Run.lock_for_stage(row.run_id, task_id, RunStatus.EVALUATING)
+        row = cls.objects.select_for_update().get(pk=round_id)
+        if row.ready:
+            raise RunConflict("A rodada finalizada é imutável.")
+        state = row.state
+        keys = {(ItemType.OBSERVATION, item.id) for item in state.observations}
+        keys |= {(ItemType.CHECK, item.id) for item in state.cross_checks}
+        keys |= {(ItemType.CRITERION, item.criterion_key.value) for item in state.criteria}
+        verdicts = {
+            (ItemType(item.item_type), item.item_key): Verdict(item.verdict)
+            for item in row.verdicts.all()
+        }
+        unresolved = {(item.item_type, item.item_key): item for item in state.unresolved}
+        for item in items:
+            key = (item.item_type, item.item_key)
+            if key not in keys or verdicts.get(key) is not Verdict.INVALID:
+                raise RunConflict("Só itens presentes e ainda inválidos podem ficar unresolved.")
+            unresolved[key] = item
+        row.unresolved = [item.model_dump(mode="json") for item in unresolved.values()]
+        row.full_clean()
+        row.updated_at = timezone.now()
+        row.save(update_fields=["unresolved", "updated_at"])
         return row
 
     @classmethod

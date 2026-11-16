@@ -19,7 +19,7 @@ from projects.correction.extractor.tests.http_stub import StubResponse, StubServ
 from projects.correction.extractor.tests.pdfs import ARTICLE_LINES, make_pdf
 from projects.correction.metis.config import settings
 
-GENERATE = "/v1beta/models/gemini-2.5-flash:generateContent"
+GENERATE = "/v1beta/models/gemini-3.6-flash:generateContent"
 SCAN = {"title": "Um estudo", "authors": ["Ana Souza"], "language": "pt", "headings": []}
 
 

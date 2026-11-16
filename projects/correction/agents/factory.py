@@ -168,24 +168,42 @@ class AgentFactory:
         return self.build(f"sections/{role}", self._slot(slot), output_schema, spec=spec)
 
     def cross_checker(
-        self, slot: Slot, kind: str, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        kind: str,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build("cross_checker", self._slot(slot), output_schema, kind=kind)
+        return self.build("cross_checker", self._slot(slot), output_schema, spec=spec, kind=kind)
 
     def synthesizer(
-        self, slot: Slot, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build("synthesizer", self._slot(slot), output_schema)
+        return self.build("synthesizer", self._slot(slot), output_schema, spec=spec)
 
     def whole_document_reviewer(
-        self, slot: Slot, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build("whole_document_reviewer", self._slot(slot), output_schema)
+        return self.build("whole_document_reviewer", self._slot(slot), output_schema, spec=spec)
 
     def reviser(
-        self, slot: Slot, level: str, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        level: str,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build("reviser", self._slot(slot), output_schema, level=level)
+        return self.build("reviser", self._slot(slot), output_schema, spec=spec, level=level)
 
     def judge(
         self, for_spec: ModelSpec, *, output_schema: type[BaseModel] = PendingOutput

@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
+from projects.correction.agents.schemas.evaluation import EvaluationMode
 from projects.correction.metis.config import MetisSettings
 
 
@@ -30,6 +31,7 @@ def test_splits_and_cleans_csv_hosts() -> None:
     assert config.allowed_hosts == ["example.org", "localhost", "api.example.org"]
 
 
+<<<<<<< HEAD
 def test_scholarly_credentials_use_metis_environment_names(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -42,6 +44,20 @@ def test_scholarly_credentials_use_metis_environment_names(
     assert config.crossref_mailto == "papers@example.org"
     assert config.semantic_scholar_api_key == "s2-test-key"
     assert config.unpaywall_email == "papers@example.org"
+=======
+def test_evaluation_mode_is_configurable_and_defaults_to_sectioned() -> None:
+    assert MetisSettings(_env_file=None).evaluation_mode is EvaluationMode.SECTIONED
+    assert MetisSettings(_env_file=None, evaluation_mode="whole_document").evaluation_mode is (
+        EvaluationMode.WHOLE_DOCUMENT
+    )
+
+
+def test_max_revision_rounds_defaults_to_two_and_requires_positive_value() -> None:
+    assert MetisSettings(_env_file=None).max_revision_rounds == 2
+    assert MetisSettings(_env_file=None, max_revision_rounds=3).max_revision_rounds == 3
+    with pytest.raises(ValidationError):
+        MetisSettings(_env_file=None, max_revision_rounds=0)
+>>>>>>> dev
 
 
 @pytest.mark.parametrize("budget", ["0", "-1", "NaN", "Infinity", "-Infinity"])

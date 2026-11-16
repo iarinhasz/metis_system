@@ -6,6 +6,7 @@ from typing import Annotated
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from projects.correction.agents.schemas.evaluation import EvaluationMode
 from projects.correction.agents.specs import ModelSpec, Role, development_spec, validate_catalog
 
 
@@ -35,6 +36,7 @@ class MetisSettings(BaseSettings):
     media_root: str = "media"
     max_upload_mb: int = 50
     evaluation_method: str = Field(default="standard", min_length=1, pattern=r"^[a-zA-Z0-9_-]+$")
+    evaluation_mode: EvaluationMode = EvaluationMode.SECTIONED
     profiling_taxonomy_version: str = ""
 
     # Opcional: amplia a cota de leitura da taxonomia pública do OpenAlex.
@@ -44,6 +46,7 @@ class MetisSettings(BaseSettings):
     unpaywall_email: str = ""
     profiling_max_attempts: int = Field(default=3, ge=1)
     profiling_confidence_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
+    max_revision_rounds: int = Field(default=2, ge=1)
 
     stage_max_retries: int = 3
     stage_retry_backoff_seconds: int = 60
@@ -78,7 +81,7 @@ class MetisSettings(BaseSettings):
     adjudicator: ModelSpec = Field(default_factory=lambda: development_spec(Role.ADJUDICATOR))
     # Modelos mínimos para os contratos ao vivo; não definem os papéis da etapa 1.3.
     agno_contract_openai_model: str = "gpt-4o-mini"
-    agno_contract_google_model: str = "gemini-2.5-flash"
+    agno_contract_google_model: str = "gemini-3.6-flash"
 
     @property
     def model_specs(self) -> dict[Role, ModelSpec]:
