@@ -4,9 +4,9 @@ Como o Metis usa o Agno 3 dentro dos estágios: o pacote `agents/`, o catálogo 
 
 Os caminhos de código são relativos a `projects/correction/`. A versão em diagramas, com as entidades que cada passo lê e grava, está em [Grafo do fluxo](flow_graph.md).
 
-**Estado revisto em 13/11/2026:** fábrica, limites, uso/custo, E1 sem Workflow,
-E2 e E5 reais. Os esboços de E3/E4 e o A/B abaixo são planejados; ainda não há
-avaliadores/juiz em produção. [Medições, metas e validação atual](status_and_metrics.md).
+**Estado revisto em 16/11/2026:** fábrica, limites, uso/custo, E1 sem Workflow,
+E2, E4 e E5 reais. E3 segue stub; o A/B ainda é planejado e não há correlação
+com avaliação humana. [Medições, metas e validação atual](status_and_metrics.md).
 As verificações de 1.2/1.3/1.4 nesta página são registros históricos de cada entrega.
 
 > **Spike 1.2, verificação local em 12/11/2026:** Agno **3.1.12**, Python **3.14.5**, `openai` **3.49.0** e `google-genai` **1.75.0** instalados. Workflows e clientes dos dois provedores foram exercitados com executors sintéticos e HTTP local. A validação de respostas dos provedores com chaves válidas continua **pendente**, por decisão de seguir com os testes locais. O resultado e as correções dos esboços estão abaixo.
@@ -74,7 +74,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
        publica o próximo                             (agents/: único lugar com Agent e Model)
 ```
 
-- **Uma task Celery por estágio.** E2 e E5 chamam `workflow.run()` de forma síncrona. E1 usa sessão e `bounded_map`, sem Workflow; E3/E4 ainda são stubs. Essa aplicação atual ajusta o alvo D16 de um Workflow por estágio. [Orquestração](orchestration.md#agno-dentro-dos-estágios).
+- **Uma task Celery por estágio.** E2, E4 e E5 chamam `workflow.run()` de forma síncrona. E1 usa sessão e `bounded_map`, sem Workflow; E3 segue stub. Essa aplicação atual ajusta o alvo D16 de um Workflow por estágio. [Orquestração](orchestration.md#agno-dentro-dos-estágios).
 - **O banco é a fonte da verdade.** O workflow recebe só ids. Cada passo grava o que produz e, quando o estágio é retentado, pula o que já existe.
 - **O Agno não decide o fluxo.** É `Workflow`, não `Team`: a ordem dos passos é fixa em código, e os agentes só preenchem saídas tipadas.
 
@@ -300,10 +300,10 @@ Workflow(name="integrity", telemetry=False, steps=[
 
 ### E4 — Avaliação (`evaluation/workflow.py`)
 
-**Estado:** o arquivo atual contém apenas o Workflow do E5. Os executors isolados
-de passes por seção (3.3), checagens entre seções (3.4), síntese (3.5), modo
-`whole_document` (3.6), validadores (3.7), juiz (3.8) e revisão parcial (3.9)
-estão implementados, mas ainda não foram conectados ao workflow E4.
+**Estado:** E4 e E5 estão conectados em `evaluation/workflow.py`. `run_evaluation`
+congela o contexto do Run, executa o workflow E4 e finaliza a rodada mais recente
+dos slots A, B e C. E5 permanece no mesmo módulo, sem compartilhar checkpoints de
+avaliação.
 
 ```python
 def evaluator_steps(slot, mode):                 # Strategy escolhida na montagem
@@ -318,23 +318,22 @@ def evaluator_steps(slot, mode):                 # Strategy escolhida na montage
     ])
 
 Workflow(name="evaluation", telemetry=False, steps=[
-    Parallel(*[evaluator_steps(s, ctx.mode) for s in ctx.slots], name="evaluators"),
-    stage_step(name="check_evaluators", executor=CheckParallelStep("evaluators", deps)),
-    stage_step(name="validate_1", executor=ValidateStep(deps)),              # validadores em cadeia, sem LLM
-    stage_step(name="judge_1", executor=JudgeStep(deps)),                    # uma chamada por avaliador
-    Condition(name="needs_revision", human_review=HumanReview(on_error=OnError.fail), evaluator=has_pending_items(ctx), steps=[
-        Loop(name="revision_loop",
-             max_iterations=settings.max_revision_rounds,              # 2
-             end_condition=no_pending_items(ctx),                      # consulta o banco, não os outputs
-             steps=[
-                 stage_step(name="revise", executor=RevisionStep(deps)),     # só os itens inválidos
-                 stage_step(name="validate", executor=ValidateStep(deps)),
-                 stage_step(name="judge", executor=JudgeStep(deps)),         # só os itens revisados
-             ]),
+    Parallel(*[evaluator_steps(slot, ctx.mode) for slot in ctx.slots], name="evaluators"),
+    Parallel(*[ValidateStep(slot, round=1) for slot in ctx.slots], name="validate"),
+    Parallel(*[JudgeStep(slot, round=1) for slot in ctx.slots], name="judge"),
+    Condition(evaluator=has_pending_items_from_database, steps=[
+        Loop(max_iterations=settings.max_revision_rounds,
+             end_condition=no_revision_work_from_database,
+             steps=[Parallel(*[revision_cycle(slot) for slot in ctx.slots])]),
     ]),
-    stage_step(name="mark_unresolved", executor=MarkUnresolvedStep(deps)),
+    Parallel(*[MarkUnresolvedStep(slot) for slot in ctx.slots]),
+    Parallel(*[FinalizeRoundStep(slot) for slot in ctx.slots]),
 ])
 ```
+
+Os executors retomam pelos checkpoints persistidos. Em uma reentrega, passos já
+concluídos são ignorados; uma rodada parcial de revisão é completada antes de
+abrir outra. O workflow fecha as conexões de banco abertas pelos executors paralelos.
 
 **Por que esta forma (D17):**
 - A rodada 1 é validada e julgada **fora** do loop. Cada iteração do loop é "revisar → validar → julgar", então **a última revisão sempre passa pelo juiz**. Num loop `[judge, revise]`, a revisão da última iteração sairia sem verificação.
@@ -374,8 +373,9 @@ checkpoints em `Run.consolidation` e `FinalReport` imutável. A retomada respeit
 o modelo/template congelado e o orçamento de respostas inválidas. Cada ponto
 cita critérios ativos e ids qualificados do catálogo de evidências, que também
 fica no relatório. A agregação e os números não são saída do meta-revisor.
-O E4 ainda depende das etapas 3.3–3.10; sem rodadas finalizadas o E5 não chama LLM
-e retorna `waiting_setup`. Os contratos e models necessários da 3.2 estão incluídos.
+O E4 usa os executors das etapas 3.3–3.9 e finaliza rodadas antes de publicar o
+E5. Sem as entradas necessárias para montar o contexto, o estágio vai para
+`waiting_setup`; o A/B e a medição de custo por artigo ainda estão pendentes.
 
 ### Curadoria, rubric check e A/B (D18)
 

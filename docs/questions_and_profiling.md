@@ -118,11 +118,9 @@ texto do relatório. Ela mostra também os estados pendentes e erros de cada run
 sem expor os resultados internos nas rotas públicas. Question ativa, validação,
 versão e runs de avaliação anteriores permanecem intactos.
 
-**Limitação da branch atual:** E4 ainda é um stub. Sem as rodadas julgadas de A, B
-e C da etapa 3.10, E5 termina em `waiting_setup`, com a pendência visível na tela.
-Os testes de integração substituem somente E4 por rodadas sintéticas julgadas e
-exercitam E1 em cache, E2, E5 e a comparação de FinalReports reais. Nenhum relatório
-de avaliação é fabricado pelo fluxo de produção.
+E4 agora produz as rodadas julgadas de A, B e C consumidas pelo E5. O fluxo ainda
+depende de credenciais, taxonomia e Question válidas; os testes usam fakes e não
+medem a qualidade científica das avaliações geradas por provedores reais.
 
 Para operar: aplique `uv run python manage.py migrate`, carregue a taxonomia e
 configure uma Question validada e ativa do método selecionado. Sem essa Question,
@@ -333,8 +331,8 @@ admin identifica a pessoa que rascunhou, editou, validou ou ativou.
 Rascunhar exige a permissão de adicionar Question. Editar, validar e ativar exigem
 a permissão de alterar; os campos em linha respeitam suas permissões do Django.
 A taxonomia continua somente de leitura. O rubric check da 3.12 já agenda lotes e
-compara resultados no admin; sem E4 real, seus runs param em `waiting_setup`,
-conforme [a limitação descrita acima](#rubric-check-no-admin-312).
+compara relatórios no admin. Seus runs passam pelo E4 e continuam sujeitos às
+mesmas configurações necessárias de provedores e Question.
 
 ### Questions iniciais e benchmark (2.7)
 

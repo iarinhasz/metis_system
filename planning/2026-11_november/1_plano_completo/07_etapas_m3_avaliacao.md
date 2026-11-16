@@ -195,6 +195,18 @@ para a etapa 3.10.
 
 **Commit sugerido:** `feat: run the evaluation stage as an Agno workflow`
 
+**Implementação (16/11/2026):** `EvaluationStage` executa o workflow Agno do E4
+com a estratégia do snapshot (`sectioned` ou `whole_document`), checkpoints
+retomáveis, validação e juiz por rodada, loop de revisão limitado, marcação de
+`unresolved` e finalização das rodadas mais recentes dos slots A/B/C. Reentregas
+retomam os checkpoints, inclusive uma rodada de revisão parcialmente gravada. O
+E5 continua no mesmo módulo sem compartilhar seu estado com E4.
+
+**Verificação:** 113 testes de avaliação e pipeline passaram com PostgreSQL 18;
+Ruff e formatação passaram (263 arquivos); mypy passou nos quatro módulos alterados.
+Os testes medem o fluxo com agentes falsos e comparam sua duração ao soft limit de
+25 minutos; não medem tempo de provedor real nem qualidade das avaliações.
+
 ---
 
 ## Etapa 3.11 — Consolidação e relatório final

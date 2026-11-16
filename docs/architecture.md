@@ -3,9 +3,9 @@
 ## Visão geral
 
 O Metis roda num único projeto Django, com workers Celery separados por tipo de
-trabalho. O desenho abaixo é o **fluxo alvo**, incluindo componentes planejados.
-Na revisão de 13/11/2026, E1, E2 e E5 estão implementados; **E3 e E4 são stubs**.
-Sem E4 real, E5 retorna `waiting_setup`. Consulte [estado e métricas](status_and_metrics.md)
+trabalho. O desenho abaixo inclui componentes planejados.
+Na revisão de 16/11/2026, E1, E2, E4 e E5 estão implementados; **E3 é stub**.
+E5 retorna `waiting_setup` se não houver rodadas completas. Consulte [estado e métricas](status_and_metrics.md)
 para evidências, limites e critérios de fechamento dos marcos.
 
 ```text
@@ -54,7 +54,7 @@ O detalhe de cada estágio está nos documentos próprios; o caminho completo de
 | Admin do Django | Curadoria de Questions, decisão do gate, reprocessamento, leitura da trilha de auditoria | Não edita notas nem saídas dos estágios |
 | `worker-extraction` | E1: divide o artigo com chamadas ao Gemini, em paralelo, e confere o texto contra o PDF | Os outros estágios |
 | `worker-integrity` | E3 pass-through; busca, MinHash e embeddings são planejados | Ainda não checa integridade |
-| `worker-evaluation` | E2 e E5 reais, E4 stub e fila `default` (manutenção) | Parse de PDF |
+| `worker-evaluation` | E2, E4 e E5 reais e fila `default` (manutenção) | Parse de PDF |
 | `beat` | Agenda o reconciliador | Lógica de negócio |
 | PostgreSQL + pgvector | Estado dos runs, saídas estruturadas e eventos; imagem pronta para vetores futuros | Corpus/vetores ainda não implementados |
 | Redis | Broker do Celery | Guardar estado de negócio |
@@ -95,7 +95,7 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 
 Regras:
 - `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda, e os erros de estágio (`pipeline/errors.py`), que um estágio levanta para dizer ao pipeline como tratar a falha.
-- **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. E2 e E5 montam `Workflow` no app do estágio; E1 usa a fábrica pela sessão do `extractor/`, sem Workflow. E3/E4 ainda não têm workflows reais. `agents/` não importa apps de domínio; reexporta apenas `pipeline.errors.LLMUnavailable`. Um [teste de fronteira](agents.md#fronteiras) garante a regra dos agentes/modelos.
+- **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. E2, E4 e E5 montam `Workflow` no app do estágio; E1 usa a fábrica pela sessão do `extractor/`, sem Workflow. E3 ainda não tem workflow real. `agents/` não importa apps de domínio; reexporta apenas `pipeline.errors.LLMUnavailable`. Um [teste de fronteira](agents.md#fronteiras) garante a regra dos agentes/modelos.
 - **Só `scholarly/` chama APIs acadêmicas.** Rate limit, cache e chaves ficam num lugar só.
 - **Só `queries/` fala com o banco.** Fora de `queries/<app>/`, ninguém usa `Model.objects` nem `cursor`: o código chama o método do Management na classe do model (`Run.get_with_events(run_id)`).
 - **Só `metis/config.py` lê variáveis de ambiente.** O ruff bloqueia `os.getenv`/`os.environ` fora dele.

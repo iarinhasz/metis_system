@@ -2,9 +2,9 @@
 
 Como o pipeline anda, falha e se recupera. Os estados citados aqui estão definidos em [Modelos de dados](data_models.md#estados-do-run).
 
-**Estado de 13/11/2026:** E1, E2 e E5 reais; E3 e E4 stubs. A máquina de
-estados/gate está implementada, mas E3 ainda não detecta risco e E4 não produz
-rodadas. E5 sem rodadas completas para em `waiting_setup`. [Evidências](status_and_metrics.md).
+**Estado de 16/11/2026:** E1, E2, E4 e E5 reais; E3 stub. A máquina de
+estados/gate está implementada, mas E3 ainda não detecta risco. E5 sem rodadas
+completas para em `waiting_setup`. [Evidências](status_and_metrics.md).
 
 ## Princípios
 
@@ -140,8 +140,8 @@ Todos usam a mesma imagem, com `prefetch_multiplier=1` e `acks_late`.
 
 ## Agno dentro dos estágios
 
-E2 e E5 montam o Workflow Agno e chamam `workflow.run()`. E1 executa sessão e
-`bounded_map`, sem Workflow; E3/E4 ainda não têm executores reais. O desenho e
+E2, E4 e E5 montam o Workflow Agno e chamam `workflow.run()`. E1 executa sessão e
+`bounded_map`, sem Workflow; E3 ainda não tem executores reais. O desenho e
 as regras estão em [Agentes e workflows](agents.md). Para os workflows implementados:
 
 - **Construção por task.** O workflow e os agentes são criados dentro de cada task, nunca como singletons de módulo: o cliente HTTP do modelo fica preso ao event loop em que nasceu. Cada ramo de um `Parallel` recebe uma instância própria de Agent.
@@ -160,7 +160,7 @@ as regras estão em [Agentes e workflows](agents.md). Para os workflows implemen
 | API | Unicidade de (artigo, sha256): o reenvio idêntico devolve 200 com a attempt existente |
 | Publicação | `on_commit` + reconciliador para a janela "commitou, mas não publicou" |
 | Claim | Lock da linha + checkpoint ou posse pelo id da task |
-| Passos de um estágio | E1 reaproveita `ExtractionStep`; E2 e E5 pulam checkpoints persistidos. Passes por seção do E4 ainda são planejados |
+| Passos de um estágio | E1 reaproveita `ExtractionStep`; E2, E4 e E5 pulam checkpoints persistidos. O E4 retoma também rodadas parciais |
 | Eventos | `event_key` único: `{run}:{version}` nas transições, `{run}:retry:{task}:{n}` nos retries |
 
 ## Auditoria e custo

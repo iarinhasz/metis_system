@@ -1,29 +1,39 @@
-"""E5 com passos Agno, checkpoints duráveis e posse verificada antes das escritas."""
+"""Workflows E4 e E5 com passos Agno e checkpoints duráveis."""
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from agno.workflow import Step, Workflow
+from agno.workflow import Condition, Loop, Parallel, Step, Steps, Workflow
 from agno.workflow.types import HumanReview, OnError, StepInput, StepOutput
+from django.db import close_old_connections, connections
 from pydantic import TypeAdapter
 
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.prompts import template
 from projects.correction.agents.runner import AgentPayload
 from projects.correction.agents.schemas.consolidation import MetaReview
+from projects.correction.agents.schemas.evaluation import (
+    EvaluationMode,
+    EvaluatorSlot,
+    ItemType,
+)
 from projects.correction.agents.schemas.profiling import PaperType
 from projects.correction.agents.schemas.section_roles import SectionRole
 from projects.correction.agents.specs import ModelSpec, Role, validate_catalog
 from projects.correction.attempts.models import LLMCall, Run
 from projects.correction.evaluation.aggregation import aggregate
+from projects.correction.evaluation.context import EvaluationContext, EvaluationContextBuilder
 from projects.correction.evaluation.contracts import (
     Aggregation,
     AggregationPolicy,
     ConsolidationResult,
     ReviewedSlot,
 )
-from projects.correction.evaluation.models import FinalReport, ReviewRound
+from projects.correction.evaluation.cross_checks import CrossCheckStep, RunCrossCheckCheckpoints
+from projects.correction.evaluation.judge import JudgeStep, RunJudgeCheckpoints
+from projects.correction.evaluation.models import FinalReport, JudgeVerdict, ReviewRound
 from projects.correction.evaluation.report import (
     ReportContent,
     ReportVersions,
@@ -31,12 +41,378 @@ from projects.correction.evaluation.report import (
     reference_catalog,
     validate_meta_review,
 )
-from projects.correction.pipeline.errors import SetupRequired
+from projects.correction.evaluation.revision import (
+    MarkUnresolvedStep,
+    RevisionStep,
+    RunRevisionCheckpoints,
+)
+from projects.correction.evaluation.revision import (
+    has_pending_items as has_pending_revision_items,
+)
+from projects.correction.evaluation.section_pass import RunReviewCheckpoints, SectionPassStep
+from projects.correction.evaluation.synthesis import RunSynthesisCheckpoints, SynthesisStep
+from projects.correction.evaluation.validators import RunValidationCheckpoints, ValidateStep
+from projects.correction.evaluation.whole_document import (
+    RunWholeDocumentCheckpoints,
+    WholeDocumentStep,
+)
+from projects.correction.metis.config import settings
+from projects.correction.pipeline.errors import InvalidEvaluationOutput, SetupRequired
 from projects.correction.questions.criteria import EvaluationConfig, get_method
 from projects.correction.questions.profile import QuestionSnapshot
 
 REVIEWS = TypeAdapter(tuple[ReviewedSlot, ...])
 SECTION_ROLES = TypeAdapter(dict[str, tuple[SectionRole, ...]])
+
+
+@dataclass(frozen=True)
+class EvaluationDependencies:
+    run_id: str
+    task_id: str
+    context: EvaluationContext
+    factory: AgentFactory
+
+    def latest_round(self, slot: EvaluatorSlot) -> ReviewRound | None:
+        return (
+            ReviewRound.objects.filter(run_id=self.run_id, evaluator_slot=slot)
+            .order_by("-round_number")
+            .first()
+        )
+
+    def revision_checkpoints(
+        self, slot: EvaluatorSlot, round_number: int
+    ) -> RunRevisionCheckpoints:
+        return RunRevisionCheckpoints(
+            self.run_id,
+            self.task_id,
+            slot,
+            self.context.evaluation_mode,
+            self.context.evaluator(slot).model,
+            round_number,
+        )
+
+    def has_revision_work(self) -> bool:
+        for slot in EvaluatorSlot:
+            row = self.latest_round(slot)
+            if row is None or row.ready:
+                continue
+            if row.round_number > 1 and not _round_is_judged(row):
+                return True
+            if row.round_number <= settings.max_revision_rounds:
+                checkpoints = self.revision_checkpoints(slot, row.round_number)
+                if has_pending_revision_items(checkpoints):
+                    return True
+        return False
+
+
+def _round_item_keys(row: ReviewRound) -> set[tuple[ItemType, str]]:
+    state = row.state
+    return (
+        {(ItemType.OBSERVATION, item.id) for item in state.observations}
+        | {(ItemType.CHECK, item.id) for item in state.cross_checks}
+        | {(ItemType.CRITERION, item.criterion_key.value) for item in state.criteria}
+    )
+
+
+def _round_is_judged(row: ReviewRound) -> bool:
+    verdict_keys = {
+        (ItemType(item.item_type), item.item_key) for item in JudgeVerdict.objects.filter(round=row)
+    }
+    return _round_item_keys(row) <= verdict_keys
+
+
+def _failed_step_names(outputs: Sequence[StepOutput | list[StepOutput]]) -> list[str]:
+    failed: list[str] = []
+    for output in outputs:
+        if isinstance(output, list):
+            failed.extend(_failed_step_names(output))
+        elif not output.success:
+            failed.append(output.step_name or "unknown")
+    return failed
+
+
+def _has_revision_work(deps: EvaluationDependencies) -> bool:
+    """Inclui rodadas parciais para que um retry retome revisão, validação e julgamento."""
+    close_old_connections()
+    try:
+        return deps.has_revision_work()
+    finally:
+        connections.close_all()
+
+
+def no_pending_items(deps: EvaluationDependencies) -> bool:
+    return not _has_revision_work(deps)
+
+
+@dataclass(frozen=True)
+class EvaluationExecutor:
+    deps: EvaluationDependencies
+    slot: EvaluatorSlot
+    action: str
+    round_number: int = 1
+
+    def __call__(self, step_input: StepInput) -> StepOutput:
+        close_old_connections()
+        try:
+            return self._execute(step_input)
+        finally:
+            connections.close_all()
+
+    def _execute(self, step_input: StepInput) -> StepOutput:
+        context, factory = self.deps.context, self.deps.factory
+        model = context.evaluator(self.slot).model
+        mode = context.evaluation_mode
+        result: object
+        latest = self.deps.latest_round(self.slot)
+        if self.action in {"section_pass", "cross_checks", "synthesis", "whole_document"}:
+            if latest is not None and (latest.ready or latest.verdicts.exists()):
+                return StepOutput(content=latest.state)
+        if self.action in {"validate", "judge"} and self.round_number == 1:
+            if latest is not None and latest.round_number == 1 and latest.ready:
+                return StepOutput(content=latest.state)
+        if self.action == "section_pass":
+            result = SectionPassStep(
+                context,
+                self.slot,
+                factory,
+                RunReviewCheckpoints(self.deps.run_id, self.deps.task_id, self.slot, model, mode),
+                settings.llm_max_concurrency,
+            ).execute()
+        elif self.action == "cross_checks":
+            result = CrossCheckStep(
+                context,
+                self.slot,
+                factory,
+                RunCrossCheckCheckpoints(self.deps.run_id, self.deps.task_id, self.slot, model),
+                settings.llm_max_concurrency,
+            ).execute()
+        elif self.action == "synthesis":
+            result = SynthesisStep(
+                context,
+                self.slot,
+                factory,
+                RunSynthesisCheckpoints(self.deps.run_id, self.deps.task_id, self.slot, model),
+            ).execute()
+        elif self.action == "whole_document":
+            result = WholeDocumentStep(
+                context,
+                self.slot,
+                factory,
+                RunWholeDocumentCheckpoints(self.deps.run_id, self.deps.task_id, self.slot, model),
+            ).execute()
+        elif self.action == "validate":
+            result = ValidateStep(
+                context,
+                RunValidationCheckpoints(
+                    self.deps.run_id,
+                    self.deps.task_id,
+                    self.slot,
+                    mode,
+                    self.round_number,
+                ),
+            ).execute()
+        elif self.action == "judge":
+            result = JudgeStep(
+                context,
+                self.slot,
+                factory,
+                RunJudgeCheckpoints(
+                    self.deps.run_id,
+                    self.deps.task_id,
+                    self.slot,
+                    mode,
+                    self.round_number,
+                ),
+            ).execute()
+        elif self.action == "revision_cycle":
+            result = self._revision_cycle()
+        elif self.action == "mark_unresolved":
+            row = self.deps.latest_round(self.slot)
+            result = (
+                row.state.unresolved
+                if row is not None and row.ready
+                else MarkUnresolvedStep(
+                    self.deps.revision_checkpoints(self.slot, row.round_number)
+                ).execute()
+                if row is not None
+                else ()
+            )
+        elif self.action == "finalize":
+            row = self.deps.latest_round(self.slot)
+            if row is None:
+                raise SetupRequired("O E4 terminou sem criar rodadas para os três avaliadores.")
+            result = ReviewRound.finalize(row.pk, self.deps.task_id)
+        else:
+            raise ValueError(f"Ação de workflow E4 desconhecida: {self.action}.")
+        return StepOutput(content=result)
+
+    def _revision_cycle(self) -> ReviewRound | None:
+        row = self.deps.latest_round(self.slot)
+        if row is None or row.ready:
+            return row
+        if row.round_number > 1 and not _round_is_judged(row):
+            round_number = row.round_number
+        elif row.round_number <= settings.max_revision_rounds and has_pending_revision_items(
+            self.deps.revision_checkpoints(self.slot, row.round_number)
+        ):
+            round_number = row.round_number + 1
+        else:
+            return row
+
+        checkpoints = self.deps.revision_checkpoints(self.slot, round_number)
+        RevisionStep(self.deps.context, self.slot, self.deps.factory, checkpoints).execute()
+        ValidateStep(
+            self.deps.context,
+            RunValidationCheckpoints(
+                self.deps.run_id,
+                self.deps.task_id,
+                self.slot,
+                self.deps.context.evaluation_mode,
+                round_number,
+            ),
+        ).execute()
+        JudgeStep(
+            self.deps.context,
+            self.slot,
+            self.deps.factory,
+            RunJudgeCheckpoints(
+                self.deps.run_id,
+                self.deps.task_id,
+                self.slot,
+                self.deps.context.evaluation_mode,
+                round_number,
+            ),
+        ).execute()
+        return ReviewRound.objects.get(
+            run_id=self.deps.run_id,
+            evaluator_slot=self.slot,
+            round_number=round_number,
+        )
+
+
+def build_evaluation_workflow(
+    run_id: str,
+    task_id: str,
+    context: EvaluationContext,
+    *,
+    factory: AgentFactory,
+) -> Workflow:
+    deps = EvaluationDependencies(run_id, task_id, context, factory)
+
+    def step(name: str, executor: Any) -> Step:
+        return Step(
+            name=name,
+            executor=executor,
+            max_retries=0,
+            human_review=HumanReview(on_error=OnError.fail),
+        )
+
+    def parallel(name: str, branches: list[Any]) -> Parallel:
+        branch_args: Any = branches
+        return Parallel(*branch_args, name=name)
+
+    def evaluator(slot: EvaluatorSlot) -> Steps:
+        names = (
+            ("section_pass", "cross_checks", "synthesis")
+            if context.evaluation_mode is EvaluationMode.SECTIONED
+            else ("whole_document",)
+        )
+        return Steps(
+            name=f"evaluator_{slot.value}",
+            steps=[
+                step(f"{action}_{slot.value}", EvaluationExecutor(deps, slot, action))
+                for action in names
+            ],
+        )
+
+    slots = tuple(EvaluatorSlot)
+    initial_evaluators = parallel("evaluators", [evaluator(slot) for slot in slots])
+    validations = parallel(
+        "validate_evaluators",
+        [
+            step(f"validate_{slot.value}", EvaluationExecutor(deps, slot, "validate"))
+            for slot in slots
+        ],
+    )
+    judges = parallel(
+        "judge_evaluators",
+        [step(f"judge_{slot.value}", EvaluationExecutor(deps, slot, "judge")) for slot in slots],
+    )
+    revision_loop = Loop(
+        steps=[
+            parallel(
+                "revision_cycles",
+                [
+                    step(
+                        f"revision_cycle_{slot.value}",
+                        EvaluationExecutor(deps, slot, "revision_cycle"),
+                    )
+                    for slot in slots
+                ],
+            )
+        ],
+        name="revision_loop",
+        max_iterations=settings.max_revision_rounds,
+        end_condition=lambda _: no_pending_items(deps),
+    )
+    revisions = Condition(
+        steps=[revision_loop],
+        evaluator=lambda _: _has_revision_work(deps),
+        name="needs_revision",
+        human_review=HumanReview(on_error=OnError.fail),
+    )
+    unresolved = parallel(
+        "mark_unresolved",
+        [
+            step(
+                f"mark_unresolved_{slot.value}",
+                EvaluationExecutor(deps, slot, "mark_unresolved"),
+            )
+            for slot in slots
+        ],
+    )
+    finalize = parallel(
+        "finalize_rounds",
+        [
+            step(f"finalize_{slot.value}", EvaluationExecutor(deps, slot, "finalize"))
+            for slot in slots
+        ],
+    )
+    return Workflow(
+        name="evaluation",
+        telemetry=False,
+        db=None,
+        steps=[initial_evaluators, validations, judges, revisions, unresolved, finalize],
+    )
+
+
+def run_evaluation(run_id: str, task_id: str, *, factory: AgentFactory) -> dict[str, Any]:
+    run = Run.for_evaluation(run_id, task_id)
+    builder = EvaluationContextBuilder(run)
+    Run.initialize_evaluation(run_id, task_id, builder.snapshot())
+    run = Run.for_evaluation(run_id, task_id)
+    context = EvaluationContextBuilder(run).build()
+    factory.models.specs = validate_catalog(
+        {
+            Role(role): ModelSpec.model_validate(value)
+            for role, value in run.config_snapshot["model_specs"].items()
+        }
+    )
+    result = build_evaluation_workflow(run_id, task_id, context, factory=factory).run(
+        input={"run_id": run_id}, run_id=task_id
+    )
+    reviews = ReviewRound.latest_for_consolidation(run_id)
+    if len(reviews) != len(EvaluatorSlot):
+        errors = _failed_step_names(result.step_results or [])
+        raise InvalidEvaluationOutput(
+            "O workflow E4 não finalizou as rodadas de todos os slots "
+            f"(status={result.status}; passos incompletos={errors})."
+        )
+    return {
+        "evaluators": [item.slot.value for item in reviews],
+        "review_rounds": {item.slot.value: item.round_number for item in reviews},
+        "workflow_status": str(result.status),
+    }
 
 
 @dataclass(frozen=True)

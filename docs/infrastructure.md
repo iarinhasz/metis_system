@@ -1,8 +1,8 @@
 # Infraestrutura
 
-Revisão de 13/11/2026 contra [compose](../docker-compose.yml),
+Revisão de 16/11/2026 contra [compose](../docker-compose.yml),
 [Dockerfile](../Dockerfile), [configuração](../projects/correction/metis/config.py)
-e [CI](../.github/workflows/ci.yml). Os serviços existem; E3 e E4 ainda são stubs.
+e [CI](../.github/workflows/ci.yml). Os serviços existem; E3 ainda é stub, e E4 usa o workflow de avaliação.
 Veja [estado e metas](status_and_metrics.md) antes de interpretar um run como avaliação completa.
 
 ## Serviços do docker-compose
@@ -99,7 +99,7 @@ docker compose up -d postgres              # só o banco, para o pytest no host 
 Depois das migrações, configure o E2 com `load_taxonomy --execute`,
 `seed_questions --execute` e revisão/validação/ativação no admin, como em
 [Questions iniciais](questions_and_profiling.md#questions-iniciais-e-benchmark-27).
-Sem E4 real, chegar a `waiting_setup` no E5 é esperado; reprocessar não fabrica rodadas.
+Sem as configurações necessárias para E4, chegar a `waiting_setup` no E5 é esperado.
 
 Não há limite de páginas, timeout separado do pypdf ou comando de retenção
 implementados. Os limites de task não substituem esses itens pendentes de 6.3/6.4.

@@ -1,12 +1,10 @@
 # Avaliadores, juiz e consolidação (E4 e E5)
 
-**Revisão de 16/11/2026:** contratos/models de rodadas, E5 e os executors isolados
-das etapas 3.3 (passes por seção), 3.4 (checagens entre seções), 3.5 (síntese
-por avaliador), 3.6 (modo `whole_document`), 3.7 (validadores determinísticos),
-3.8 (juiz) e 3.9 (revisão parcial) estão implementados isoladamente. Esses passos
-ainda não foram ligados ao workflow E4. A integração E4 e A/B continuam como
-**desenho alvo**; a task E4 ainda é stub. Não há correlação com notas humanas ou
-custo médio por artigo medidos.
+**Revisão de 16/11/2026:** o workflow E4 integra os executors das etapas 3.3
+(passes por seção), 3.4 (checagens entre seções), 3.5 (síntese por avaliador),
+3.6 (`whole_document`), 3.7 (validadores), 3.8 (juiz) e 3.9 (revisão parcial).
+O E5 consome as últimas rodadas finalizadas. A/B, correlação com notas humanas e
+custo médio por artigo continuam pendentes.
 [Evidências e metas](status_and_metrics.md).
 
 ## Visão geral
@@ -213,10 +211,9 @@ planejado. O contrato JSON é consumido diretamente, sem parsear a narrativa.
 
 ### Consolidação implementada (3.11)
 
-O app `evaluation` inclui os contratos e a persistência de rodadas necessários da
-etapa 3.2 e o workflow real do E5. O E4 permanece stub nesta branch: sem três
-rodadas persistidas, julgadas e finalizadas, o E5 interrompe com `waiting_setup`.
-Ele não transforma uma execução sem avaliações em relatório pronto.
+O app `evaluation` inclui os contratos, a persistência de rodadas e os workflows
+reais do E4 e E5. O E5 exige três rodadas persistidas, julgadas e finalizadas;
+sem elas, interrompe com `waiting_setup` em vez de produzir um relatório vazio.
 
 `ReviewRound.store` exige posse do E4 e valida a escala do snapshot do método.
 Após registrar os `JudgeVerdict`, `ReviewRound.finalize` verifica a cobertura de

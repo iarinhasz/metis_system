@@ -1,7 +1,7 @@
 # Grafo do fluxo: entidades e ligações
 
-**Diagramas do fluxo alvo, revisados em 13/11/2026.** E1, E2 e E5 têm
-implementação; E3/E4, `IntegrityReport`, corpus e A/B nos grafos são planejados.
+**Diagramas revistos em 16/11/2026.** E1, E2, E4 e E5 têm implementação;
+E3, `IntegrityReport`, corpus e A/B nos grafos continuam planejados.
 E1 usa sessão e pools sem Workflow. E5 exige rodadas julgadas e finalizadas,
 e retorna `waiting_setup` se faltarem. Um cilindro nos grafos não garante que
 a tabela já exista; consulte [models](data_models.md) e [estado e metas](status_and_metrics.md).
@@ -143,8 +143,8 @@ flowchart LR
     E5 --> D(["Concluído<br/>done"])
 ```
 
-Cada estágio é uma task Celery. E2 e E5 executam Workflow Agno; E1 usa sessão e
-pools, e E3/E4 ainda são stubs. Entre estágios há checkpoint no banco
+Cada estágio é uma task Celery. E2, E4 e E5 executam Workflow Agno; E1 usa sessão e
+pools, e E3 ainda é stub. Entre estágios há checkpoint no banco
 (`extracted`, `profiled`…), usado na retomada após falha.
 
 ### O que cada estágio cria
@@ -202,7 +202,7 @@ e o benchmark usa sink em memória; esses consumos não entram no painel por run
 
 ### Quem lê e quem grava cada entidade
 
-Tabela do fluxo alvo; E3/E4 e corpus ainda são planejados. "Status" indica
+Tabela do fluxo com E4 integrado; E3 e corpus ainda são planejados. "Status" indica
 mudança pelo `RunManagement`.
 
 | Entidade | Submissão | E1 | E2 | E3 | E4 | E5 | Admin e comandos |
@@ -211,7 +211,7 @@ mudança pelo `RunManagement`.
 | Versão (`Attempt`) | grava | lê | — | — | — | — | — |
 | Execução (`Run`) | grava | status | lê e grava (perfil) | status | lê (perfil) | status | grava (gate, reprocessar) |
 | Evento (`RunEvent`) | grava | grava | grava | grava | grava | grava | grava (decisões) |
-| Chamada de LLM (`LLMCall`) | — | grava | grava | planejado | planejado | grava | — (rascunho sem Run/sink persistente) |
+| Chamada de LLM (`LLMCall`) | — | grava | grava | planejado | grava | grava | — (rascunho sem Run/sink persistente) |
 | Artigo dividido (`Extraction`) | — | grava | lê | planejado | planejado | lê | lê (rubric check) |
 | Figura (`Figure`, JSON) | — | grava | lê | — | planejado | lê | — |
 | Taxonomia (`TaxonomyNode`) | — | — | lê | — | — | — | grava |

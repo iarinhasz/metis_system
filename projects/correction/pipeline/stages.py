@@ -1,4 +1,4 @@
-"""Base dos estágios (Template Method); E1, E2 e E5 reais, E3 e E4 ainda stubs.
+"""Base dos estágios (Template Method); E1, E2, E4 e E5 reais, E3 ainda stub.
 
 Ciclo de uma task: claim → execute() → complete → publica o próximo estágio após o commit.
 Cada estágio implementa só o execute(). A posse do run é pelo id da task Celery, que se
@@ -22,8 +22,7 @@ from projects.correction.attempts.status import (
     Stage,
     StageSpec,
 )
-from projects.correction.evaluation.context import EvaluationContextBuilder
-from projects.correction.evaluation.workflow import run_consolidation
+from projects.correction.evaluation.workflow import run_consolidation, run_evaluation
 from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.session import AgnoSession, DocumentSession
@@ -202,17 +201,12 @@ class EvaluationStage(StageTask):
     stage = Stage.EVALUATION
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        run = Run.for_evaluation(ctx.run_id, ctx.task_id)
-        builder = EvaluationContextBuilder(run, evaluation_mode=settings.evaluation_mode)
-        snapshot = builder.snapshot()
-        Run.initialize_evaluation(ctx.run_id, ctx.task_id, snapshot)
-        context = EvaluationContextBuilder(Run.for_evaluation(ctx.run_id, ctx.task_id)).build()
-        return StageOutcome(
-            payload={
-                "context_ready": True,
-                "evaluators": [item.slot.value for item in context.evaluators],
-            }
+        result = run_evaluation(
+            ctx.run_id,
+            ctx.task_id,
+            factory=AgentFactory(ctx.run_id, ctx.stage, DatabaseUsageSink(), task_id=ctx.task_id),
         )
+        return StageOutcome(payload=result)
 
 
 class ConsolidationStage(StageTask):
