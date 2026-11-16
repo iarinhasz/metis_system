@@ -1,0 +1,12 @@
+{
+  "total": 1,
+  "data": [
+    {
+      "paperId": "paper-123",
+      "externalIds": {"DOI": "10.1000/example"},
+      "title": "A recorded sample paper",
+      "abstract": "A recorded abstract.",
+      "year": 2024
+    }
+  ]
+}

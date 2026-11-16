@@ -1347,6 +1347,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pypdf" },
+    { name = "redis" },
     { name = "whitenoise" },
 ]
 
@@ -1384,6 +1385,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pydantic-settings", specifier = ">=2.9,<3" },
     { name = "pypdf", specifier = ">=6,<7" },
+    { name = "redis", specifier = ">=8.1,<9" },
     { name = "whitenoise", specifier = ">=6.9,<7" },
 ]
 provides-extras = ["flower"]
