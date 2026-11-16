@@ -143,6 +143,14 @@ item persistido ao qual associar um veredito.
 
 **Commit sugerido:** `feat: add the judge with cross-family assignment`
 
+**Implementação nesta branch:** `JudgeStep` envia ao juiz cruzado somente itens
+sem veredito; itens recusados pelos validadores da 3.7 seguem diretamente para a
+revisão. O juiz recebe o artigo inteiro, a revisão do slot e dicas calculadas de
+divergência. O `excerpt` de cada apontamento é conferido como substring do item;
+uma saída com trecho incorreto recebe uma chamada corretiva, e apontamentos ainda
+inválidos são descartados. Vereditos e snapshot do modelo julgador são persistidos
+por item com checkpoints de posse e retomada.
+
 ---
 
 ## Etapa 3.9 — Revisão, loop e unresolved
