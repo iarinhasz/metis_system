@@ -172,6 +172,19 @@ class _EvidenceValidator:
                         reason="No modo sectioned, a síntese deve apontar para itens por ID.",
                     )
                 )
+        observation_sections = {item.id: item.section_id for item in state.observations}
+        for revision in state.revisions:
+            for evidence in revision.evidence:
+                check(
+                    revision.item_type,
+                    revision.item_key,
+                    evidence,
+                    expected_section=(
+                        observation_sections.get(revision.item_key)
+                        if revision.item_type is ItemType.OBSERVATION
+                        else None
+                    ),
+                )
         return tuple(findings)
 
 
@@ -285,7 +298,9 @@ class ValidatorChain:
         grouped: dict[tuple[ItemType, str], list[Issue]] = defaultdict(list)
         for validator in self.validators:
             for finding in validator.validate(state, self.context):
-                grouped[(finding.item_type, finding.item_key)].append(finding.issue)
+                issues = grouped[(finding.item_type, finding.item_key)]
+                if finding.issue not in issues:
+                    issues.append(finding.issue)
         return tuple(
             ItemVerdict(
                 item_type=item_type,
@@ -334,6 +349,7 @@ class RunValidationCheckpoints:
     task_id: str
     slot: EvaluatorSlot
     mode: EvaluationMode
+    round_number: int = 1
 
     def assert_owned(self) -> None:
         from projects.correction.attempts.models import Run
@@ -347,7 +363,7 @@ class RunValidationCheckpoints:
         row = ReviewRound.objects.filter(
             run_id=self.run_id,
             evaluator_slot=self.slot,
-            round_number=1,
+            round_number=self.round_number,
         ).first()
         if row is None:
             raise RunConflict("A rodada ainda não existe para este avaliador.")

@@ -14,6 +14,8 @@ from projects.correction.agents.schemas.evaluation import (
     CrossCheckResult,
     EvaluationMode,
     EvaluatorSlot,
+    ItemRef,
+    ItemType,
     Observation,
     ReviewState,
 )
@@ -45,7 +47,12 @@ class SynthesisStep:
     factory: AgentFactory
     checkpoints: SynthesisCheckpoints
 
-    def execute(self) -> ReviewState:
+    def execute(
+        self,
+        *,
+        refresh: tuple[Criterion, ...] = (),
+        mark_changed: bool = False,
+    ) -> ReviewState:
         state = self.checkpoints.read_state()
         paper = self._paper_criteria()
         active = tuple(paper.active)
@@ -54,7 +61,9 @@ class SynthesisStep:
         existing = {item.criterion_key for item in state.criteria}
         if not existing <= set(active):
             raise InvalidEvaluationOutput("A rodada contém síntese de critério inativo.")
-        pending = tuple(key for key in active if key not in existing)
+        if refresh and (not set(refresh) <= existing or not set(refresh) <= set(active)):
+            raise InvalidEvaluationOutput("Só é possível atualizar sínteses ativas existentes.")
+        pending = refresh or tuple(key for key in active if key not in existing)
         if not pending:
             return state
 
@@ -105,7 +114,19 @@ class SynthesisStep:
             raise InvalidEvaluationOutput("A síntese por critério retornou uma saída inválida.")
         additions = response.content.criteria
         self._validate(additions, pending, config, observations, checks)
-        updated = self._merge(state, additions)
+        updated = self._merge(state, additions, replace_existing=bool(refresh))
+        if mark_changed:
+            changed = {(item.item_type, item.item_key): item for item in updated.changed_items}
+            changed.update(
+                {
+                    (ItemType.CRITERION, key.value): ItemRef(
+                        item_type=ItemType.CRITERION,
+                        item_key=key.value,
+                    )
+                    for key in pending
+                }
+            )
+            updated = updated.model_copy(update={"changed_items": tuple(changed.values())})
         self.checkpoints.store_state(updated)
         return updated
 
@@ -162,11 +183,16 @@ class SynthesisStep:
                 )
 
     @staticmethod
-    def _merge(state: ReviewState, additions: tuple[CriterionSynthesis, ...]) -> ReviewState:
+    def _merge(
+        state: ReviewState,
+        additions: tuple[CriterionSynthesis, ...],
+        *,
+        replace_existing: bool = False,
+    ) -> ReviewState:
         criteria = {item.criterion_key: item for item in state.criteria}
         for item in additions:
             previous = criteria.get(item.criterion_key)
-            if previous is not None and previous != item:
+            if previous is not None and previous != item and not replace_existing:
                 raise InvalidEvaluationOutput(
                     "Critério duplicado com sínteses de conteúdos distintos."
                 )
@@ -187,6 +213,7 @@ class RunSynthesisCheckpoints:
     task_id: str
     slot: EvaluatorSlot
     model_spec: ModelSpec
+    round_number: int = 1
 
     def assert_owned(self) -> None:
         Run.for_evaluation(self.run_id, self.task_id)
@@ -196,7 +223,7 @@ class RunSynthesisCheckpoints:
         row = ReviewRound.objects.filter(
             run_id=self.run_id,
             evaluator_slot=self.slot,
-            round_number=1,
+            round_number=self.round_number,
         ).first()
         if row is None:
             return ReviewState()
@@ -209,7 +236,7 @@ class RunSynthesisCheckpoints:
             self.run_id,
             self.task_id,
             slot=self.slot,
-            round_number=1,
+            round_number=self.round_number,
             mode=EvaluationMode.SECTIONED,
             model_spec=self.model_spec,
             state=state,

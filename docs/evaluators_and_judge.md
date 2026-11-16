@@ -2,10 +2,11 @@
 
 **Revisão de 16/11/2026:** contratos/models de rodadas, E5 e os executors isolados
 das etapas 3.3 (passes por seção), 3.4 (checagens entre seções), 3.5 (síntese
-por avaliador), 3.6 (modo `whole_document`), 3.7 (validadores determinísticos) e
-3.8 (juiz) estão implementados isoladamente. Esses passos ainda não foram ligados
-ao workflow E4. Revisão, loop e A/B continuam como **desenho alvo**; a task E4
-ainda é stub. Não há correlação com notas humanas ou custo médio por artigo medidos.
+por avaliador), 3.6 (modo `whole_document`), 3.7 (validadores determinísticos),
+3.8 (juiz) e 3.9 (revisão parcial) estão implementados isoladamente. Esses passos
+ainda não foram ligados ao workflow E4. A integração E4 e A/B continuam como
+**desenho alvo**; a task E4 ainda é stub. Não há correlação com notas humanas ou
+custo médio por artigo medidos.
 [Evidências e metas](status_and_metrics.md).
 
 ## Visão geral
@@ -137,15 +138,16 @@ O que roda de novo depende de onde está o problema:
 | Síntese de um critério | Só a síntese daquele critério |
 
 - O pedido de revisão (`RevisionPromptBuilder`) leva o item anterior, o trecho apontado e o motivo.
-- O avaliador responde `accept` (corrige) ou `rebut` (mantém e traz nova evidência do artigo). O juiz reavalia na rodada seguinte.
+- O avaliador responde `accept` com um item substituto ou `rebut` com evidência nova, conferida no artigo. A réplica preserva o item avaliado; observações e checagens incorporam a evidência à rodada, enquanto a síntese `sectioned` mantém citações por ID.
+- A nova rodada copia os vereditos válidos que não dependem de itens alterados. Observações e checagens revisadas atualizam apenas as sínteses que as referenciam; o juiz recebe somente itens sem veredito.
 - **Por que existe a réplica.** LLMs tendem a ceder a qualquer crítica (bajulação). Sem a opção de defender a resposta, quem definiria a nota seria, na prática, o juiz.
 
 ## O loop
 
 - **Forma (D17):** a rodada 1 é validada e julgada antes do loop. Se sobrar item pendente, cada iteração do loop é "revisar → validar → julgar", então a última revisão sempre passa pelo juiz.
-- **Limite:** `Loop(max_iterations=2)` no Agno, dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
+- **Limite:** `Loop(max_iterations=settings.max_revision_rounds)` no Agno (padrão 2), dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
 - **Itens que esgotam as rodadas** viram `unresolved`:
-  - uma observação `unresolved` sai das sínteses;
+  - uma observação `unresolved` exclui da agregação cada critério que depende dela;
   - um critério `unresolved` sai da agregação;
   - os dois aparecem no relatório final, sinalizados para revisão humana.
 - **Persistência:** `ReviewRound` (o estado da revisão do avaliador naquela rodada) + `JudgeVerdict` (um por item verificado). É a trilha de auditoria: guarda o trecho que tornou a avaliação inconsistente e o motivo dado pelo juiz.

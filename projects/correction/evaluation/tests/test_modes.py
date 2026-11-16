@@ -5,7 +5,15 @@ import json
 import pytest
 
 from projects.correction.agents.fakes import FakeAgentFactory
-from projects.correction.agents.schemas.evaluation import EvaluationMode, EvaluatorSlot, ReviewState
+from projects.correction.agents.schemas.criteria import Criterion
+from projects.correction.agents.schemas.evaluation import (
+    CriterionSynthesis,
+    EvaluationMode,
+    EvaluatorSlot,
+    ItemRef,
+    ItemType,
+    ReviewState,
+)
 from projects.correction.agents.specs import Role, development_spec
 from projects.correction.agents.usage import MemoryUsageSink
 from projects.correction.attempts.models import Run
@@ -116,6 +124,40 @@ def test_whole_document_synthesizes_all_active_criteria_in_one_call() -> None:
     assert article["sections"][-1]["id"] == "sec_method"
     assert factory.calls[0].name == "whole_document_reviewer"
     assert all(item.evidence and not item.observation_ids for item in state.criteria)
+
+
+def test_whole_document_refreshes_only_requested_criterion() -> None:
+    context = _context(EvaluationMode.WHOLE_DOCUMENT)
+    initial = tuple(
+        CriterionSynthesis.model_validate(item) for item in _output(context)["criteria"]
+    )
+    checkpoints = FakeCheckpoints(ReviewState(criteria=initial))
+    target = next(
+        item for item in _output(context)["criteria"] if item["criterion_key"] == "soundness"
+    )
+    response = {
+        "criteria": [
+            target
+            | {
+                "grade": 4,
+                "justification": "A síntese atualizada usa a evidência revisada.",
+            }
+        ]
+    }
+    factory = FakeAgentFactory(scripts={"whole_document_reviewer": [response]})
+    step = WholeDocumentStep(context, EvaluatorSlot.A, factory, checkpoints)
+
+    state = step.execute(refresh=(Criterion.SOUNDNESS,), mark_changed=True)
+
+    assert len(factory.calls) == 1
+    assert len(state.criteria) == len(initial)
+    assert (
+        next(item.grade for item in state.criteria if item.criterion_key is Criterion.SOUNDNESS)
+        == 4
+    )
+    assert state.changed_items == (
+        ItemRef(item_type=ItemType.CRITERION, item_key=Criterion.SOUNDNESS.value),
+    )
 
 
 @pytest.mark.parametrize(

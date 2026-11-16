@@ -115,21 +115,35 @@ def _state_items(state: ReviewState) -> dict[tuple[ItemType, str], str]:
     for observation in state.observations:
         items[(ItemType.OBSERVATION, observation.id)] = "\n".join(
             (
+                observation.kind,
                 observation.statement,
+                observation.severity,
                 *(evidence.quote for evidence in observation.evidence),
             )
         )
     for check in state.cross_checks:
         items[(ItemType.CHECK, check.id)] = "\n".join(
-            (check.kind, check.verdict, *(evidence.quote for evidence in check.evidence))
+            (
+                check.kind,
+                check.verdict,
+                check.severity,
+                *(evidence.quote for evidence in check.evidence),
+            )
         )
     for synthesis in state.criteria:
         items[(ItemType.CRITERION, synthesis.criterion_key.value)] = "\n".join(
             (
+                f"nota {synthesis.grade}",
                 synthesis.justification,
                 *(evidence.quote for evidence in synthesis.evidence),
             )
         )
+    for revision in state.revisions:
+        key = (revision.item_type, revision.item_key)
+        if key in items and revision.evidence:
+            items[key] = "\n".join(
+                (items[key], *(evidence.quote for evidence in revision.evidence))
+            )
     return items
 
 

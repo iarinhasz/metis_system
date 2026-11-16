@@ -6,9 +6,12 @@ from collections.abc import Callable
 import pytest
 
 from projects.correction.agents.fakes import FakeAgentFactory
+from projects.correction.agents.schemas.criteria import Criterion
 from projects.correction.agents.schemas.evaluation import (
+    CriterionSynthesis,
     CrossCheckResult,
     EvaluatorSlot,
+    ItemType,
     Observation,
     ReviewState,
 )
@@ -186,6 +189,38 @@ def test_rejects_check_reference_for_an_unrelated_criterion() -> None:
 
     with pytest.raises(InvalidEvaluationOutput):
         step.execute()
+
+
+def test_refresh_replaces_only_requested_criterion_and_marks_it_changed() -> None:
+    context = _context()
+    data = _synthesis_data(context)
+    initial = tuple(CriterionSynthesis.model_validate(item) for item in data["criteria"])
+    state = _state(context).model_copy(update={"criteria": initial})
+    target = next(item for item in data["criteria"] if item["criterion_key"] == "soundness")
+    response = {
+        "criteria": [
+            target
+            | {
+                "grade": 4,
+                "justification": "A síntese atualizada considera a observação corrigida.",
+            }
+        ]
+    }
+    factory = FakeAgentFactory(scripts={"synthesizer": [response]})
+    checkpoints = FakeCheckpoints(state)
+    step, _, _ = _step(factory=factory, checkpoints=checkpoints, context=context)
+
+    updated = step.execute(refresh=(Criterion.SOUNDNESS,), mark_changed=True)
+
+    assert len(factory.calls) == 1
+    assert len(updated.criteria) == len(initial)
+    assert (
+        next(item.grade for item in updated.criteria if item.criterion_key is Criterion.SOUNDNESS)
+        == 4
+    )
+    assert [(item.item_type, item.item_key) for item in updated.changed_items] == [
+        (ItemType.CRITERION, Criterion.SOUNDNESS.value)
+    ]
 
 
 @pytest.mark.django_db

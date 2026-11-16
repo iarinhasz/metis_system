@@ -170,6 +170,15 @@ por item com checkpoints de posse e retomada.
 
 **Commit sugerido:** `feat: add partial revision loop with rebuttal`
 
+**Implementação nesta branch:** `RevisionStep` abre rodadas imutáveis para itens
+recusados por validador ou juiz. `accept` substitui o item com a mesma identidade;
+`rebut` mantém a avaliação e acrescenta evidência conferida no artigo. Vereditos
+válidos independentes são copiados sem nova chamada; a revisão de observação ou
+checagem atualiza somente as sínteses dependentes. O limite `METIS_MAX_REVISION_ROUNDS`
+tem padrão 2; `MarkUnresolvedStep` marca as recusas restantes, e a agregação exclui
+critérios que dependam de observações unresolved. A integração ao Workflow E4 segue
+para a etapa 3.10.
+
 ---
 
 ## Etapa 3.10 — Workflow do E4

@@ -196,9 +196,14 @@ class AgentFactory:
         return self.build("whole_document_reviewer", self._slot(slot), output_schema, spec=spec)
 
     def reviser(
-        self, slot: Slot, level: str, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        level: str,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build("reviser", self._slot(slot), output_schema, level=level)
+        return self.build("reviser", self._slot(slot), output_schema, spec=spec, level=level)
 
     def judge(
         self, for_spec: ModelSpec, *, output_schema: type[BaseModel] = PendingOutput
