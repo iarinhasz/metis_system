@@ -5,8 +5,8 @@ Como o Metis usa o Agno 3 dentro dos estágios: o pacote `agents/`, o catálogo 
 Os caminhos de código são relativos a `projects/correction/`. A versão em diagramas, com as entidades que cada passo lê e grava, está em [Grafo do fluxo](flow_graph.md).
 
 **Estado revisto em 16/11/2026:** fábrica, limites, uso/custo, E1 sem Workflow,
-E2, E4 e E5 reais. E3 segue stub; o A/B ainda é planejado e não há correlação
-com avaliação humana. [Medições, metas e validação atual](status_and_metrics.md).
+E2, E3, E4 e E5 reais. O A/B ainda é planejado e não há correlação com avaliação
+humana. [Medições, metas e validação atual](status_and_metrics.md).
 As verificações de 1.2/1.3/1.4 nesta página são registros históricos de cada entrega.
 
 > **Spike 1.2, verificação local em 12/11/2026:** Agno **3.1.12**, Python **3.14.5**, `openai` **3.49.0** e `google-genai` **1.75.0** instalados. Workflows e clientes dos dois provedores foram exercitados com executors sintéticos e HTTP local. A validação de respostas dos provedores com chaves válidas continua **pendente**, por decisão de seguir com os testes locais. O resultado e as correções dos esboços estão abaixo.
@@ -74,7 +74,7 @@ task do estágio                      <app>/workflow.py monta o Workflow
        publica o próximo                             (agents/: único lugar com Agent e Model)
 ```
 
-- **Uma task Celery por estágio.** E2, E4 e E5 chamam `workflow.run()` de forma síncrona. E1 usa sessão e `bounded_map`, sem Workflow; E3 segue stub. Essa aplicação atual ajusta o alvo D16 de um Workflow por estágio. [Orquestração](orchestration.md#agno-dentro-dos-estágios).
+- **Uma task Celery por estágio.** E2–E5 chamam `workflow.run()` de forma síncrona. E1 usa sessão e `bounded_map`, sem Workflow. Essa aplicação atual ajusta o alvo D16 de um Workflow por estágio. [Orquestração](orchestration.md#agno-dentro-dos-estágios).
 - **O banco é a fonte da verdade.** O workflow recebe só ids. Cada passo grava o que produz e, quando o estágio é retentado, pula o que já existe.
 - **O Agno não decide o fluxo.** É `Workflow`, não `Team`: a ordem dos passos é fixa em código, e os agentes só preenchem saídas tipadas.
 
@@ -263,9 +263,11 @@ tenham mudado. As credenciais ficam fora do snapshot.
 
 ### E3 — Integridade (`integrity/workflow.py`)
 
-Hoje E3 é um `StageOutcome(payload={"risk": "low"})`, sem Workflow ou
-`IntegrityReport`. O E5 declara `not_checked`, risco desconhecido e cobertura
-indisponível. O esboço a seguir é a forma planejada para M5:
+E3 chama `run_integrity()` e persiste `IntegrityReport`/achados. Resolve referências
+antes de executar o `Parallel` com os ramos de similaridade e citações. Os resultados
+de cada ramo são checkpoints por run; um retry não repete o ramo já concluído. O
+cruzamento e as regras v2 são determinísticos. O esboço abaixo registra o fluxo
+conceitual:
 
 ```python
 Workflow(name="integrity", telemetry=False, steps=[

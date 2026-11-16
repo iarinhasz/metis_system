@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from projects.correction.extractor.contract import HiddenTextFinding
+
 
 class ExtractedSection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -114,6 +116,7 @@ class ExtractedArticle(BaseModel):
     # Vazias nas extrações feitas antes da 1.6.
     figures: tuple[Figure, ...] = ()
     figure_mentions: tuple[FigureMention, ...] = ()
+    hidden_text_findings: tuple[HiddenTextFinding, ...] = ()
 
     @property
     def has_footnotes(self) -> bool:

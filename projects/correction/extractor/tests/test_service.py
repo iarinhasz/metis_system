@@ -79,6 +79,7 @@ def test_asks_each_section_and_checks_its_coverage() -> None:
         "pt",
         "google/gemini-3.6-flash",
     )
+    assert article.hidden_text_findings == ()
     assert [
         (s.id, s.key, s.parent_id, s.text, s.coverage, s.fidelity) for s in article.sections
     ] == [

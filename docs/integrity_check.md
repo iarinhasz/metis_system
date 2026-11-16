@@ -1,10 +1,12 @@
 # Checagem de integridade (E3)
 
-**Desenho planejado, revisto em 13/11/2026.** O app `integrity/`, seus modelos,
-corpus, detectores e APIs acadêmicas abaixo ainda não estão implementados.
-`IntegrityStage` hoje apenas retorna `risk=low` para seguir o pipeline. O gate
-existe na máquina de estados; esse risco de stub não é uma checagem do artigo.
-E5 declara `not_checked`, com risco desconhecido. [Estado e metas](status_and_metrics.md).
+**Desenho revisto em 13/11/2026; implementação atualizada para M4 e M5.** O E3
+usa o corpus vetorial, detectores léxico e semântico, resolução bibliográfica,
+verificação de referências e alinhamento amostrado. Após resolver as referências,
+os ramos de similaridade e citações rodam em `Parallel`; cada ramo tem checkpoint
+persistente para que um retry não repita um ramo já concluído. Risco alto pausa o
+run para revisão humana; o LLM não decide o nível. O relatório declara a cobertura
+e as limitações efetivamente observadas.
 
 ## Objetivo e princípios
 
@@ -49,7 +51,7 @@ Do mais barato ao mais caro:
    | arXiv | Busca e PDF | 1 requisição a cada 3 s |
    | OpenAlex (busca) | Artigos relacionados | **Paga desde 2026**: US$ 1 por mil buscas; a chave grátis dá US$ 1/dia → orçamento por run |
 
-   O full text em acesso aberto vem do arXiv, do Unpaywall (`best_oa_location`) ou do `openAccessPdf` do Semantic Scholar. Ele tem o texto lido (como o E1 lê o PDF, ou pelo texto que a própria fonte entrega), é dividido em chunks e ganha embeddings, num cache (`SourceChunk`) que cresce a cada submissão.
+   O texto integral em acesso aberto ainda não é baixado nem extraído nesta implementação: os links OA são registrados e os abstracts são candidatos; `coverage.full_text` declara essa limitação. O corpus PeerRead e os artigos submetidos são divididos em chunks e ganham embeddings locais.
 2. **Léxico, sem LLM.**
    - MinHash-LSH (`datasketch` 2.0, MIT), sobre shingles de palavras, acha os parágrafos candidatos.
    - *Winnowing* localiza os trechos idênticos, com offsets: guarda o menor hash de cada janela de k-gramas, com hash estável (blake2b). Qualquer trecho comum com pelo menos `w + k − 1` palavras é detectado.
@@ -83,6 +85,14 @@ Do mais barato ao mais caro:
    - Compara primeiro com o abstract da obra citada e só busca o full text se o resultado for `INSUFFICIENT`.
    - Frase em português contra fonte em inglês → juiz LLM, porque os modelos de inferência textual disponíveis são só em inglês.
    - Rótulos: `SUPPORTS | PARTIAL | CONTRADICTS | UNRELATED | INSUFFICIENT`.
+   - K vem de `METIS_INTEGRITY_ALIGNMENT_SAMPLE_SIZE`. Full text PDF só é baixado por HTTPS
+     de hosts declarados em `METIS_INTEGRITY_FULL_TEXT_HOSTS`; redirecionamentos para hosts
+     não permitidos e arquivos acima de 20 MiB são recusados.
+
+As implementações estão em `integrity/existence.py`, `retraction.py`,
+`consistency.py` e `alignment.py`. Respostas de rede transitórias e saídas inválidas
+do juiz voltam ao retry do estágio. O alinhamento sem full text ou abstract disponível
+permanece `INSUFFICIENT`, não é convertido em acusação.
 
 ## Cruzamento das fases
 
@@ -92,9 +102,14 @@ Do mais barato ao mais caro:
 | Fonte similar, citada no trecho e entre aspas | `properly_cited`; o achado desce de severidade |
 | Trecho similar a um trabalho retratado | Registrado à parte, junto com o achado de retratação |
 
+`integrity/cross_phases.py` cruza os resultados sem delegar a decisão ao LLM.
+Os resultados resolvidos e os dois ramos do `Parallel` são persistidos por run;
+se um ramo falhar, um retry lê seu checkpoint e reexecuta apenas o ramo incompleto.
+
 ## Regras de risco
 
-**Proposta inicial.** Os limiares N, X e K ficam em `integrity/rules.py`, configuráveis, e são calibrados no M4/M5.
+**Regras v2.** Os limiares N, X, K e o número de contradições ficam configuráveis em
+`integrity/rules.py`; a versão gravada no relatório é `2.0`.
 
 | Nível | Quando (basta uma condição) |
 |---|---|
@@ -102,7 +117,8 @@ Do mais barato ao mais caro:
 | Médio | Paráfrase sem atribuição pontual; referências com metadados divergentes; trabalho retratado citado como suporte; vários alinhamentos `CONTRADICTS` |
 | Baixo | Só achados de baixa severidade ou boilerplate |
 
-Limiar fixo no código não acompanha a calibração. Aqui os limiares são configuração, com teste.
+Os limiares são configuração e permanecem não calibrados até que os benchmarks sejam
+executados com conjuntos rotulados e seus resultados registrados.
 
 ## O relatório
 
@@ -165,8 +181,28 @@ Verificado em outubro de 2026. Preços e limites mudam; o OpenAlex, por exemplo,
 
 | O quê | Como |
 |---|---|
-| Fase 1 | Plágio sintético a partir do PeerRead (trechos literais, parafraseados por LLM e traduzidos para PT) → precisão e recall |
+| Fase 1 | `python manage.py bench_plagiarism`; por padrão mede trechos literais. `--with-llm` gera, com chamadas externas explícitas, exemplos parafraseados e traduzidos para PT. |
 | Limiares cross-lingual | Abstracts bilíngues do SciELO |
 | Alinhamento citação ↔ afirmação | SciCiteVal e Citation Integrity |
 | Existência de referências | Referências inventadas plantadas, medindo também a taxa de falso positivo |
 | Fase 0 | PDFs com texto oculto plantado |
+
+O benchmark registra as métricas por tipo e os limiares usados; a execução, por si
+só, não declara os limiares calibrados nem que a meta Q11 foi atingida.
+
+Para a Fase 2, `bench_integrity_phase2` aceita arquivos JSONL locais:
+
+```powershell
+py -m uv run --python 3.14 python projects/correction/manage.py bench_integrity_phase2 `
+  --dataset planted_references --input path\to\references.jsonl
+py -m uv run --python 3.14 python projects/correction/manage.py bench_integrity_phase2 `
+  --dataset sciciteval --input path\to\sciciteval-normalized.jsonl
+py -m uv run --python 3.14 python projects/correction/manage.py bench_integrity_phase2 `
+  --dataset citation_integrity --input path\to\citation-integrity-normalized.jsonl
+```
+
+O comando não baixa datasets por conta própria. Os baselines de alinhamento exigem
+JSONL normalizado com `claim`, `source_text` e `expected_label` (um dos rótulos do
+juiz); cabe ao operador documentar o mapeamento e a versão do dataset original.
+Assim, sem arquivos rotulados locais, ainda não há números de SciCiteVal ou Citation
+Integrity registrados, nem evidência de que Q11 foi atingida.
