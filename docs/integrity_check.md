@@ -57,6 +57,7 @@ Do mais barato ao mais caro:
    - O modelo é o **multilingual-E5-large** via FastEmbed/ONNX (mais de 100 idiomas, limite de 512 tokens, vetores de 1024 dimensões), rodando **localmente**: o manuscrito não sai da infraestrutura. Chunks de até 300 palavras reduzem o risco de truncamento; cada chunk recebe os k vizinhos mais próximos (índice HNSW do pgvector). O BGE-M3 previsto inicialmente não está disponível no FastEmbed compatível com Python 3.14.
    - A carga inicial usa as fixtures `ExtractedDocument` do PeerRead: `make_peerread_fixtures --execute` prepara pelo menos 10 artigos em `projects/correction/extractor/tests/fixtures/peerread`; `load_peerread` valida cinco por padrão em dry-run. Para gravar documentos e vetores, rode `load_peerread --execute`.
    - **Cópia traduzida** (PT↔EN) aparece como uma sequência de frases alinhadas na mesma ordem (cosseno + vizinho mais próximo nos dois sentidos).
+   - `integrity/semantic.py` busca os `nearest_chunks` HNSW por parágrafo e alinha frases monotonicamente por cosseno; retorna os trechos alinhados, offsets, fonte e similaridade. `SemanticConfig` controla `nearest_chunks`, `similarity_threshold` (inicialmente 0,82) e a quantidade mínima de frases alinhadas. O limiar é provisório, não calibrado.
    - O **SPECTER2** não serve aqui: só funciona em inglês e compara artigos inteiros.
    - Os limiares são calibrados com abstracts bilíngues do SciELO e com o plágio sintético do PeerRead. Não existe benchmark público PT↔EN para modelos atuais.
 4. **Filtro por citação.** Para cada par suspeito:
