@@ -58,6 +58,16 @@ class DocumentReference(ContractModel):
     arxiv_id: str | None = None
 
 
+class HiddenTextFinding(ContractModel):
+    page: int = Field(ge=1)
+    text: str = Field(min_length=1)
+    reasons: tuple[
+        Literal["color", "size", "outside_page", "under_image", "instruction"],
+        ...,
+    ] = Field(min_length=1)
+    bbox: tuple[float, float, float, float] | None = None
+
+
 class DocumentFigureDescription(ContractModel):
     figure_class: str
     description: str
@@ -112,6 +122,7 @@ class ExtractedDocument(ContractModel):
     references: tuple[DocumentReference, ...] = ()
     citation_mentions: tuple[CitationMention, ...] = ()
     figures: tuple[DocumentFigure, ...] = ()
+    hidden_text_findings: tuple[HiddenTextFinding, ...] = ()
 
     @model_validator(mode="after")
     def validate_relations(self) -> ExtractedDocument:
