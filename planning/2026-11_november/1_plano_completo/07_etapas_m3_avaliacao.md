@@ -249,9 +249,11 @@ de desenvolvimento, executar `uv run python manage.py migrate`.
 - Esses runs reaproveitam a extração do cache, pulam o E3 e rodam E2 (com a Question do snapshot), E4 e E5.
 - Tela de resultado: os `FinalReport` lado a lado.
 
-**Teste** (`questions/tests/test_rubric_check.py`)
+**Teste** (`questions/tests/test_rubric_check.py`,
+`questions/tests/test_rubric_check_workflow.py`)
 - O rubric check não muda a Question ativa nem outros runs.
 - O run usa a Question rascunho, e não a resolvida pela árvore.
+- O fluxo integrado de E2/E4/E5 finaliza as rodadas e gera relatórios, pulando E3.
 
 **Commit sugerido:** `feat: run rubric checks with draft questions`
 
@@ -261,16 +263,18 @@ snapshot do rascunho e da configuração de avaliação, desvio auditado do E3 e
 comparação dos relatórios lado a lado. A Question ativa e avaliações anteriores
 permanecem intactas. O desvio também vale para a retomada pelo reconciliador.
 
-**Dependência pendente nesta branch:** E4 ainda é um stub; os relatórios completos
-dependem das rodadas julgadas da etapa 3.10. A tela mostra `waiting_setup` quando
-elas faltam. A integração substitui apenas E4 por rodadas julgadas sintéticas e
-executa E2/E5 reais, com fakes no limite dos provedores.
+**Integração concluída (16/11/2026):** com o E4 da etapa 3.10 integrado, o
+rubric check percorre E2, E4 e E5 usando a Question em rascunho congelada no Run.
+O teste de integração executa as etapas reais com respostas falsas coerentes:
+gera e julga rodadas para A/B/C, produz os relatórios finais e confere que E3
+foi pulado. Um teste separado preserva o estado `waiting_setup` quando E4 não
+produz rodadas. Os agentes falsos substituem somente as chamadas aos provedores.
 Ver [operação no admin](../../../docs/questions_and_profiling.md#rubric-check-no-admin-312).
 
-**Verificação:** 633 testes passaram em Python 3.14 e PostgreSQL 18, com 5 contratos
-`llm` excluídos e apenas o aviso de depreciação existente do SDK Google. Mypy
-aprovou 225 arquivos; Ruff e formatação passaram (227 arquivos); checks do Django
-sem problemas e `makemigrations --check --dry-run` sem mudanças pendentes.
+**Verificação da integração:** os 4 testes de
+`questions/tests/test_rubric_check_workflow.py` passaram com PostgreSQL 18;
+Ruff e mypy passaram no arquivo alterado. Os testes não medem a qualidade das
+avaliações produzidas por provedores reais.
 
 ---
 

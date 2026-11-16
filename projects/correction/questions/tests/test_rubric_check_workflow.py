@@ -1,4 +1,4 @@
-"""Fluxo interno completo com E2/E5 reais, HTTP do admin e E4 substituído na fronteira."""
+"""Fluxo completo do rubric check com E2/E4/E5 reais e agentes falsos."""
 
 from datetime import timedelta
 from typing import Any
@@ -11,10 +11,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from projects.correction.agents.fakes import FakeAgentFactory
+from projects.correction.agents.schemas.evaluation import EvaluatorSlot
 from projects.correction.agents.usage import UsageSink
 from projects.correction.attempts.models import LLMCall, Run, RunEvent
 from projects.correction.attempts.status import RunStatus, Stage
-from projects.correction.evaluation.models import FinalReport
+from projects.correction.evaluation.context import EvaluationContextBuilder
+from projects.correction.evaluation.models import FinalReport, ReviewRound
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.publishing import publish_checkpoint_stage
 from projects.correction.pipeline.reconciler import reconcile_runs
@@ -25,7 +27,6 @@ from projects.correction.questions.taxonomy import TaxonomySnapshot
 from projects.correction.questions.tests.profiling_helpers import field_answer, topic_answer
 from projects.correction.questions.tests.rubric_check_helpers import (
     draft,
-    judged_evaluation,
     sample_attempt,
 )
 
@@ -35,15 +36,18 @@ pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("
 @pytest.fixture
 def model_fakes(monkeypatch: pytest.MonkeyPatch, profiling_taxonomy: TaxonomySnapshot) -> None:
     def factory(run_id: str, stage: str, usage_sink: UsageSink, **kwargs: Any) -> FakeAgentFactory:
+        scripts: dict[str, list[dict[str, Any]]] = {
+            "profiler_field": [field_answer()],
+            "profiler_topic": [topic_answer()],
+            "meta_reviewer": [{}],
+        }
+        if stage == Stage.EVALUATION:
+            scripts.update(_evaluation_scripts(run_id, kwargs["task_id"]))
         return FakeAgentFactory(
             run_id,
             stage,
             usage_sink,
-            scripts={
-                "profiler_field": [field_answer()],
-                "profiler_topic": [topic_answer()],
-                "meta_reviewer": [{}],
-            },
+            scripts=scripts,
             **kwargs,
         )
 
@@ -58,16 +62,109 @@ def model_fakes(monkeypatch: pytest.MonkeyPatch, profiling_taxonomy: TaxonomySna
     monkeypatch.setattr(IntegrityStage, "execute", forbidden)
 
 
+def _evaluation_scripts(run_id: str, task_id: str) -> dict[str, list[dict[str, Any]]]:
+    """Saídas coerentes com a extração de amostra do rubric check."""
+    run = Run.for_evaluation(run_id, task_id)
+    context = EvaluationContextBuilder(run).build()
+    paper = next(
+        item
+        for item in context.evaluation_config.paper_types
+        if item.paper_type is context.profile.paper_type
+    )
+    criteria_by_key = {item.key: item for item in context.evaluation_config.criteria}
+    role_criteria = {item.role: item.criteria for item in paper.sections}
+    sections_by_id = {item.id: item for item in context.article.sections}
+
+    section_scripts: dict[str, list[dict[str, Any]]] = {}
+    observation_ids: dict[str, list[str]] = {item.value: [] for item in paper.active}
+    for mapped in context.document_map.sections:
+        article_section = sections_by_id[mapped.id]
+        for role in mapped.roles:
+            if role.value == "other":
+                continue
+            available = role_criteria[role]
+            observation_id = f"{mapped.id}:{role.value}:1:obs"
+            section_scripts.setdefault(f"sections/{role.value}", []).append(
+                {
+                    "section_id": mapped.id,
+                    "observations": [
+                        {
+                            "id": "obs",
+                            "section_id": mapped.id,
+                            "role": role.value,
+                            "kind": "strength",
+                            "statement": "A seção apresenta evidência para os critérios avaliados.",
+                            "evidence": [{"quote": article_section.text, "section_id": mapped.id}],
+                            "criteria": [item.value for item in available],
+                            "severity": "minor",
+                            "confidence": 0.9,
+                        }
+                    ],
+                }
+            )
+            for criterion in available:
+                if criterion.value in observation_ids:
+                    observation_ids[criterion.value].append(observation_id)
+
+    check_id = "method_vs_question:check"
+    check_criteria = [
+        key
+        for key in ("soundness", "replicability")
+        if any(item.value == key for item in paper.active)
+    ]
+    check_script = {
+        "id": "check",
+        "kind": "method_vs_question",
+        "verdict": "consistent",
+        "evidence": [],
+        "criteria": check_criteria,
+        "severity": "minor",
+    }
+    synthesis = {
+        "criteria": [
+            {
+                "criterion_key": criterion.value,
+                "grade": criteria_by_key[criterion].grades[0],
+                "justification": f"A evidência sustenta {criterion.value}.",
+                "observation_ids": observation_ids[criterion.value],
+                "check_ids": [check_id] if criterion.value in check_criteria else [],
+                "confidence": 0.9,
+            }
+            for criterion in paper.active
+        ]
+    }
+    verdicts = [
+        {"item_type": "observation", "item_key": item_id, "verdict": "valid"}
+        for item_id in dict.fromkeys(
+            item_id for item_ids in observation_ids.values() for item_id in item_ids
+        )
+    ]
+    if check_criteria:
+        verdicts.append({"item_type": "check", "item_key": check_id, "verdict": "valid"})
+    verdicts.extend(
+        {"item_type": "criterion", "item_key": item.value, "verdict": "valid"}
+        for item in paper.active
+    )
+    per_slot = len(EvaluatorSlot)
+    scripts = {name: responses * per_slot for name, responses in section_scripts.items()}
+    scripts.update(
+        {
+            "cross_checker": [check_script] * per_slot if check_criteria else [],
+            "synthesizer": [synthesis] * per_slot,
+            "judge": [{"items": verdicts}] * per_slot,
+        }
+    )
+    return scripts
+
+
 def test_cached_sample_uses_draft_skips_integrity_and_compares_real_final_reports(
     model_fakes: None,
     run: Run,
     admin_client: Client,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     active = draft(active=True)
     source = draft()
     sample = (sample_attempt("first"), sample_attempt("second"))
-    monkeypatch.setattr(EvaluationStage, "execute", lambda self, ctx: judged_evaluation(ctx))
     batch = start_rubric_check(
         source.pk,
         attempt_ids=tuple(attempt.pk for attempt in sample),
@@ -78,6 +175,9 @@ def test_cached_sample_uses_draft_skips_integrity_and_compares_real_final_report
     for created in batch.runs:
         current = Run.get_by_id(created.pk)
         assert current.status == RunStatus.DONE and current.question_id == source.pk
+        rounds = ReviewRound.objects.filter(run_id=current.pk, ready=True)
+        assert rounds.count() == 3
+        assert all(round_row.verdicts.exists() for round_row in rounds)
         report = FinalReport.for_run(current.pk)
         assert report is not None and report.content["versions"]["question"]["id"] == str(source.pk)
         assert (
@@ -89,7 +189,9 @@ def test_cached_sample_uses_draft_skips_integrity_and_compares_real_final_report
         assert len(skipped) == 1 and skipped[0].to_status == RunStatus.INTEGRITY_CHECKED
         assert not any(event.to_status == RunStatus.CHECKING_INTEGRITY for event in events)
         assert any(event.payload.get("reused") for event in events)
-        assert all(call.stage != Stage.EXTRACTION for call in LLMCall.for_run(current.pk))
+        calls = LLMCall.for_run(current.pk)
+        assert all(call.stage != Stage.EXTRACTION for call in calls)
+        assert any(call.stage == Stage.EVALUATION for call in calls)
     assert Run.get_by_id(run.pk).status == RunStatus.RECEIVED
     assert Question.get_by_id(active.pk).updated_at == active.updated_at
     page = admin_client.get(

@@ -1,7 +1,7 @@
 # Perfil e Questions (E2)
 
-**Estado de 13/11/2026:** E2, curadoria, catálogo inicial e infraestrutura do
-rubric check implementados. A medição disponível é de regras locais, sem LLM;
+**Estado de 16/11/2026:** E2, curadoria, catálogo inicial e rubric check integrado
+ao E4/E5 implementados. A medição disponível é de regras locais, sem LLM;
 aprovação especialista das rubricas/rótulos e medição do profiler real continuam
 pendentes. [Resultados e metas](status_and_metrics.md).
 
