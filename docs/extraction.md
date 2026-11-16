@@ -13,6 +13,9 @@ O código fica em `extractor/` (caminhos relativos a `projects/correction/`).
 
 ## Ferramentas
 
+Além de `pypdf`, `pdfplumber` faz a varredura local de texto potencialmente oculto;
+o conteúdo não é enviado ao modelo.
+
 | Ferramenta | Papel |
 |---|---|
 | **Gemini 2.5 Flash**, pelo Agno (`session.py`) | Lê o PDF: mapeia as seções (chamada 1) e copia o texto de cada uma (chamada 2) |
@@ -114,15 +117,18 @@ Desde a 1.6, também `figures[]` (cada `Figure` com `id`, `kind`, `label`, `numb
 Desde a 1.8, cada `Figure` traz `description`, nula quando a chamada falhou: um `FigureDescription` com `figure_class`, `description`, `data_read[]`, `supports_claims` (sim, não ou nulo), `support_rationale`, `issues[]` e `table_markdown` (nulo para figura).
 
 `ExtractedArticle` continua sendo o resultado persistido pelo E1. A propriedade
-`Extraction.document` adapta esse resultado para `ExtractedDocument` sob demanda;
-não altera o JSON salvo nem a chave do cache. E2, E4 e o benchmark de profiling
-consomem o contrato adaptado. Os achados de texto oculto da 1.7 ainda não estão
-incluídos: a interface dessa etapa precisa ser acordada com quem a implementa.
+`Extraction.document` adapta esse resultado para `ExtractedDocument` sob demanda.
+`hidden_text_findings[]` armazena texto, página, caixa delimitadora e motivos
+(`color`, `size`, `outside_page`, `under_image`, `instruction`). A varredura local
+é persistida com o artigo e a versão do cache inclui a versão do scanner.
+E2, E4 e o benchmark de profiling consomem o contrato adaptado. O texto sinalizado é
+evidência e não é inserido no contexto enviado ao modelo.
 
 ## Contrato `ExtractedDocument` (M1.1)
 
 O modelo congelado em `extractor/contract.py` valida título, autores, idioma,
-abstract, seções hierárquicas, referências, citações e figuras/tabelas. Ele não
+abstract, seções hierárquicas, referências, citações, figuras/tabelas e achados de
+texto oculto. Ele não
 contém configuração de provedor nem campos específicos de uma resposta de LLM.
 Offsets e páginas são opcionais porque os dados `parsed_pdfs` do PeerRead e o
 `ExtractedArticle` atual não os fornecem de forma consistente. Offsets de citações

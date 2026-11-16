@@ -2,7 +2,7 @@
 
 import json
 import time
-from typing import Annotated
+from typing import Annotated, Any
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
@@ -149,6 +149,7 @@ class OpenAlexWork(BaseModel):
     doi: str | None = None
     title: str | None = None
     publication_year: int | None = None
+    authorships: tuple[dict[str, Any], ...] = ()
     is_retracted: bool = False
     abstract_inverted_index: dict[str, list[int]] | None = None
     open_access: dict[str, object] | None = None
