@@ -56,7 +56,7 @@ def model(
     if url:
         http_options["base_url"] = url
     return Gemini(
-        id=model_id or "gemini-2.5-flash",
+        id=model_id or "gemini-3.6-flash",
         api_key=key,
         timeout=timeout,
         client_params={"http_options": http_options},

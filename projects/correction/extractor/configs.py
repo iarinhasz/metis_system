@@ -19,7 +19,7 @@ ARTICLE_CONFIG: Final = DocumentConfig(
     # O PDF vai inteiro: artigo em duas colunas, com tabelas e fórmulas, se perde no texto puro.
     strategy=InputStrategy.PDF,
     provider=Provider.GOOGLE,
-    model="gemini-2.5-flash",
+    model="gemini-3.6-flash",
     scan_prompt=load_prompt("scan_headings"),
     extraction_prompt=load_prompt("extract_section"),
     references_prompt=load_prompt("parse_references"),

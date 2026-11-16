@@ -77,7 +77,7 @@ def test_asks_each_section_and_checks_its_coverage() -> None:
         "Filas de mensagens sob carga",
         ("Ana Souza",),
         "pt",
-        "google/gemini-2.5-flash",
+        "google/gemini-3.6-flash",
     )
     assert [
         (s.id, s.key, s.parent_id, s.text, s.coverage, s.fidelity) for s in article.sections

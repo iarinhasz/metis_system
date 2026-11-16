@@ -68,6 +68,13 @@ parágrafo que couber, com fallback para linha, palavra e limite exato. O execut
 
 **Teste** (`evaluation/tests/test_cross_checks.py`): cada tipo recebe só as seções certas; resultado gravado na rodada.
 
+**Implementação nesta branch:** a lista inicial fica fixada nos três tipos acima,
+com pares de papéis ajustados ao tipo de artigo. A checagem de figuras usa apenas
+seções ligadas às figuras pela extração. Tipos sem evidência suficiente são
+ignorados; os resultados válidos são checkpointados e não são chamados de novo
+no retry. O executor pode ser testado isoladamente; a conexão ao workflow E4
+continua para a etapa 3.10.
+
 **Commit sugerido:** `feat: add cross-section checks`
 
 ---
