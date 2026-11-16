@@ -2,9 +2,11 @@
 
 **Revisão de 13/11/2026:** contratos/models de rodadas e o E5 estão implementados,
 como detalhado em [Consolidação implementada](#consolidação-implementada-311).
-Passes, checagens, juiz, loop e A/B do E4 neste documento são o **desenho alvo**;
-a task E4 ainda é stub. Não há correlação com notas humanas ou custo médio por
-artigo medidos. [Evidências e metas](status_and_metrics.md).
+Os executors de passes por seção (3.3) e checagens entre seções (3.4) também já
+estão implementados isoladamente, mas ainda não foram ligados ao workflow E4.
+Juiz, loop e A/B continuam como **desenho alvo**; a task E4 ainda é stub. Não há
+correlação com notas humanas ou custo médio por artigo medidos.
+[Evidências e metas](status_and_metrics.md).
 
 ## Visão geral
 

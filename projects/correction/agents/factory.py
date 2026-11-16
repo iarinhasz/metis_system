@@ -168,9 +168,14 @@ class AgentFactory:
         return self.build(f"sections/{role}", self._slot(slot), output_schema, spec=spec)
 
     def cross_checker(
-        self, slot: Slot, kind: str, *, output_schema: type[BaseModel] = PendingOutput
+        self,
+        slot: Slot,
+        kind: str,
+        *,
+        output_schema: type[BaseModel] = PendingOutput,
+        spec: ModelSpec | None = None,
     ) -> AgentRunner[BaseModel]:
-        return self.build("cross_checker", self._slot(slot), output_schema, kind=kind)
+        return self.build("cross_checker", self._slot(slot), output_schema, spec=spec, kind=kind)
 
     def synthesizer(
         self, slot: Slot, *, output_schema: type[BaseModel] = PendingOutput
