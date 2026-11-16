@@ -1,0 +1,9 @@
+{
+  "message": {
+    "DOI": "10.1000/example",
+    "title": ["A recorded sample paper"],
+    "author": [{"given": "Ada", "family": "Lovelace"}],
+    "published": {"date-parts": [[2024, 5, 1]]},
+    "update-to": [{"DOI": "10.1000/correction", "type": "retraction"}]
+  }
+}

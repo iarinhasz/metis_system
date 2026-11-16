@@ -1,0 +1,10 @@
+{
+  "paperId": "paper-123",
+  "externalIds": {"DOI": "10.1000/example"},
+  "title": "A recorded sample paper",
+  "abstract": "A recorded abstract.",
+  "year": 2024,
+  "authors": [{"authorId": "author-1", "name": "Ada Lovelace"}],
+  "openAccessPdf": {"url": "https://example.org/paper.pdf", "status": "GOLD"},
+  "isRetracted": false
+}

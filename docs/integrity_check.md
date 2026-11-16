@@ -151,6 +151,7 @@ Verificado em outubro de 2026. Preços e limites mudam; o OpenAlex, por exemplo,
 - **Ordem de consulta:** Crossref → OpenAlex por DOI → Semantic Scholar → arXiv.
 - **Rate limit:** por provedor, com token bucket no Redis.
 - **Cache:** por DOI, porque as mesmas referências se repetem entre artigos.
+- Os clientes compartilhados de `scholarly/` usam `urllib`, timeout por cliente e retries limitados para 429/5xx; esgotadas as tentativas, a falha transitória propaga para o retry do estágio. O cache armazena somente respostas bem-sucedidas.
 - **Tempo estimado** para um artigo com ~40 referências: ~15 s no Crossref e ~40 s no Semantic Scholar.
 
 ## Limitações declaradas no `coverage`

@@ -1,0 +1,15 @@
+{
+  "doi": "10.1000/example",
+  "is_oa": true,
+  "title": "A recorded sample paper",
+  "year": 2024,
+  "best_oa_location": {
+    "url": "https://example.org/paper",
+    "url_for_pdf": "https://example.org/paper.pdf",
+    "host_type": "publisher",
+    "license": "cc-by",
+    "version": "publishedVersion",
+    "is_best": true
+  },
+  "oa_locations": []
+}

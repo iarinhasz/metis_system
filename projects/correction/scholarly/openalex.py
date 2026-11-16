@@ -3,10 +3,18 @@
 import json
 import time
 from typing import Annotated
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from projects.correction.metis.config import settings
+from projects.correction.scholarly.cache import normalize_doi
+from projects.correction.scholarly.http import (
+    DEFAULT_TIMEOUT_SECONDS,
+    ScholarlyHTTPClient,
+    json_payload,
+)
 
 Name = Annotated[str, Field(min_length=1, max_length=512, strict=True)]
 
@@ -124,3 +132,68 @@ class OpenAlexClient:
                 raise ValueError("A resposta do OpenAlex está incompleta ou tem contagem inválida.")
             page += 1
             time.sleep(1)
+
+
+class OpenAlexLocation(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="allow")
+
+    landing_page_url: str | None = None
+    pdf_url: str | None = None
+    source: dict[str, object] | None = None
+
+
+class OpenAlexWork(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="allow")
+
+    id: str
+    doi: str | None = None
+    title: str | None = None
+    publication_year: int | None = None
+    is_retracted: bool = False
+    abstract_inverted_index: dict[str, list[int]] | None = None
+    open_access: dict[str, object] | None = None
+    best_oa_location: OpenAlexLocation | None = None
+
+
+class OpenAlexWorkSearch(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="allow")
+
+    results: tuple[OpenAlexWork, ...]
+    meta: dict[str, object] = Field(default_factory=dict)
+
+
+class OpenAlexWorksClient:
+    """Consulta obras sem alterar a API de taxonomia de `OpenAlexClient`."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str = "https://api.openalex.org",
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        http: ScholarlyHTTPClient | None = None,
+    ) -> None:
+        self.api_key = settings.openalex_api_key if api_key is None else api_key
+        self.base_url = base_url.rstrip("/")
+        self.http = http or ScholarlyHTTPClient("openalex", timeout=timeout)
+
+    def by_doi(self, doi: str) -> OpenAlexWork | None:
+        normalized = normalize_doi(doi)
+        params = {"api_key": self.api_key} if self.api_key else None
+        response = self.http.get(
+            f"{self.base_url}/works/https://doi.org/{quote(normalized, safe='/')}",
+            params=params,
+            doi=normalized,
+            not_found_ok=True,
+        )
+        return None if response is None else OpenAlexWork.model_validate(json_payload(response))
+
+    def search(self, query: str, *, per_page: int = 10) -> OpenAlexWorkSearch:
+        if not query.strip() or not 1 <= per_page <= 100:
+            raise ValueError("A busca exige texto e per_page entre 1 e 100.")
+        params: dict[str, str | int] = {"search": query, "per-page": per_page}
+        if self.api_key:
+            params["api_key"] = self.api_key
+        response = self.http.get(f"{self.base_url}/works", params=params)
+        assert response is not None
+        return OpenAlexWorkSearch.model_validate(json_payload(response))
