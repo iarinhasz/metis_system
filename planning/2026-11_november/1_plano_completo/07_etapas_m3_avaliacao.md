@@ -100,6 +100,13 @@ continua para a etapa 3.10.
 
 **Commit sugerido:** `feat: add whole-document evaluation mode`
 
+**Implementação nesta branch:** `WholeDocumentStep` envia o documento inteiro
+uma vez por avaliador, exige uma síntese por critério com evidência direta em
+seções existentes e checkpointa a rodada no modo `whole_document`. O modo é
+configurável por `METIS_EVALUATION_MODE`, congelado no snapshot do Run, e a
+strategy escolhe entre os passos sectioned (3.3–3.5) e whole-document. A ligação
+ao workflow E4 continua para 3.10.
+
 ---
 
 ## Etapa 3.7 — Validadores determinísticos

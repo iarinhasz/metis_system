@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
+from projects.correction.agents.schemas.evaluation import EvaluationMode
 from projects.correction.metis.config import MetisSettings
 
 
@@ -28,6 +29,13 @@ def test_splits_and_cleans_csv_hosts() -> None:
     config = MetisSettings(allowed_hosts=" example.org, localhost ,, api.example.org ")
 
     assert config.allowed_hosts == ["example.org", "localhost", "api.example.org"]
+
+
+def test_evaluation_mode_is_configurable_and_defaults_to_sectioned() -> None:
+    assert MetisSettings(_env_file=None).evaluation_mode is EvaluationMode.SECTIONED
+    assert MetisSettings(_env_file=None, evaluation_mode="whole_document").evaluation_mode is (
+        EvaluationMode.WHOLE_DOCUMENT
+    )
 
 
 @pytest.mark.parametrize("budget", ["0", "-1", "NaN", "Infinity", "-Infinity"])

@@ -141,7 +141,11 @@ METIS_EVALUATOR_A__MODEL_ID=gpt-5.6-terra
 METIS_FAST__TIMEOUT_SECONDS=60
 METIS_EVALUATOR_C={"provider":"google","family":"gemini","model_id":"gemini-3.5-flash-lite"}
 METIS_LLM_MAX_CONCURRENCY=4
+METIS_EVALUATION_MODE=whole_document
 ```
+
+`METIS_EVALUATION_MODE` aceita `sectioned` (padrão) ou `whole_document`; o Run
+salva a escolha no snapshot antes da avaliação.
 
 `METIS_OPENAI_API_KEY` e `METIS_GOOGLE_API_KEY` são passadas explicitamente aos clientes. `GEMINI_KEY` continua aceita pelo E1 e como alternativa para o Google. A fábrica desliga o retry das SDKs e permite um retry do modelo; o E1 mantém zero. Cada execução cria seu próprio agente e modelo, sem banco Agno, histórico compartilhado, mídia persistida ou telemetria. Erros de provedor e respostas inválidas são registrados sem texto do manuscrito no log.
 

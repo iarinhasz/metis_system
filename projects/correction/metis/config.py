@@ -6,6 +6,7 @@ from typing import Annotated
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from projects.correction.agents.schemas.evaluation import EvaluationMode
 from projects.correction.agents.specs import ModelSpec, Role, development_spec, validate_catalog
 
 
@@ -35,6 +36,7 @@ class MetisSettings(BaseSettings):
     media_root: str = "media"
     max_upload_mb: int = 50
     evaluation_method: str = Field(default="standard", min_length=1, pattern=r"^[a-zA-Z0-9_-]+$")
+    evaluation_mode: EvaluationMode = EvaluationMode.SECTIONED
     profiling_taxonomy_version: str = ""
 
     # Opcional: amplia a cota de leitura da taxonomia pública do OpenAlex.

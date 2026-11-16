@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import Field, JsonValue
 
-from projects.correction.agents.schemas.evaluation import EvaluatorSlot
+from projects.correction.agents.schemas.evaluation import EvaluationMode, EvaluatorSlot
 from projects.correction.agents.specs import Family, ModelSpec, Role
 from projects.correction.attempts.models import Run
 from projects.correction.extractor.contract import ExtractedDocument
@@ -41,6 +41,7 @@ class EvaluationContext(FrozenModel):
     question: QuestionSnapshot
     document_map: DocumentMap
     evaluation_config: EvaluationConfig
+    evaluation_mode: EvaluationMode = EvaluationMode.SECTIONED
     evaluators: tuple[EvaluatorContext, ...] = Field(min_length=3, max_length=3)
     integrity_summary: dict[str, JsonValue] = Field(default_factory=dict)
     related_works: tuple[RelatedWork, ...] = ()
@@ -59,10 +60,25 @@ class EvaluationContextBuilder:
         *,
         integrity_summary: Mapping[str, JsonValue] | None = None,
         related_works: tuple[RelatedWork, ...] = (),
+        evaluation_mode: EvaluationMode | None = None,
     ) -> None:
         self.run = run
         self.integrity_summary = dict(integrity_summary or {})
         self.related_works = related_works
+        self.evaluation_mode = evaluation_mode
+
+    def _selected_mode(self) -> EvaluationMode:
+        snapshot_mode = self.run.config_snapshot.get("evaluation_mode")
+        if snapshot_mode is not None:
+            try:
+                return EvaluationMode(snapshot_mode)
+            except (TypeError, ValueError) as exc:
+                raise SetupRequired("O modo de avaliação do Run não é válido.") from exc
+        if self.evaluation_mode is not None:
+            return self.evaluation_mode
+        from projects.correction.metis.config import settings
+
+        return settings.evaluation_mode
 
     def snapshot(self) -> dict[str, Any]:
         """Configuração versionada pelo Run antes da primeira chamada do E4."""
@@ -102,6 +118,7 @@ class EvaluationContextBuilder:
         return {
             "evaluation_config": config.model_dump(mode="json"),
             "evaluation_models": specs,
+            "evaluation_mode": self._selected_mode().value,
         }
 
     def build(self) -> EvaluationContext:
@@ -169,6 +186,7 @@ class EvaluationContextBuilder:
             question=question,
             document_map=document_map,
             evaluation_config=evaluation_config,
+            evaluation_mode=self._selected_mode(),
             evaluators=evaluators,
             integrity_summary=self.integrity_summary,
             related_works=self.related_works,

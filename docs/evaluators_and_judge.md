@@ -1,8 +1,8 @@
 # Avaliadores, juiz e consolidação (E4 e E5)
 
 **Revisão de 16/11/2026:** contratos/models de rodadas, E5 e os executors isolados
-das etapas 3.3 (passes por seção), 3.4 (checagens entre seções) e 3.5 (síntese
-por avaliador) estão implementados. Esses passos ainda não foram ligados ao
+das etapas 3.3 (passes por seção), 3.4 (checagens entre seções), 3.5 (síntese
+por avaliador) e 3.6 (modo `whole_document`) estão implementados. Esses passos ainda não foram ligados ao
 workflow E4. Juiz, loop e A/B continuam como **desenho alvo**; a task E4 ainda é
 stub. Não há correlação com notas humanas ou custo médio por artigo medidos.
 [Evidências e metas](status_and_metrics.md).
@@ -32,7 +32,7 @@ por avaliador (A, B e C, independentes):
 
 Cada passe por seção tem uma tarefa pequena e um checklist próprio. Mas parte da avaliação está entre as seções, e por isso existem três peças com visão mais ampla: as checagens entre seções, o mapa do documento em todo passe e o juiz com o artigo inteiro.
 
-**Dois modos de avaliação.** O fluxo por seção (`sectioned`) é a proposta. O artigo inteiro numa chamada por avaliador (`whole_document`) fica como linha de base. Os dois são estratégias do método, escolhidas por config, e o A/B do M3 decide qual vira padrão (ver [Como decidir o modo](#como-decidir-o-modo-ab-no-m3)).
+**Dois modos de avaliação.** O fluxo por seção (`sectioned`) é a proposta. O artigo inteiro numa chamada por avaliador (`whole_document`) fica como linha de base. `METIS_EVALUATION_MODE` escolhe o modo para novos Runs; o valor é salvo no `config_snapshot` e seleciona a strategy do avaliador. O padrão continua `sectioned`. O A/B do M3 decide qual vira padrão (ver [Como decidir o modo](#como-decidir-o-modo-ab-no-m3)).
 
 ## O que cada chamada recebe
 

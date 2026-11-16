@@ -203,7 +203,7 @@ class EvaluationStage(StageTask):
 
     def execute(self, ctx: StageContext) -> StageOutcome:
         run = Run.for_evaluation(ctx.run_id, ctx.task_id)
-        builder = EvaluationContextBuilder(run)
+        builder = EvaluationContextBuilder(run, evaluation_mode=settings.evaluation_mode)
         snapshot = builder.snapshot()
         Run.initialize_evaluation(ctx.run_id, ctx.task_id, snapshot)
         context = EvaluationContextBuilder(Run.for_evaluation(ctx.run_id, ctx.task_id)).build()
