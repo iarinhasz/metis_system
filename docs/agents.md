@@ -302,8 +302,8 @@ Workflow(name="integrity", telemetry=False, steps=[
 
 **Estado:** o arquivo atual contém apenas o Workflow do E5. Os executors isolados
 de passes por seção (3.3), checagens entre seções (3.4), síntese (3.5), modo
-`whole_document` (3.6) e validadores (3.7) estão implementados, mas ainda não
-foram conectados ao workflow E4. Juiz e revisão continuam planejados.
+`whole_document` (3.6), validadores (3.7) e juiz (3.8) estão implementados, mas
+ainda não foram conectados ao workflow E4. Revisão continua planejada.
 
 ```python
 def evaluator_steps(slot, mode):                 # Strategy escolhida na montagem
