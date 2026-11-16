@@ -28,7 +28,7 @@ def article() -> ExtractedArticle:
         title="Sintético",
         authors=(),
         language="pt",
-        model="google/gemini-2.5-flash",
+        model="google/gemini-3.6-flash",
         sections=(
             ExtractedSection(
                 id="sec_1",

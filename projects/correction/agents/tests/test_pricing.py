@@ -15,7 +15,8 @@ def test_catalog_covers_all_development_roles_and_extraction() -> None:
     prices = standard_prices(date(2026, 11, 12))
     for spec in MetisSettings(_env_file=None).model_specs.values():
         assert (spec.provider, spec.model_id) in prices
-    assert (Provider.GOOGLE, "gemini-2.5-flash") in prices
+    assert (Provider.GOOGLE, "gemini-3.6-flash") in prices
+    assert (Provider.GOOGLE, "gemini-2.5-flash") in prices  # registros anteriores
 
 
 def test_cache_is_charged_once_at_its_own_rate() -> None:

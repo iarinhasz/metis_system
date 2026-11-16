@@ -75,7 +75,7 @@ class MetisSettings(BaseSettings):
     adjudicator: ModelSpec = Field(default_factory=lambda: development_spec(Role.ADJUDICATOR))
     # Modelos mínimos para os contratos ao vivo; não definem os papéis da etapa 1.3.
     agno_contract_openai_model: str = "gpt-4o-mini"
-    agno_contract_google_model: str = "gemini-2.5-flash"
+    agno_contract_google_model: str = "gemini-3.6-flash"
 
     @property
     def model_specs(self) -> dict[Role, ModelSpec]:

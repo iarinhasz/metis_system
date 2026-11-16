@@ -426,7 +426,7 @@ e retorna `waiting_setup`. Os contratos e models necessários da 3.2 estão incl
 
 ### Tarifas iniciais
 
-Tarifas **Standard pagas**, USD por milhão de tokens, conferidas em **12/11/2026**, para os cinco ids usados no catálogo e no E1:
+Tarifas **Standard pagas**, USD por milhão de tokens, conferidas em **12/11/2026**, para os modelos do catálogo e da extração:
 
 | Provedor/modelo | Entrada | Saída | Leitura de cache |
 |---|---:|---:|---:|
@@ -434,12 +434,14 @@ Tarifas **Standard pagas**, USD por milhão de tokens, conferidas em **12/11/202
 | OpenAI `gpt-5.6-luna` | 0,20 | 1,20 | 0,02 |
 | Google `gemini-3.8-flash`, até 31/12/2026 | 0,75 | 3,75 | 0,075 |
 | Google `gemini-3.8-flash`, a partir de 01/01/2027 | 1,50 | 7,50 | 0,15 |
+| Google `gemini-3.6-flash`, até 31/12/2026 | 0,75 | 3,75 | 0,075 |
+| Google `gemini-3.6-flash`, a partir de 01/01/2027 | 1,50 | 7,50 | 0,15 |
 | Google `gemini-3.5-flash-lite` | 0,30 | 2,50 | 0,03 |
-| Google `gemini-2.5-flash` (E1) | 0,30 | 2,50 | 0,03 |
+| Google `gemini-2.5-flash` (histórico) | 0,30 | 2,50 | 0,03 |
 
 Fontes: [OpenAI Docs — GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [OpenAI Docs — GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) e [preços oficiais da Gemini API](https://ai.google.dev/gemini-api/docs/pricing).
 
-Nos dois modelos OpenAI, acima de 272.000 tokens de entrada, aplicam-se 2× à entrada e 1,5× à saída do pedido inteiro; escritas de cache custam 1,25× a entrada comum. A tarifa promocional do Gemini 3.8 é escolhida pela data UTC da chamada e muda em janeiro, inclusive num processo já em execução. O id legado do E1 mantém as mesmas tarifas de texto/imagem após o redirecionamento anunciado pelo Google para 01/12/2026.
+Nos dois modelos OpenAI, acima de 272.000 tokens de entrada, aplicam-se 2× à entrada e 1,5× à saída do pedido inteiro; escritas de cache custam 1,25× a entrada comum. As tarifas promocionais dos modelos Gemini 3.8 e 3.6 são escolhidas pela data UTC da chamada e mudam em janeiro, inclusive num processo já em execução. O preço de `gemini-2.5-flash` fica cadastrado para calcular chamadas históricas.
 
 O cálculo subtrai da entrada comum os tokens lidos e escritos no cache, sem cobrá-los duas vezes. O Agno 3.1.12 separa `thoughts_token_count` da saída do Gemini: o runner soma o raciocínio à saída faturável e o guarda também em `reasoning_tokens`. No OpenAI, o raciocínio já faz parte da saída e não é somado de novo. O valor final usa `Decimal` e 12 casas, com arredondamento `ROUND_HALF_UP`, e fica congelado no registro.
 

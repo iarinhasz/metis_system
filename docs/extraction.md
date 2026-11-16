@@ -89,7 +89,7 @@ Tipagem congelada em `config.py`; a do artigo científico é a `ARTICLE_CONFIG` 
 | Campo | Para quê | Artigo |
 |---|---|---|
 | `strategy` | `pdf`: o PDF vai ao modelo; `text`: só o texto lido pelo pypdf | `pdf` (artigo em duas colunas, com tabelas, se perde no texto puro) |
-| `provider`, `model` | Quem atende as chamadas | `google`, `gemini-2.5-flash` |
+| `provider`, `model` | Quem atende as chamadas | `google`, `gemini-3.6-flash` |
 | `scan_prompt`, `extraction_prompt` | Prompts das chamadas 1 e 2 (o 2 com os marcadores `<<title>>`, `<<end>>`, `<<footnotes>>`) | arquivos em `prompts/` |
 | `required_sections`, `optional_sections` | Seções procuradas pelo nome (`SectionDefinition(key, labels)`); sem uma obrigatória, o artigo é rejeitado | `abstract` e `references`, com grafias em PT e EN |
 | `ignore_footnotes` | `true`: o texto das notas e as marcas de chamada ficam fora, e cada seção só diz se tinha nota; `false`: as notas vêm no fim da seção que as chama | `true` |
