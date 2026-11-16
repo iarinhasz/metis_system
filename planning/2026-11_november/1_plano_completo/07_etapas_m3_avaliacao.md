@@ -290,6 +290,15 @@ avaliações produzidas por provedores reais.
 
 **Commit sugerido:** `feat: compare evaluation modes with an A/B command`
 
+**Implementação local (16/11):** criado o comando em dry-run por padrão, com
+`--execute` para enfileirar Runs pareados e `--report` para gerar métricas de
+lotes concluídos. O manifesto referencia Runs avaliados com snapshots E1/E2
+atuais; extração e profiling são reaproveitados. Os testes de evals e Run
+management passaram (41 testes); Ruff, mypy dos arquivos alterados e `manage.py
+check` também passaram. A decisão Q12 e os custos Q2 continuam pendentes da
+execução com a amostra curada, portanto a etapa ainda não atende ao critério
+final de conclusão.
+
 ---
 
 ## Pronto do M3 (I3 e parte do I5)

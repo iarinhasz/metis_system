@@ -89,3 +89,28 @@ O custo fica `null` se alguma chamada não tem preço cadastrado.
 Relatórios históricos são imutáveis pelo comando: `--output` exige arquivo novo
 em diretório existente. O modo padrão é dry-run. Exemplos completos estão em
 [questions_and_profiling.md](../../../../docs/questions_and_profiling.md).
+
+## Benchmark A/B dos modos E4 — etapa 3.13
+
+`ab_evaluation_mode` recebe um manifesto com `name`, `version` e casos. Cada
+caso referencia um Run de avaliação concluído e pode trazer notas humanas de 1
+a 5 por critério. O exemplo
+[`ab_evaluation_mode_manifest.example.json`](ab_evaluation_mode_manifest.example.json)
+mostra o formato; substitua o UUID por um Run elegível e use uma amostra
+curada, idealmente com 10–20 artigos PeerRead e da equipe. Todos os Runs devem
+ter snapshots atuais de E1/E2 e os mesmos ModelSpecs.
+
+```sh
+uv run python manage.py ab_evaluation_mode caminho/manifesto.json
+uv run python manage.py ab_evaluation_mode caminho/manifesto.json --execute
+uv run python manage.py ab_evaluation_mode caminho/manifesto.json --report --batch-id UUID
+```
+
+O primeiro comando valida e estima o lote sem gravar Runs nem chamar modelos.
+`--execute` cria três réplicas para cada caso em cada modo, reutiliza os
+snapshots de extração e profiling e inicia o pipeline. Guarde o UUID exibido.
+Após todos os Runs terminarem, `--report` produz um artefato novo; informe
+`--replicates` se o lote foi criado com quantidade diferente de três. As
+métricas cobrem dispersão entre réplicas, diferença média entre avaliadores,
+invalidações do juiz, correlação Spearman/QWK com as notas humanas, custo e
+tempo por artigo. A correlação fica nula onde não houver notas humanas.

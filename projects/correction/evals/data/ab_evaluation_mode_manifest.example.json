@@ -1,0 +1,19 @@
+{
+  "name": "metis_ab_sample",
+  "version": "1",
+  "cases": [
+    {
+      "id": "paper-001",
+      "source_run_id": "00000000-0000-0000-0000-000000000000",
+      "human_scores": {
+        "originality": 4,
+        "soundness": 3,
+        "substance": 4,
+        "clarity": 5,
+        "meaningful_comparison": 3,
+        "impact": 4,
+        "replicability": 2
+      }
+    }
+  ]
+}

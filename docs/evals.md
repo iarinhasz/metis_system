@@ -66,6 +66,30 @@ No profiling, `details` guarda previsões e códigos de erro, sem copiar o manus
 ou mensagens do provedor. Os rótulos provisórios da amostra continuam identificados
 em `parameters.annotation_status`; a medição local não valida o desempenho do LLM.
 
+## A/B dos modos de avaliação (etapa 3.13)
+
+`ab_evaluation_mode` compara `sectioned` e `whole_document` nos mesmos Runs de
+origem e com três réplicas por modo. Comece com um manifesto contendo Runs
+concluídos, snapshots E1/E2 atuais e ModelSpecs idênticos. Um exemplo editável
+está em
+[`ab_evaluation_mode_manifest.example.json`](../projects/correction/evals/data/ab_evaluation_mode_manifest.example.json).
+
+```sh
+# Valida a amostra e mostra o tamanho do lote, sem chamadas ou gravações.
+uv run python manage.py ab_evaluation_mode manifesto.json
+
+# Cria o lote e enfileira os Runs (pode consumir chamadas de LLM).
+uv run python manage.py ab_evaluation_mode manifesto.json --execute
+
+# Após todos os Runs concluírem, grava um relatório novo.
+uv run python manage.py ab_evaluation_mode manifesto.json --report --batch-id UUID
+```
+
+O relatório mede dispersão entre réplicas, concordância dos avaliadores,
+invalidação pelo juiz, correlação com as notas humanas, custo e tempo. A amostra
+curada e a decisão sobre o modo padrão continuam sendo uma etapa operacional
+posterior à implementação do comando.
+
 ## Comparar relatórios
 
 ```sh

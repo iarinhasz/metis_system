@@ -302,6 +302,7 @@ class RunManagement:
         actor: str = "pipeline",
         purpose: RunPurpose | str = RunPurpose.EVALUATION,
         config_snapshot: dict[str, Any] | None = None,
+        profile: dict[str, Any] | None = None,
         question_id: Any = None,
         extraction: Extraction | None = None,
     ) -> Run:
@@ -312,6 +313,7 @@ class RunManagement:
             version=1,
             purpose=RunPurpose(purpose),
             config_snapshot=config_snapshot or {},
+            profile=profile or {},
             question_id=question_id,
             extraction=extraction,
         )
