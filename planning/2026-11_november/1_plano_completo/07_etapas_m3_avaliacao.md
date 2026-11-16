@@ -119,6 +119,14 @@ ao workflow E4 continua para 3.10.
 
 **Commit sugerido:** `feat: add deterministic validators for evaluator output`
 
+**Implementação nesta branch:** `ValidatorChain` valida o schema antes das
+regras determinísticas de escala, critérios, evidências, referências e
+justificativas; `ValidateStep` grava `JudgeVerdict(source=validator)` por item
+recusado e retoma sem regravar vereditos. A evidência é conferida em ambos os
+modos, com referências por ID em `sectioned` e trechos diretos em
+`whole_document`. Critérios ativos ausentes impedem a etapa porque não há um
+item persistido ao qual associar um veredito.
+
 ---
 
 ## Etapa 3.8 — Juiz

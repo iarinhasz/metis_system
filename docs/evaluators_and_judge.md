@@ -2,9 +2,10 @@
 
 **Revisão de 16/11/2026:** contratos/models de rodadas, E5 e os executors isolados
 das etapas 3.3 (passes por seção), 3.4 (checagens entre seções), 3.5 (síntese
-por avaliador) e 3.6 (modo `whole_document`) estão implementados. Esses passos ainda não foram ligados ao
-workflow E4. Juiz, loop e A/B continuam como **desenho alvo**; a task E4 ainda é
-stub. Não há correlação com notas humanas ou custo médio por artigo medidos.
+por avaliador), 3.6 (modo `whole_document`) e 3.7 (validadores determinísticos)
+estão implementados isoladamente. Esses passos ainda não foram ligados ao workflow
+E4. Juiz, loop e A/B continuam como **desenho alvo**; a task E4 ainda é stub. Não
+há correlação com notas humanas ou custo médio por artigo medidos.
 [Evidências e metas](status_and_metrics.md).
 
 ## Visão geral
