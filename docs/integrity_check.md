@@ -1,10 +1,10 @@
 # Checagem de integridade (E3)
 
-**Desenho planejado, revisto em 13/11/2026.** O app `integrity/`, seus modelos,
-corpus, detectores e APIs acadêmicas abaixo ainda não estão implementados.
-`IntegrityStage` hoje apenas retorna `risk=low` para seguir o pipeline. O gate
-existe na máquina de estados; esse risco de stub não é uma checagem do artigo.
-E5 declara `not_checked`, com risco desconhecido. [Estado e metas](status_and_metrics.md).
+**Desenho revisto em 13/11/2026; implementação atualizada para as etapas M4.** O E3
+usa o corpus vetorial, detectores léxico e semântico, resolução bibliográfica,
+coleta de candidatos, filtro por citação, adjudicação limitada e regras versionadas.
+Risco alto pausa o run para revisão humana; o LLM não decide o nível de risco.
+O relatório mantém no `coverage` as fontes e limitações efetivamente observadas.
 
 ## Objetivo e princípios
 
@@ -49,7 +49,7 @@ Do mais barato ao mais caro:
    | arXiv | Busca e PDF | 1 requisição a cada 3 s |
    | OpenAlex (busca) | Artigos relacionados | **Paga desde 2026**: US$ 1 por mil buscas; a chave grátis dá US$ 1/dia → orçamento por run |
 
-   O full text em acesso aberto vem do arXiv, do Unpaywall (`best_oa_location`) ou do `openAccessPdf` do Semantic Scholar. Ele tem o texto lido (como o E1 lê o PDF, ou pelo texto que a própria fonte entrega), é dividido em chunks e ganha embeddings, num cache (`SourceChunk`) que cresce a cada submissão.
+   O texto integral em acesso aberto ainda não é baixado nem extraído nesta implementação: os links OA são registrados e os abstracts são candidatos; `coverage.full_text` declara essa limitação. O corpus PeerRead e os artigos submetidos são divididos em chunks e ganham embeddings locais.
 2. **Léxico, sem LLM.**
    - MinHash-LSH (`datasketch` 2.0, MIT), sobre shingles de palavras, acha os parágrafos candidatos.
    - *Winnowing* localiza os trechos idênticos, com offsets: guarda o menor hash de cada janela de k-gramas, com hash estável (blake2b). Qualquer trecho comum com pelo menos `w + k − 1` palavras é detectado.
@@ -165,8 +165,11 @@ Verificado em outubro de 2026. Preços e limites mudam; o OpenAlex, por exemplo,
 
 | O quê | Como |
 |---|---|
-| Fase 1 | Plágio sintético a partir do PeerRead (trechos literais, parafraseados por LLM e traduzidos para PT) → precisão e recall |
+| Fase 1 | `python manage.py bench_plagiarism`; por padrão mede trechos literais. `--with-llm` gera, com chamadas externas explícitas, exemplos parafraseados e traduzidos para PT. |
 | Limiares cross-lingual | Abstracts bilíngues do SciELO |
 | Alinhamento citação ↔ afirmação | SciCiteVal e Citation Integrity |
 | Existência de referências | Referências inventadas plantadas, medindo também a taxa de falso positivo |
 | Fase 0 | PDFs com texto oculto plantado |
+
+O benchmark registra as métricas por tipo e os limiares usados; a execução, por si
+só, não declara os limiares calibrados nem que a meta Q11 foi atingida.
