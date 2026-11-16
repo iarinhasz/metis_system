@@ -72,7 +72,7 @@ Detalhe: [Checagem de integridade](integrity_check.md).
 
 ## 4. E4 — Avaliação
 
-**Executors isolados implementados em 3.3–3.6; integração planejada para 3.10.**
+**Executors isolados implementados em 3.3–3.7; integração planejada para 3.10.**
 Existem contratos e models de rodadas/vereditos, mas a task atual ainda não
 chama avaliadores nem juiz. O fluxo pretendido é:
 
