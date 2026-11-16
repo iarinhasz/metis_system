@@ -47,6 +47,18 @@ class MetisSettings(BaseSettings):
     profiling_max_attempts: int = Field(default=3, ge=1)
     profiling_confidence_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
     max_revision_rounds: int = Field(default=2, ge=1)
+    integrity_paid_search_budget: int = Field(default=2, ge=0)
+    integrity_adjudication_top_n: int = Field(default=20, ge=0)
+    integrity_adjudication_workers: int = Field(default=2, ge=1)
+    integrity_high_verbatim_sentences: int = Field(default=3, ge=1)
+    integrity_high_paraphrase_fraction: float = Field(default=0.2, gt=0, le=1, allow_inf_nan=False)
+    integrity_high_nonexistent_references: int = Field(default=3, ge=1)
+    integrity_semantic_similarity_threshold: float = Field(
+        default=0.88, gt=0, le=1, allow_inf_nan=False
+    )
+    integrity_alignment_sample_size: int = Field(default=20, ge=0)
+    integrity_medium_alignment_contradictions: int = Field(default=2, ge=1)
+    integrity_full_text_hosts: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     stage_max_retries: int = 3
     stage_retry_backoff_seconds: int = 60
@@ -96,12 +108,22 @@ class MetisSettings(BaseSettings):
             return defaults | value
         return value
 
-    @field_validator("allowed_hosts", "csrf_trusted_origins", mode="before")
+    @field_validator(
+        "allowed_hosts", "csrf_trusted_origins", "integrity_full_text_hosts", mode="before"
+    )
     @classmethod
     def split_csv_values(cls, value: object) -> object:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("integrity_full_text_hosts")
+    @classmethod
+    def normalize_integrity_full_text_hosts(cls, value: list[str]) -> list[str]:
+        normalized = [host.strip().casefold().rstrip(".") for host in value]
+        if any(not host or "/" in host or ":" in host for host in normalized):
+            raise ValueError("integrity_full_text_hosts deve conter nomes de host.")
+        return list(dict.fromkeys(normalized))
 
     @field_validator(
         "stage_max_retries",
