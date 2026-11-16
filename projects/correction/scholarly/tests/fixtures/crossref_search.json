@@ -1,0 +1,13 @@
+{
+  "message": {
+    "total-results": 1,
+    "items": [
+      {
+        "DOI": "10.1000/example",
+        "title": ["A recorded sample paper"],
+        "author": [{"given": "Ada", "family": "Lovelace"}],
+        "published": {"date-parts": [[2024]]}
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "meta": {"count": 1},
+  "results": [
+    {
+      "id": "https://openalex.org/W123",
+      "doi": "https://doi.org/10.1000/example",
+      "title": "A recorded sample paper",
+      "publication_year": 2024,
+      "is_retracted": false
+    }
+  ]
+}

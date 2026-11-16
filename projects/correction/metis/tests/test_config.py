@@ -30,6 +30,20 @@ def test_splits_and_cleans_csv_hosts() -> None:
     assert config.allowed_hosts == ["example.org", "localhost", "api.example.org"]
 
 
+def test_scholarly_credentials_use_metis_environment_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("METIS_CROSSREF_MAILTO", "papers@example.org")
+    monkeypatch.setenv("METIS_SEMANTIC_SCHOLAR_API_KEY", "s2-test-key")
+    monkeypatch.setenv("METIS_UNPAYWALL_EMAIL", "papers@example.org")
+
+    config = MetisSettings(_env_file=None)
+
+    assert config.crossref_mailto == "papers@example.org"
+    assert config.semantic_scholar_api_key == "s2-test-key"
+    assert config.unpaywall_email == "papers@example.org"
+
+
 @pytest.mark.parametrize("budget", ["0", "-1", "NaN", "Infinity", "-Infinity"])
 def test_run_budget_must_be_positive_and_finite(budget: str) -> None:
     with pytest.raises(ValidationError):

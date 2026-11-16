@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2.11,<3",
     "pydantic-settings>=2.9,<3",
     "pypdf>=6,<7",
+    "redis>=8.1,<9",
     "whitenoise>=6.9,<7",
 ]
 

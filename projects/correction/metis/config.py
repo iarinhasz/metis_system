@@ -39,6 +39,9 @@ class MetisSettings(BaseSettings):
 
     # Opcional: amplia a cota de leitura da taxonomia pública do OpenAlex.
     openalex_api_key: str = ""
+    crossref_mailto: str = ""
+    semantic_scholar_api_key: str = ""
+    unpaywall_email: str = ""
     profiling_max_attempts: int = Field(default=3, ge=1)
     profiling_confidence_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
 
