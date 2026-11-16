@@ -296,8 +296,10 @@ Workflow(name="integrity", telemetry=False, steps=[
 
 ### E4 — Avaliação (`evaluation/workflow.py`)
 
-**Planejado:** o arquivo atual contém apenas o Workflow do E5. Os executores
-de passes, checagens, síntese, juiz e revisão abaixo ainda não estão implementados.
+**Estado:** o arquivo atual contém apenas o Workflow do E5. Os executors isolados
+de passes por seção (3.3), checagens entre seções (3.4) e síntese (3.5) estão
+implementados, mas ainda não foram conectados ao workflow E4. Juiz e revisão
+continuam planejados.
 
 ```python
 def evaluator_steps(slot, mode):                 # Strategy escolhida na montagem

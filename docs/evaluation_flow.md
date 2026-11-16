@@ -72,8 +72,9 @@ Detalhe: [Checagem de integridade](integrity_check.md).
 
 ## 4. E4 — Avaliação
 
-**Planejado para 3.3–3.10.** Existem contratos e models de rodadas/vereditos,
-mas a task atual não chama avaliadores nem juiz. O fluxo pretendido é:
+**Executors isolados implementados em 3.3–3.5; integração planejada para 3.10.**
+Existem contratos e models de rodadas/vereditos, mas a task atual ainda não
+chama avaliadores nem juiz. O fluxo pretendido é:
 
 1. Três slots (A = GPT, B = Gemini, C = outro modelo de uma das duas famílias) analisam o artigo **seção por seção**. Cada passe recebe o texto da seção, o prompt do papel dela e o mapa do documento, e devolve observações com trechos literais como evidência, sem nota.
 2. Checagens entre seções conferem o que cruza partes do artigo: promessas × resultados, método × pergunta, figuras × texto.
