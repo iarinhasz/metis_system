@@ -66,6 +66,46 @@ No profiling, `details` guarda previsões e códigos de erro, sem copiar o manus
 ou mensagens do provedor. Os rótulos provisórios da amostra continuam identificados
 em `parameters.annotation_status`; a medição local não valida o desempenho do LLM.
 
+## A/B dos modos de avaliação (etapa 3.13)
+
+`ab_evaluation_mode` compara `sectioned` e `whole_document` nos mesmos Runs de
+origem e com três réplicas por modo. Comece com um manifesto contendo Runs
+concluídos, snapshots E1/E2 atuais e ModelSpecs idênticos. Um exemplo editável
+está em
+[`ab_evaluation_mode_manifest.example.json`](../projects/correction/evals/data/ab_evaluation_mode_manifest.example.json).
+
+```sh
+# Valida a amostra e mostra o tamanho do lote, sem chamadas ou gravações.
+uv run python manage.py ab_evaluation_mode manifesto.json
+
+# Cria o lote e enfileira os Runs (pode consumir chamadas de LLM).
+uv run python manage.py ab_evaluation_mode manifesto.json --execute
+
+# Após todos os Runs concluírem, grava um relatório novo.
+uv run python manage.py ab_evaluation_mode manifesto.json --report --batch-id UUID
+```
+
+O manifesto pode incluir `human_decision` (`accepted` ou `rejected`), que permite
+medir a previsão de aprovação sem depender de notas humanas por critério. Essas
+notas continuam opcionais: Spearman/QWK ficam nulos quando ausentes. A previsão
+é reportada em duas leituras: estrita (`accept`) e potencial (`accept` ou
+`minor`). Runs sem recomendação ou com `needs_human_review` contam como abstenção;
+as réplicas precisam formar maioria estrita para gerar uma previsão por artigo.
+O relatório inclui acurácia, acurácia balanceada, precisão, recall, especificidade,
+F1 e cobertura, além dos números de acertos/erros/abstenções. As demais métricas
+existentes (dispersão, concordância, invalidação do juiz, custo e tempo) são mantidas.
+Essas métricas descrevem o conjunto rotulado e não calibram o sistema para outras
+conferências; é necessário curar a amostra e registrar a decisão sobre o modo padrão.
+
+A amostra piloto PeerRead, com 10 PDFs identificados por hash e veredito binário,
+está em
+[`peerread_iclr2017_test_candidates.json`](../projects/correction/evals/data/peerread_iclr2017_test_candidates.json).
+Os Runs precisam compartilhar a Question, configuração de avaliação e ModelSpecs.
+Depois que o fluxo regular gerar um único Run elegível por artigo,
+`manage.py peerread_ab_manifest --execute` monta o manifesto A/B usando o
+`external_id` e SHA-256. O README da amostra documenta o download verificado e
+o percurso pelos módulos existentes.
+
 ## Comparar relatórios
 
 ```sh
