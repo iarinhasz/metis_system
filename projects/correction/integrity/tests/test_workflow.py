@@ -63,17 +63,6 @@ def test_hidden_text_without_instruction_is_low_risk_and_the_run_goes_on(
     assert len(IntegrityReport.findings_for(run.pk)) == 1
 
 
-def test_an_unchecked_pdf_is_recorded_in_the_coverage(
-    run: Run, use_extraction: UseExtraction
-) -> None:
-    use_extraction(article_with(checked=False))
-
-    publish_stage(str(run.pk), Stage.EXTRACTION)
-
-    report = IntegrityReport.for_run(run.pk)
-    assert report is not None and report.coverage == {"hidden_text": False}
-
-
 def test_the_final_report_summary_reads_the_integrity_report(
     run: Run, use_extraction: UseExtraction
 ) -> None:
@@ -84,7 +73,7 @@ def test_the_final_report_summary_reads_the_integrity_report(
 
     assert summary is not None
     assert (summary.status, summary.risk_level) == ("checked", "low")
-    assert summary.findings == ("Texto escondido na página 2: em branco.",)
+    assert summary.findings == ("Texto escondido na página 2: da cor do fundo.",)
     assert summary.coverage == {"integrity_stage_implemented": True, "hidden_text": True}
 
 

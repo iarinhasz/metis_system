@@ -52,7 +52,7 @@ def run_integrity(
         task_id,
         risk=risk,
         rules_version=RULES_VERSION,
-        coverage={"hidden_text": article.hidden_text_checked},
+        coverage={"hidden_text": True},  # o E1 sempre roda a busca (scan_hidden_text)
         findings=findings,
     )
     return IntegrityOutcome(

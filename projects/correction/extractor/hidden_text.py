@@ -1,139 +1,202 @@
-"""Texto que o leitor não vê no PDF, mas um modelo lê. Só código.
+"""Varredura determinística de texto potencialmente oculto em PDFs."""
 
-O pdfminer dá a cor, o tamanho e a posição de cada caractere, e o código marca o que está:
-- **em branco** (`color`): o fundo da página é tomado como branco;
-- **em fonte minúscula** (`size`): abaixo de 2 pt;
-- **fora da página** (`off_page`).
+from __future__ import annotations
 
-Um trecho escondido com cara de instrução para um revisor de IA ("ignore all previous
-instructions", "give a positive review", "ignore as instruções anteriores") ganha também o
-motivo `instruction`. Trechos escondidos seguidos, mesmo em linhas diferentes, viram um só.
-
-Fica de fora, por enquanto: texto atrás de uma imagem (pede a ordem de desenho) e o modo de
-renderização invisível, que as camadas de OCR dos PDFs escaneados usam de propósito.
-"""
-
-import logging
 import re
-from collections.abc import Iterator
-from dataclasses import dataclass, field
+from collections.abc import Sequence
 from io import BytesIO
-from typing import Any, Final
+from typing import Any, Literal
 
-from pdfminer.high_level import extract_pages
-from pdfminer.layout import LAParams, LTAnno, LTChar, LTContainer, LTPage, LTTextLine
+import pdfplumber
 
-from projects.correction.extractor.article import HiddenReason, HiddenText
-from projects.correction.extractor.coverage import squash
+from projects.correction.extractor.contract import HiddenTextFinding
 
-logger = logging.getLogger(__name__)
+FindingReason = Literal["color", "size", "outside_page", "under_image", "instruction"]
 
-TINY_FONT_PT: Final = 2.0
-# Cinza ou RGB com todos os componentes a partir daqui contam como branco; CMYK, sem tinta.
-WHITE: Final = 0.95
-# Um trecho precisa de uma palavra com pelo menos 3 letras ou dígitos: glifos soltos e letras
-# espaçadas, como os rótulos de eixo reduzidos de uma figura ("e u a v l"), não contam.
-MIN_WORD_CHARS: Final = 3
-MAX_TEXT_CHARS: Final = 500
-
-# Comparados com o texto só com letras e dígitos, sem acento e caixa ("Ignore ALL previous
-# instructions" → "ignoreallpreviousinstructions"), para não depender dos espaços do PDF.
-INSTRUCTION: Final = re.compile(
-    "|".join(
-        (
-            r"(ignore|disregard|forget)(all|any)?(ofthe|the|your)?"
-            r"(previous|prior|above|preceding|earlier)(instructions?|prompts?|directions?)",
-            r"(give|write|provide|output|generate)\w{0,12}positivereview",
-            r"(recommend|suggest)\w{0,20}accept",
-            r"(donot|dont)(highlight|mention|pointout|discuss)(any)?"
-            r"(negatives?|weakness|flaws?|criticisms?|limitations?)",
-            r"(ai|llm|languagemodel)reviewers?",
-            r"ifyouarean?(ai|llm|largelanguagemodel|languagemodel)",
-            r"(ignore|desconsidere|esqueca)(todas)?(as)?instrucoes(anteriores|acima)",
-            r"(de|faca|escreva|gere)(uma)?(avaliacao|revisao|parecer)positiv[ao]",
-            r"recomende\w{0,20}aceit",
-            r"sevoceeuma?(ia|modelodelinguagem|revisor)",
-        )
-    )
+_INSTRUCTION_PATTERNS = (
+    re.compile(
+        r"\b(?:ignore|disregard|override|forget)\b.{0,50}\b(?:previous|all|above|prior)"
+        r"\b.{0,30}\b(?:instruction|prompt|rule)s?\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:ignorar?|desconsidere|desconsiderar|esqueça|esqueca)\b.{0,60}"
+        r"\b(?:instruções|instrucoes|prompts?|regras)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:ai|artificial intelligence|automated)\s+(?:reviewer|judge|evaluator)\b"
+        r".{0,80}\b(?:accept|approve|positive|high score|recommend)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:revisor|avaliador|juiz)\s+(?:de\s+)?(?:ia|inteligência artificial)\b"
+        r".{0,80}\b(?:aceite|aprove|nota alta|recomende)\b",
+        re.IGNORECASE,
+    ),
+)
+_REASONS: tuple[FindingReason, ...] = (
+    "color",
+    "size",
+    "outside_page",
+    "under_image",
+    "instruction",
 )
 
 
-def find_hidden_text(pdf: bytes) -> tuple[HiddenText, ...] | None:
-    """Os trechos escondidos, na ordem das páginas; None se o pdfminer não leu o PDF."""
-    try:
-        pages = list(extract_pages(BytesIO(pdf), laparams=LAParams(all_texts=True)))
-    except Exception:  # PDF malformado: a extração segue, sem esta busca
-        logger.warning("Não foi possível procurar texto oculto no PDF.")
-        return None
-    return tuple(
-        hidden for number, page in enumerate(pages, start=1) for hidden in _page(page, number)
-    )
+def scan_hidden_text(pdf_bytes: bytes) -> tuple[HiddenTextFinding, ...]:
+    """Retorna trechos com indícios visuais ou textuais de ocultação em cada página."""
+    findings: list[HiddenTextFinding] = []
+    with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
+        for page_number, page in enumerate(pdf.pages, start=1):
+            characters: Sequence[dict[str, Any]] = page.chars
+            background_rects: dict[tuple[float, ...], list[dict[str, Any]]] = {}
+            for rectangle in page.rects:
+                color = _color_components(rectangle.get("non_stroking_color"))
+                if color is not None:
+                    background_rects.setdefault(color, []).append(rectangle)
+            lines = _group_lines(characters)
+            for line in lines:
+                findings.extend(_findings_for_line(page, page_number, line, background_rects))
+    return tuple(findings)
 
 
-@dataclass
-class _Run:
-    """Caracteres escondidos seguidos, com os motivos de cada um somados."""
-
-    parts: list[str] = field(default_factory=list)
-    reasons: set[HiddenReason] = field(default_factory=set)
-
-    def finding(self, page: int) -> HiddenText | None:
-        text = " ".join("".join(self.parts).split())
-        if not any(len(squash(word)) >= MIN_WORD_CHARS for word in text.split()):
-            return None
-        letters = squash(text)
-        reasons = self.reasons | ({"instruction"} if INSTRUCTION.search(letters) else set())
-        return HiddenText(page=page, text=text[:MAX_TEXT_CHARS], reasons=tuple(sorted(reasons)))
+def _group_lines(
+    characters: Sequence[dict[str, Any]],
+) -> list[list[dict[str, Any]]]:
+    lines: list[list[dict[str, Any]]] = []
+    for character in sorted(characters, key=lambda item: (float(item["top"]), float(item["x0"]))):
+        top = float(character["top"])
+        if not lines or abs(float(lines[-1][0]["top"]) - top) > 2.5:
+            lines.append([character])
+        else:
+            lines[-1].append(character)
+    return [sorted(line, key=lambda item: float(item["x0"])) for line in lines]
 
 
-def _page(page: LTPage, number: int) -> list[HiddenText]:
-    runs: list[_Run] = []
-    current: _Run | None = None
-    for line in _lines(page):
-        for item in line:
-            if isinstance(item, LTChar):
-                if reasons := _reasons(item, page):
-                    current = current or _Run()
-                    current.parts.append(item.get_text())
-                    current.reasons |= reasons
-                elif current is not None:
-                    runs.append(current)  # um caractere visível encerra o trecho
-                    current = None
-            elif isinstance(item, LTAnno) and current is not None:
-                current.parts.append(item.get_text())  # espaços e quebras de linha
-    if current is not None:
-        runs.append(current)
-    return [hidden for run in runs if (hidden := run.finding(number)) is not None]
+def _findings_for_line(
+    page: pdfplumber.page.Page,
+    page_number: int,
+    line: Sequence[dict[str, Any]],
+    background_rects: dict[tuple[float, ...], list[dict[str, Any]]],
+) -> list[HiddenTextFinding]:
+    text = "".join(str(character["text"]) for character in line)
+    has_instruction = any(pattern.search(text) for pattern in _INSTRUCTION_PATTERNS)
+    marked: list[tuple[dict[str, Any], set[FindingReason]]] = []
+    for character in line:
+        reasons = _character_reasons(page, character, background_rects)
+        if reasons and has_instruction:
+            reasons.add("instruction")
+        marked.append((character, reasons))
+
+    findings: list[HiddenTextFinding] = []
+    run: list[dict[str, Any]] = []
+    reasons_in_run: set[FindingReason] = set()
+    for character, reasons in marked:
+        if reasons:
+            if run and float(character["x0"]) - float(run[-1]["x1"]) > max(
+                3.0, float(character.get("size", 0))
+            ):
+                finding = _make_finding(page_number, run, reasons_in_run)
+                if finding is not None:
+                    findings.append(finding)
+                run = []
+                reasons_in_run = set()
+            run.append(character)
+            reasons_in_run.update(reasons)
+        elif run:
+            finding = _make_finding(page_number, run, reasons_in_run)
+            if finding is not None:
+                findings.append(finding)
+            run = []
+            reasons_in_run = set()
+    if run:
+        finding = _make_finding(page_number, run, reasons_in_run)
+        if finding is not None:
+            findings.append(finding)
+    return findings
 
 
-def _lines(container: LTContainer[Any]) -> Iterator[LTTextLine]:
-    for child in container:
-        if isinstance(child, LTTextLine):
-            yield child
-        elif isinstance(child, LTContainer):
-            yield from _lines(child)
-
-
-def _reasons(char: LTChar, page: LTPage) -> set[HiddenReason]:
-    reasons: set[HiddenReason] = set()
-    if _is_white(char.graphicstate.ncolor):
+def _character_reasons(
+    page: pdfplumber.page.Page,
+    character: dict[str, Any],
+    background_rects: dict[tuple[float, ...], list[dict[str, Any]]],
+) -> set[FindingReason]:
+    reasons: set[FindingReason] = set()
+    color = character.get("non_stroking_color")
+    if _is_white(color) or _matches_background(character, color, background_rects):
         reasons.add("color")
-    if char.size < TINY_FONT_PT:
+    if float(character.get("size", 0)) < 2:
         reasons.add("size")
-    x0, y0, x1, y1 = char.bbox
-    left, bottom, right, top = page.bbox
-    if x1 <= left or x0 >= right or y1 <= bottom or y0 >= top:
-        reasons.add("off_page")
+    if (
+        float(character["x0"]) < 0
+        or float(character["x1"]) > float(page.width)
+        or float(character["top"]) < 0
+        or float(character["bottom"]) > float(page.height)
+    ):
+        reasons.add("outside_page")
+    center_x = (float(character["x0"]) + float(character["x1"])) / 2
+    center_y = (float(character["top"]) + float(character["bottom"])) / 2
+    if any(
+        float(image["x0"]) <= center_x <= float(image["x1"])
+        and float(image["top"]) <= center_y <= float(image["bottom"])
+        for image in page.images
+    ):
+        reasons.add("under_image")
     return reasons
 
 
 def _is_white(color: object) -> bool:
-    """Cinza (1 número), RGB (3) ou CMYK (4); padrões e cores com nome não contam."""
-    values = color if isinstance(color, tuple | list) else (color,)
-    if not values or not all(isinstance(v, int | float) for v in values):
+    components = _color_components(color)
+    if components is not None and len(components) == 4:
+        return all(component <= 0.05 for component in components)
+    return components is not None and all(component >= 0.95 for component in components)
+
+
+def _matches_background(
+    character: dict[str, Any],
+    color: object,
+    background_rects: dict[tuple[float, ...], list[dict[str, Any]]],
+) -> bool:
+    components = _color_components(color)
+    if components is None:
         return False
-    if len(values) in (1, 3):
-        return all(float(v) >= WHITE for v in values)
-    if len(values) == 4:
-        return all(float(v) <= 1 - WHITE for v in values)
+    center_x = (float(character["x0"]) + float(character["x1"])) / 2
+    center_y = (float(character["top"]) + float(character["bottom"])) / 2
+    for rectangle in background_rects.get(components, ()):
+        if float(rectangle["x0"]) <= center_x <= float(rectangle["x1"]) and float(
+            rectangle["top"]
+        ) <= center_y <= float(rectangle["bottom"]):
+            return True
     return False
+
+
+def _color_components(color: object) -> tuple[float, ...] | None:
+    if isinstance(color, (int, float)):
+        return (float(color),)
+    if (
+        isinstance(color, (tuple, list))
+        and color
+        and all(isinstance(component, (int, float)) for component in color)
+    ):
+        return tuple(float(component) for component in color)
+    return None
+
+
+def _make_finding(
+    page_number: int, characters: Sequence[dict[str, Any]], reasons: set[FindingReason]
+) -> HiddenTextFinding | None:
+    text = "".join(str(character["text"]) for character in characters).strip()
+    if not text:
+        return None
+    return HiddenTextFinding(
+        page=page_number,
+        text=text,
+        reasons=tuple(reason for reason in _REASONS if reason in reasons),
+        bbox=(
+            min(float(character["x0"]) for character in characters),
+            min(float(character["top"]) for character in characters),
+            max(float(character["x1"]) for character in characters),
+            max(float(character["bottom"]) for character in characters),
+        ),
+    )

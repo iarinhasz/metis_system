@@ -1,0 +1,134 @@
+{
+  "name": "peerread_iclr2017_test_pilot",
+  "version": "1",
+  "upstream": {
+    "repository": "https://github.com/allenai/PeerRead",
+    "revision": "9bb37751781a900cee9e74ec3105997732c8e8e5",
+    "conference": "iclr_2017",
+    "split": "test",
+    "decision_field": "accepted",
+    "decision_source": "reviews",
+    "pdf_source": "pdfs",
+    "accepted_population_ids": [
+      "330", "333", "358", "363", "398", "400", "412", "438", "444", "457",
+      "460", "471", "482", "486", "498"
+    ],
+    "rejected_population_ids": [
+      "518", "554", "556", "566", "574", "597", "611", "612", "632", "648",
+      "670", "678", "687", "691", "697", "719", "739", "745", "749", "756",
+      "767", "773", "778"
+    ],
+    "selection": {
+      "method": "stratified_random_sample",
+      "seed": 313,
+      "per_class": 5
+    }
+  },
+  "cases": [
+    {
+      "id": "iclr_2017:test:358",
+      "peerread_id": "358",
+      "title": "Towards a Neural Statistician",
+      "human_decision": "accepted",
+      "source_run_external_id": "peerread:iclr_2017:test:358",
+      "pdf_sha256": "4e47db089a21301ac79cd9a39da86a1f3c041a68f85d07ef9a2edaf0a72a2219",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/358.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/358.json"
+    },
+    {
+      "id": "iclr_2017:test:412",
+      "peerread_id": "412",
+      "title": "Trusting SVM for Piecewise Linear CNNs",
+      "human_decision": "accepted",
+      "source_run_external_id": "peerread:iclr_2017:test:412",
+      "pdf_sha256": "4b413f071ff791b5206add7b03509f044fd7d9621894c68103b68ecb93e2fbf6",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/412.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/412.json"
+    },
+    {
+      "id": "iclr_2017:test:438",
+      "peerread_id": "438",
+      "title": "Learning to Navigate in Complex Environments",
+      "human_decision": "accepted",
+      "source_run_external_id": "peerread:iclr_2017:test:438",
+      "pdf_sha256": "7a378dbba6e22a6bf9b9bb698d65f2181549f1f5293f4591cfa02da75ece1bdc",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/438.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/438.json"
+    },
+    {
+      "id": "iclr_2017:test:457",
+      "peerread_id": "457",
+      "title": "Incremental Network Quantization: Towards Lossless CNNs with Low-precision Weights",
+      "human_decision": "accepted",
+      "source_run_external_id": "peerread:iclr_2017:test:457",
+      "pdf_sha256": "b65d585abfe589b5e337f7fa275ed76239610d2609c6bb5412c3c58cdc7dcf2c",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/457.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/457.json"
+    },
+    {
+      "id": "iclr_2017:test:460",
+      "peerread_id": "460",
+      "title": "Sample Efficient Actor-Critic with Experience Replay",
+      "human_decision": "accepted",
+      "source_run_external_id": "peerread:iclr_2017:test:460",
+      "pdf_sha256": "d17546922f0aaf2842878f1f36ffbc7bd7302c7e66e07082182eb6baf5c7af1c",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/460.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/460.json"
+    },
+    {
+      "id": "iclr_2017:test:518",
+      "peerread_id": "518",
+      "title": "Learning to Draw Samples: With Application to Amortized MLE for Generative Adversarial Learning",
+      "human_decision": "rejected",
+      "source_run_external_id": "peerread:iclr_2017:test:518",
+      "pdf_sha256": "adee8d23fdd01b619cdbc39ccf6e998d97c2194e925e9627125ab21e9834e97e",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/518.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/518.json"
+    },
+    {
+      "id": "iclr_2017:test:554",
+      "peerread_id": "554",
+      "title": "Investigating Recurrence and Eligibility Traces in Deep Q-Networks",
+      "human_decision": "rejected",
+      "source_run_external_id": "peerread:iclr_2017:test:554",
+      "pdf_sha256": "4502d0c557dea6f35e97e692f4804993c61f90596524597bc7feea2bafeda62c",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/554.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/554.json"
+    },
+    {
+      "id": "iclr_2017:test:574",
+      "peerread_id": "574",
+      "title": "Multi-label learning with the RNNs for Fashion Search",
+      "human_decision": "rejected",
+      "source_run_external_id": "peerread:iclr_2017:test:574",
+      "pdf_sha256": "70676e3e3bad8f6cbf62ccc05dab16c1eeb71a6cecf0f5bb5edb222d664bf52b",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/574.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/574.json"
+    },
+    {
+      "id": "iclr_2017:test:611",
+      "peerread_id": "611",
+      "title": "Collaborative Deep Embedding via Dual Networks",
+      "human_decision": "rejected",
+      "source_run_external_id": "peerread:iclr_2017:test:611",
+      "pdf_sha256": "f1ec3d96304093b75eab16034f0ae0688e69ed443f00faa071ff67f654c870bc",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/611.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/611.json"
+    },
+    {
+      "id": "iclr_2017:test:678",
+      "peerread_id": "678",
+      "title": "Finding a Jack-of-All-Trades: An Examination of Semi-supervised Learning in Reading Comprehension",
+      "human_decision": "rejected",
+      "source_run_external_id": "peerread:iclr_2017:test:678",
+      "pdf_sha256": "bed8c018336b2ca30c1d974340ae033516712c204e761e1c38a4bbfed04e8823",
+      "pdf_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/pdfs/678.pdf",
+      "decision_url": "https://raw.githubusercontent.com/allenai/PeerRead/9bb37751781a900cee9e74ec3105997732c8e8e5/data/iclr_2017/test/reviews/678.json"
+    }
+  ],
+  "notes": [
+    "A seleção usa apenas a decisão binária accepted do registro PeerRead; textos e notas dos pareceres não entram no alvo.",
+    "Os PDFs não são distribuídos neste repositório. Baixe-os da origem, confira o SHA-256 e submeta-os pelo fluxo normal de E1/E2.",
+    "As execuções de origem devem usar o campo external_id indicado e chegar a done com snapshots E1/E2 atuais antes de compor o manifesto ABManifest."
+  ]
+}

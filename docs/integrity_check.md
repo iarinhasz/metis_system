@@ -1,17 +1,17 @@
 # Checagem de integridade (E3)
 
-**Desenho revisto em 15/11/2026.** O E3 está implementado de forma enxuta pela Plataforma (ver [o que roda hoje](#o-que-roda-hoje)): a Fase 0 (texto oculto), as regras de risco, o relatório, o gate no admin e a rota da API. As checagens das referências entram nas etapas 5.1 a 5.3. O plágio (Fase 1) ficou fora do escopo em 15/11; em 16/11, a trilha de Integridade entregou as primeiras peças dele (corpus, embeddings e MinHash), que ainda não rodam no E3. O resto deste documento é o desenho completo. [Estado e metas](status_and_metrics.md).
+**Desenho revisto em 15/11/2026.** O E3 está implementado de forma enxuta pela Plataforma (ver [o que roda hoje](#o-que-roda-hoje)): a Fase 0 (texto oculto), as regras de risco, o relatório, o gate no admin e a rota da API. As checagens das referências entram nas etapas 5.1 a 5.3. O plágio (Fase 1) ficou fora do escopo em 15/11; em 16/11, a trilha de Integridade entregou peças dele (corpus, embeddings, MinHash e o semântico PT↔EN) e a cascata de resolução de referências, que ainda não rodam no E3. O resto deste documento é o desenho completo. [Estado e metas](status_and_metrics.md).
 
 ## O que roda hoje
 
 - **`integrity/workflow.py`:** `run_integrity()` lê o `ExtractedArticle` do run, junta os achados de cada checagem, aplica as regras e grava o relatório. É código, sem Workflow do Agno e sem chamar modelo, como o E1.
-- **Fase 0** (`integrity/hidden.py`): cada trecho de `ExtractedArticle.hidden_text` vira achado `hidden_instruction` (quando tem cara de instrução a um revisor de IA) ou `hidden_text`. A mensagem diz a página e como o texto está escondido; o texto vai na evidência.
+- **Fase 0** (`integrity/hidden.py`): cada trecho de `ExtractedArticle.hidden_text_findings` (a varredura do E1 com `pdfplumber`) vira achado `hidden_instruction` (quando tem cara de instrução a um revisor de IA) ou `hidden_text`. A mensagem diz a página e como o texto está escondido; o texto vai na evidência.
 - **Regras v1** (`integrity/rules.py`): `hidden_instruction` é alto, `hidden_text` é baixo; o risco do artigo é o maior entre os achados. As gravidades ficam em `IntegrityRules`, e `RULES_VERSION` é gravada em cada relatório.
-- **Relatório** (`IntegrityReport` e `IntegrityFinding`): o risco, a versão das regras, o `coverage` (o que foi conferido; `hidden_text: false` quando o pdfminer não leu o PDF) e os achados em ordem. Um retry do E3 substitui o relatório, e a gravação exige a posse do estágio.
+- **Relatório** (`IntegrityReport` e `IntegrityFinding`): o risco, a versão das regras, o `coverage` (o que foi conferido) e os achados em ordem. Um retry do E3 substitui o relatório, e a gravação exige a posse do estágio.
 - **Risco alto** → `StageOutcome(halt=True)` → `waiting_human_review`. O evento do E3 traz só `risk`, `findings`, `high` e o id do relatório.
 - **E5:** o resumo (`IntegritySummary`) vem do relatório, com o risco, as mensagens e o `coverage`; sem relatório (rubric check), continua `not_checked`.
 - **Ficou de fora, por ora:** a narrativa por LLM (`integrity_narrator`) e o plágio.
-- **Peças prontas, ainda não chamadas pelo E3** (16/11, trilha de Integridade): os clientes do `scholarly/` (Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, etapa 4.1), o corpus `SourceDocument`/`SourceChunk` com pgvector, os embeddings locais e o comando `load_peerread` (4.3), e a sobreposição léxica com MinHash e winnowing em `integrity/lexical.py` (4.5).
+- **Peças prontas, ainda não chamadas pelo E3** (16/11, trilha de Integridade): os clientes do `scholarly/` (Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, etapa 4.1), o corpus `SourceDocument`/`SourceChunk` com pgvector, os embeddings locais e o comando `load_peerread` (4.3), a sobreposição léxica com MinHash e winnowing em `integrity/lexical.py` (4.5), a resolução de referências em cascata em `integrity/resolution.py` (4.2) e o semântico PT↔EN em `integrity/semantic.py` (4.6).
 
 ## Objetivo e princípios
 
@@ -40,7 +40,12 @@ A resolução das referências roda **primeiro**, porque as duas fases dependem 
 
 ## Fase 0 — Texto oculto e prompt injection
 
-O E1 encontra o texto oculto (`ExtractedArticle.hidden_text`, ver [Extração](extraction.md#passo-a-passo)): em branco, em fonte minúscula ou fora da página, marcado como `instruction` quando tem cara de instrução a um revisor de IA. Aqui ele vira achado. Instrução escondida dirigida a revisores IA tem severidade alta, porque é uma tentativa de manipular a avaliação.
+O E1 varre localmente o PDF com `pdfplumber` (ver [Extração](extraction.md)) e
+anexa os achados estruturados ao contrato. São sinalizados texto branco/da cor do
+fundo, fonte abaixo de 2 pt, texto fora da página, texto sob imagens e padrões de
+instrução escondida. Instrução dirigida a revisores de IA tem severidade alta,
+porque é uma tentativa de manipular a avaliação; o conteúdo encontrado é evidência,
+nunca uma instrução a executar. Aqui, cada achado vira um `IntegrityFinding`: `hidden_instruction` (alto, para no gate) ou `hidden_text` (baixo).
 
 ## Fase 1 — Similaridade, em funil
 
@@ -64,6 +69,7 @@ Do mais barato ao mais caro:
    - O modelo é o **multilingual-E5-large** via FastEmbed/ONNX (mais de 100 idiomas, limite de 512 tokens, vetores de 1024 dimensões), rodando **localmente**: o manuscrito não sai da infraestrutura. Chunks de até 300 palavras reduzem o risco de truncamento; cada chunk recebe os k vizinhos mais próximos (índice HNSW do pgvector). O BGE-M3 previsto inicialmente não está disponível no FastEmbed compatível com Python 3.14.
    - A carga inicial usa as fixtures `ExtractedDocument` do PeerRead: `make_peerread_fixtures --execute` prepara pelo menos 10 artigos em `projects/correction/extractor/tests/fixtures/peerread`; `load_peerread` valida cinco por padrão em dry-run. Para gravar documentos e vetores, rode `load_peerread --execute`.
    - **Cópia traduzida** (PT↔EN) aparece como uma sequência de frases alinhadas na mesma ordem (cosseno + vizinho mais próximo nos dois sentidos).
+   - `integrity/semantic.py` busca os `nearest_chunks` HNSW por parágrafo e alinha frases monotonicamente por cosseno; retorna os trechos alinhados, offsets, fonte e similaridade. `SemanticConfig` controla `nearest_chunks`, `similarity_threshold` (inicialmente 0,82) e a quantidade mínima de frases alinhadas. O limiar é provisório, não calibrado.
    - O **SPECTER2** não serve aqui: só funciona em inglês e compara artigos inteiros.
    - Os limiares são calibrados com abstracts bilíngues do SciELO e com o plágio sintético do PeerRead. Não existe benchmark público PT↔EN para modelos atuais.
 4. **Filtro por citação.** Para cada par suspeito:
@@ -78,6 +84,9 @@ Do mais barato ao mais caro:
 1. **Existência, em cascata.**
    - Com DOI → Crossref (404 é alerta) + OpenAlex por DOI (consulta grátis; traz `is_retracted`, abstract e link de acesso aberto).
    - Sem DOI → Crossref `query.bibliographic` com a string crua + Semantic Scholar `paper/search/match`.
+   - A implementação em `integrity/resolution.py` tenta Crossref, depois OpenAlex
+     quando há DOI e, se necessário, Semantic Scholar; falhas transitórias propagam
+     pelos clientes `scholarly/`.
    - Aceite: título com similaridade ≥ ~0,9, mesmo sobrenome do primeiro autor e diferença de ano ≤ 1.
    - Caso duvidoso → LLM, medindo a taxa de falso positivo.
    - Heurísticas de referência: `halref` e `RefChecker` (MIT).

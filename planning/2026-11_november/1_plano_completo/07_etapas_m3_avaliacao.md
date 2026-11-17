@@ -292,13 +292,29 @@ avaliações produzidas por provedores reais.
 
 **O que fazer**
 - Comando `ab_evaluation_mode`: cria Runs `purpose=ab_test` nos dois modos para o mesmo conjunto (~10–20 artigos: PeerRead + artigos da equipe) e 3 execuções por avaliador.
-- Métricas de [Avaliadores e juiz](../../../docs/evaluators_and_judge.md#como-decidir-o-modo-ab-no-m3): variação da nota, concordância, taxa de invalidação pelo juiz, correlação com o PeerRead, custo e tempo.
+- Métricas de [Avaliadores e juiz](../../../docs/evaluators_and_judge.md#como-decidir-o-modo-ab-no-m3): variação da nota, concordância, taxa de invalidação pelo juiz, custo e tempo; medir previsão de aprovação contra o veredito aceito/rejeitado do PeerRead. Correlação de notas humanas por critério é complementar e opcional.
 - Com duas famílias, a concordância entre A e C (mesma família ou não) fica separada das outras (R13).
 - Registrar a decisão (Q12) e o custo por artigo (Q2) no planejamento.
 
 **Pronto quando:** o modo padrão está decidido e registrado.
 
 **Commit sugerido:** `feat: compare evaluation modes with an A/B command`
+
+**Implementação local (16/11):** criado o comando em dry-run por padrão, com
+`--execute` para enfileirar Runs pareados e `--report` para gerar métricas de
+lotes concluídos. O manifesto referencia Runs avaliados com snapshots E1/E2
+atuais; extração e profiling são reaproveitados. A versão 2 acrescenta previsão estrita/potencial de aprovação usando o veredito binário humano, e mantém notas por critério opcionais. Os testes de evals e Run
+management passaram (41 testes); Ruff, mypy dos arquivos alterados e `manage.py
+check` também passaram. A decisão Q12 e os custos Q2 continuam pendentes da
+execução com a amostra curada, portanto a etapa ainda não atende ao critério
+final de conclusão.
+
+**Amostra e preparo:** catálogo piloto versionado em
+`projects/correction/evals/data/peerread_iclr2017_test_candidates.json` (10 PDFs,
+5 aceitos/5 rejeitados, revisão PeerRead fixada por commit e hashes). O comando
+`peerread_ab_manifest` resolve cada caso por `external_id` e SHA-256 depois que
+os Runs do fluxo normal estiverem concluídos; a execução integral da amostra e
+a escolha do modo padrão permanecem para a etapa operacional.
 
 ---
 

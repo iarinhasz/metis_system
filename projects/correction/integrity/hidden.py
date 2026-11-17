@@ -1,22 +1,23 @@
-"""Fase 0: o texto escondido que o E1 achou no PDF vira achado. Só código."""
+"""Fase 0: o texto escondido que o E1 achou no PDF (`scan_hidden_text`) vira achado. Só código."""
 
 from typing import Final
 
-from projects.correction.extractor.article import ExtractedArticle, HiddenReason
+from projects.correction.extractor.article import ExtractedArticle
 from projects.correction.integrity.findings import Finding, FindingKind
 from projects.correction.integrity.rules import IntegrityRules
 
-REASON_LABELS: Final[dict[HiddenReason, str]] = {
-    "color": "em branco",
+REASON_LABELS: Final[dict[str, str]] = {
+    "color": "da cor do fundo",
     "size": "em fonte minúscula",
-    "off_page": "fora da página",
+    "outside_page": "fora da página",
+    "under_image": "atrás de uma imagem",
     "instruction": "com instrução a um revisor de IA",
 }
 
 
 def hidden_text_findings(article: ExtractedArticle, rules: IntegrityRules) -> list[Finding]:
     findings = []
-    for passage in article.hidden_text:
+    for passage in article.hidden_text_findings:
         kind = (
             FindingKind.HIDDEN_INSTRUCTION
             if "instruction" in passage.reasons

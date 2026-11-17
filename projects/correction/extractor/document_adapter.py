@@ -8,7 +8,6 @@ from projects.correction.extractor.contract import (
     DocumentReference,
     DocumentSection,
     ExtractedDocument,
-    HiddenTextFinding,
 )
 
 
@@ -96,9 +95,5 @@ def to_extracted_document(article: ExtractedArticle) -> ExtractedDocument:
         references=references,
         citation_mentions=citation_mentions,
         figures=figures,
-        hidden_text_findings=tuple(
-            HiddenTextFinding(page=hidden.page, text=hidden.text, reasons=hidden.reasons)
-            for hidden in article.hidden_text
-        ),
-        hidden_text_checked=article.hidden_text_checked,
+        hidden_text_findings=article.hidden_text_findings,
     )

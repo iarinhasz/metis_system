@@ -165,9 +165,9 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 **Decidido (15/11):** feita pela Plataforma, para fechar a trilha (a Integridade ainda não tem código), com o pdfminer.six no lugar do pdfplumber: é o motor de leitura do pdfplumber, só Python, sem o Pillow e o pypdfium2. O resultado fica no `ExtractedArticle` (`hidden_text`); e no `ExtractedDocument` (`hidden_text_findings`, 1.11).
 
-**Situação:** implementada em 15/11/2026.
+**Situação:** implementada em 15/11/2026 pela Plataforma (pdfminer.six) e, em paralelo, pela trilha de Integridade (pdfplumber, PR #25). No merge de 16/11 ficou a da Integridade (`scan_hidden_text`, `ExtractedArticle.hidden_text_findings`, que também acha texto atrás de imagem e guarda a caixa); o E3 da Plataforma (4.8) passou a ler esses achados. O registro abaixo é o da versão da Plataforma, que saiu.
 
-**Como ficou** (detalhe em [Extração](../../../docs/extraction.md#passo-a-passo), passo 12):
+**Como ficou na versão da Plataforma** (substituída):
 - `extractor/hidden_text.py`: marca o trecho em branco (cinza, RGB ou CMYK), em fonte abaixo de 2 pt ou fora da página; trechos seguidos viram um; `instruction` quando parece instrução a um revisor de IA, em inglês ou português. Um trecho precisa de uma palavra com 3 letras ou mais.
 - `ExtractedArticle.hidden_text[]` (`page`, `text`, `reasons`) e `hidden_text_checked`; `DocumentConfig.scan_hidden_text`; o evento do E1 conta `hidden_passages` e `hidden_instructions`.
 - Fica de fora: texto atrás de imagem e o modo de renderização invisível (usado pelo OCR dos PDFs escaneados).
@@ -259,7 +259,7 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ## Etapa 1.11 — `ExtractedDocument` a partir da extração
 
-**Situação:** implementada em 16/11/2026. O adaptador `ExtractedArticle` → `ExtractedDocument` é da trilha de Avaliação; a Plataforma acrescentou ao contrato `hidden_text_findings[]` e `hidden_text_checked`, preenchidos a partir da 1.7. O texto oculto fica fora do `render_for_llm()`: vai para a integridade, nunca para os avaliadores (teste em `test_document_adapter.py`).
+**Situação:** implementada em 16/11/2026. O adaptador `ExtractedArticle` → `ExtractedDocument` é da trilha de Avaliação; os achados de texto oculto entram no contrato em `hidden_text_findings[]` (versão da Integridade, desde o merge de 16/11). O texto oculto fica fora do `render_for_llm()`: vai para a integridade, nunca para os avaliadores (teste em `test_document_adapter.py`).
 
 **Decidido (12/11):** sai da 1.9 e fica na trilha Plataforma e Extração. Espera o contrato da 1.1 (Avaliação) e o texto oculto da 1.7 (Integridade).
 

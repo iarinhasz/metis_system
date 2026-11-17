@@ -3,8 +3,7 @@ paralelo, traz o texto de cada uma, conferido contra o texto do PDF (ver section
 Depois, uma chamada separa a lista de referências em campos (references.py), e o código liga
 as chamadas no texto a ela (citations.py). Por fim, uma chamada lista as figuras e as tabelas
 (figures.py), o código acha as frases que as citam (figure_mentions.py), e uma chamada por
-figura, em paralelo, descreve cada uma (figure_descriptions.py). O código também procura texto
-escondido no PDF (hidden_text.py)."""
+figura, em paralelo, descreve cada uma (figure_descriptions.py)."""
 
 from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
 from projects.correction.extractor.citations import find_citations
@@ -19,7 +18,7 @@ from projects.correction.extractor.errors import (
 from projects.correction.extractor.figure_descriptions import describe_figures
 from projects.correction.extractor.figure_mentions import find_figure_mentions
 from projects.correction.extractor.figures import scan_figures
-from projects.correction.extractor.hidden_text import find_hidden_text
+from projects.correction.extractor.hidden_text import scan_hidden_text
 from projects.correction.extractor.pdf_text import read_pdf_pages
 from projects.correction.extractor.prompts import load_prompt, render_prompt
 from projects.correction.extractor.references import parse_references
@@ -41,6 +40,7 @@ def extract_article(
     config: DocumentConfig = ARTICLE_CONFIG,
     opener: SessionOpener = AgnoSession,
 ) -> ExtractedArticle:
+    hidden_text_findings = scan_hidden_text(pdf)
     session = opener(config, pdf)
     scan = session.ask(config.scan_prompt, HeadingScan)
     section_map = build_section_map(scan, config)
@@ -78,7 +78,6 @@ def extract_article(
     figures = scan_figures(session, config, reference)
     figure_mentions = find_figure_mentions(sections, figures)
     figures = describe_figures(session, config, figures, figure_mentions)
-    hidden = find_hidden_text(pdf) if config.scan_hidden_text else None
 
     return ExtractedArticle(
         title=scan.title.strip(),
@@ -90,8 +89,7 @@ def extract_article(
         citations=find_citations(sections, references),
         figures=figures,
         figure_mentions=figure_mentions,
-        hidden_text=hidden or (),
-        hidden_text_checked=hidden is not None,
+        hidden_text_findings=hidden_text_findings,
     )
 
 

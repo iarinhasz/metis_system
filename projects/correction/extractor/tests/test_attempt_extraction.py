@@ -119,7 +119,6 @@ def test_event_payload_has_counts_and_ids_but_no_text(attempt: Attempt) -> None:
         "unlinked_citations": 0,
         "figures": 0,
         "figures_described": 0,
-        "hidden_scanned": True,
         "hidden_passages": 0,
         "hidden_instructions": 0,
     }

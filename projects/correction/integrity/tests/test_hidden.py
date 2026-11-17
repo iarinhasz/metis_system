@@ -16,7 +16,7 @@ def test_each_hidden_passage_becomes_a_finding() -> None:
         Severity.HIGH,
     )
     assert (white.kind, white.severity) == (FindingKind.HIDDEN_TEXT, Severity.LOW)
-    assert white.message == "Texto escondido na página 2: em branco."
+    assert white.message == "Texto escondido na página 2: da cor do fundo."
 
 
 def test_the_message_has_no_manuscript_text_and_the_evidence_has() -> None:

@@ -274,7 +274,7 @@ Cada chamada fica registrada com tokens e custo (`LLMCall`), e o admin soma por 
 
 ## Stack
 
-Django 6 + Django Ninja · Celery + Redis · PostgreSQL 18 + pgvector · Agno 3 com Gemini e OpenAI · pypdf e pdfminer.six · Docker Compose
+Django 6 + Django Ninja · Celery + Redis · PostgreSQL 18 + pgvector · Agno 3 com Gemini e OpenAI · pypdf e pdfplumber · Docker Compose
 
 ## Documentação
 

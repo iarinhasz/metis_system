@@ -86,8 +86,6 @@ class DocumentConfig(BaseModel):
     describe_figure_prompt: str
     # False: as figuras ficam só listadas, sem descrição (economiza uma chamada por figura).
     describe_figures: bool = True
-    # Procurar texto escondido no PDF (em branco, minúsculo ou fora da página). Só código.
-    scan_hidden_text: bool = True
     # Sem uma delas, o documento não pode ser avaliado e é rejeitado.
     required_sections: tuple[SectionDefinition, ...] = ()
     # Procuradas pelo nome quando existem; a falta não rejeita o documento.

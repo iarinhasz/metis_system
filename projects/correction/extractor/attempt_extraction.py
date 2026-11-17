@@ -19,8 +19,8 @@ from projects.correction.extractor.session import AgnoSession, SessionOpener
 
 
 def extraction_version(config: DocumentConfig) -> str:
-    """Hash da config (modelo, prompts, limites) e dos arquivos de prompt."""
-    payload = config.model_dump_json() + fingerprint()
+    """Hash da config, dos prompts e da versão dos scanners locais."""
+    payload = config.model_dump_json() + fingerprint() + "hidden-text-scan-v1"
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
@@ -69,7 +69,8 @@ def extraction_payload(
         "unlinked_citations": sum(c.reference_id is None for c in article.citations),
         "figures": len(article.figures),
         "figures_described": sum(f.description is not None for f in article.figures),
-        "hidden_scanned": article.hidden_text_checked,
-        "hidden_passages": len(article.hidden_text),
-        "hidden_instructions": sum("instruction" in h.reasons for h in article.hidden_text),
+        "hidden_passages": len(article.hidden_text_findings),
+        "hidden_instructions": sum(
+            "instruction" in h.reasons for h in article.hidden_text_findings
+        ),
     }

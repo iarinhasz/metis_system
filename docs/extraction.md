@@ -13,6 +13,9 @@ O código fica em `extractor/` (caminhos relativos a `projects/correction/`).
 
 ## Ferramentas
 
+Além de `pypdf`, `pdfplumber` faz a varredura local de texto potencialmente oculto;
+o conteúdo não é enviado ao modelo.
+
 | Ferramenta | Papel |
 |---|---|
 | **Gemini 2.5 Flash**, pelo Agno (`session.py`) | Lê o PDF: mapeia as seções (chamada 1) e copia o texto de cada uma (chamada 2) |
@@ -83,7 +86,7 @@ PDF ─▶ chamada 1: mapa das seções ─▶ gate: tem abstract e referências
     - **tabela com as linhas:** markdown só com o cabeçalho é refeito. Aconteceu no ICLR 410, na Table 5. Se continuar assim, a descrição fica e o markdown sai.
 
     Uma figura cuja resposta continua inválida fica sem descrição e o resto segue. O modelo fora do ar sobe, como nos outros passos, e o retry do estágio refaz só as figuras que faltaram (ver [Retomada](#retomada)). Com `describe_figures` desligado na config, o passo não roda.
-12. **Texto oculto** (`hidden_text.py`, só código, com o pdfminer.six). O pdfminer dá a cor, o tamanho e a posição de cada caractere, e o código marca o trecho que o leitor não vê: em branco (`color`; o fundo é tomado como branco, e branco em cinza, RGB ou CMYK conta), em fonte abaixo de 2 pt (`size`) ou fora da página (`off_page`). Trechos escondidos seguidos, mesmo em linhas diferentes, viram um só. Se o trecho tem cara de instrução a um revisor de IA ("ignore all previous instructions", "give a positive review", "recommend acceptance", "ignore as instruções anteriores"), ganha também `instruction`; a comparação é feita só com letras e dígitos, sem acento e caixa, para não depender dos espaços do PDF. Um trecho precisa de uma palavra com 3 letras ou mais: os rótulos de eixo reduzidos de uma figura ("e u a v l") não contam. Se o pdfminer não lê o PDF, a extração segue e o artigo diz que a busca não rodou (`hidden_text_checked = false`).
+12. **Texto oculto** (`hidden_text.py`, `scan_hidden_text`, só código, com o `pdfplumber`). Roda antes das chamadas ao modelo e marca, por linha, o trecho que o leitor não vê: branco ou da cor do retângulo de fundo (`color`), fonte abaixo de 2 pt (`size`), fora da página (`outside_page`) ou atrás de uma imagem (`under_image`). Se a linha tem cara de instrução a um revisor de IA ("ignore all previous instructions", "AI reviewer… accept", "ignore as instruções"), o trecho ganha também `instruction`. Cada achado guarda a página, o texto, os motivos e a caixa (`bbox`).
 13. **Resultado.** Seção obrigatória vazia é resposta inválida (`InvalidModelAnswer`, o estágio tenta de novo), e também uma lista de referências sem nenhuma entrada conferida. O resto vira um `ExtractedArticle`, guardado como `Extraction` e ligado ao run.
 
 ## A config (`DocumentConfig`)
@@ -116,20 +119,23 @@ Desde a 1.10, também `references[]` (cada `Reference` com `id`, `raw`, `marker`
 
 Desde a 1.6, também `figures[]` (cada `Figure` com `id`, `kind`, `label`, `number`, `page`, `caption` e `fidelity` da legenda) e `figure_mentions[]` (cada `FigureMention` com `figure_id` ou nulo, `marker`, `sentence`, `section_id` e `start`/`end`).
 
-Desde a 1.7, também `hidden_text[]` (cada `HiddenText` com `page`, `text`, até 500 caracteres, e `reasons`: `color`, `size`, `off_page`, `instruction`) e `hidden_text_checked`. As extrações anteriores vêm com a lista vazia e `hidden_text_checked = false`.
+Desde a 1.7, também `hidden_text_findings[]` (cada `HiddenTextFinding` do contrato, com `page`, `text`, `reasons` — `color`, `size`, `outside_page`, `under_image`, `instruction` — e `bbox`). As extrações anteriores vêm com a lista vazia.
 
 Desde a 1.8, cada `Figure` traz `description`, nula quando a chamada falhou: um `FigureDescription` com `figure_class`, `description`, `data_read[]`, `supports_claims` (sim, não ou nulo), `support_rationale`, `issues[]` e `table_markdown` (nulo para figura).
 
 `ExtractedArticle` continua sendo o resultado persistido pelo E1. A propriedade
-`Extraction.document` adapta esse resultado para `ExtractedDocument` sob demanda;
-não altera o JSON salvo nem a chave do cache. E2, E4 e o benchmark de profiling
-consomem o contrato adaptado. Os achados de texto oculto da 1.7 ainda não estão
-incluídos: a interface dessa etapa precisa ser acordada com quem a implementa.
+`Extraction.document` adapta esse resultado para `ExtractedDocument` sob demanda.
+`hidden_text_findings[]` armazena texto, página, caixa delimitadora e motivos
+(`color`, `size`, `outside_page`, `under_image`, `instruction`). A varredura local
+é persistida com o artigo e a versão do cache inclui a versão do scanner.
+E2, E4 e o benchmark de profiling consomem o contrato adaptado. O texto sinalizado é
+evidência e não é inserido no contexto enviado ao modelo.
 
 ## Contrato `ExtractedDocument` (M1.1)
 
 O modelo congelado em `extractor/contract.py` valida título, autores, idioma,
-abstract, seções hierárquicas, referências, citações e figuras/tabelas. Ele não
+abstract, seções hierárquicas, referências, citações, figuras/tabelas e achados de
+texto oculto. Ele não
 contém configuração de provedor nem campos específicos de uma resposta de LLM.
 Offsets e páginas são opcionais porque os dados `parsed_pdfs` do PeerRead e o
 `ExtractedArticle` atual não os fornecem de forma consistente. Offsets de citações
@@ -164,7 +170,7 @@ PeerRead exigidas pela etapa 1.1.
 - **`Extraction`** (`models.py`): o `ExtractedArticle` em JSON, único por (sha256 do PDF, versão). A versão é o hash da config inteira e de todos os prompts: mudar o modelo, um limite ou um prompt força uma extração nova. Um run novo do mesmo PDF reaproveita a guardada, sem chamar o modelo.
 - **`Run.extraction`**: o E1 liga a extração ao run pelo `RunManagement.attach_extraction`, só se o estágio ainda é da task (posse).
 - **Passos guardados:** enquanto a extração não termina, cada resposta do modelo fica no banco (`ExtractionStep`), para o retry do estágio retomar delas (ver [Retomada](#retomada)).
-- **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções, as seções abaixo dos limites (`below_check`) o número de referências, de citações e de citações sem ligação, o número de figuras e tabelas e quantas foram descritas (`figures_described`), se a busca de texto oculto rodou (`hidden_scanned`), quantos trechos escondidos achou (`hidden_passages`) e quantos têm cara de instrução (`hidden_instructions`). Nunca texto do manuscrito.
+- **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções, as seções abaixo dos limites (`below_check`) o número de referências, de citações e de citações sem ligação, o número de figuras e tabelas e quantas foram descritas (`figures_described`), quantos trechos escondidos achou (`hidden_passages`) e quantos têm cara de instrução (`hidden_instructions`). Nunca texto do manuscrito.
 
 ## Retomada
 
@@ -210,8 +216,8 @@ precisa medir o limite de páginas e fazer a verificação de carga.
 - **Citações:** chamada em número sobrescrito ("…doença¹⁻³", comum na área da saúde) não é reconhecida; num artigo numérico, um intervalo como "[1, 2]" no meio de uma fórmula vira citação; no autor-ano, "Silva (2020)" com duas entradas de Silva 2020 que nem o segundo autor nem o "et al." desempatam fica sem ligação.
 - **Tabela cortada no meio:** a conferência só pega a tabela que vem só com o cabeçalho. A Table 11 do ICLR 410 veio com 67 números numa rodada e 181 na seguinte. Os números que vêm estão no PDF (100% nas 16 tabelas conferidas), mas pode faltar linha.
 - **Julgamento brando:** nas 19 figuras e tabelas da calibração, o modelo disse sempre que a figura sustenta as frases e não apontou nenhum problema. Serve de ponto de partida para o E2, não de veredito.
-- **Texto oculto:** texto atrás de uma imagem e o modo de renderização invisível não são procurados (o segundo é o que as camadas de OCR dos PDFs escaneados usam de propósito). O fundo é tomado como branco: texto branco numa caixa escura de uma figura conta como escondido. A busca leva de 1 a 8 s por artigo, e até 15 s num PDF com muitas figuras vetoriais.
-- **Texto oculto no contrato:** o `ExtractedDocument` traz `hidden_text_findings[]` e `hidden_text_checked`, mas o `render_for_llm()` não inclui esse texto: ele vai para a integridade, não para os avaliadores.
+- **Texto oculto:** o modo de renderização invisível (o das camadas de OCR dos PDFs escaneados) não é procurado. Texto branco numa caixa escura de uma figura conta como escondido.
+- **Texto oculto no contrato:** o `ExtractedDocument` traz `hidden_text_findings[]`, mas o `render_for_llm()` não inclui esse texto: ele vai para a integridade, não para os avaliadores.
 - **Ainda não feito:** o recorte da imagem (adiado). As 12 fixtures reais do PeerRead estão em `extractor/tests/fixtures/peerread/`.
 
 ## Como testar
