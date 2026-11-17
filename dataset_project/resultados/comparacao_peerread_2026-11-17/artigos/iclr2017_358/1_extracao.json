@@ -1,0 +1,1375 @@
+{
+  "sha256": "4e47db089a21301ac79cd9a39da86a1f3c041a68f85d07ef9a2edaf0a72a2219",
+  "version": "2a9b3bd344b6070b",
+  "created_at": "2026-11-17T03:14:32.071424+00:00",
+  "article": {
+    "title": "TOWARDS A NEURAL STATISTICIAN",
+    "authors": [
+      "Harrison Edwards",
+      "Amos Storkey"
+    ],
+    "language": "en",
+    "model": "google/gemini-2.5-flash",
+    "sections": [
+      {
+        "id": "sec_1",
+        "title": "ABSTRACT",
+        "level": 1,
+        "parent_id": null,
+        "key": "abstract",
+        "text": "An efficient learner is one who reuses what they already know to tackle a new problem. For a machine learner, this means understanding the similarities amongst datasets. In order to do this, one must take seriously the idea of working with datasets, rather than datapoints, as the key objects to model. Towards this goal, we demonstrate an extension of a variational autoencoder that can learn a method for computing representations, or statistics, of datasets in an unsupervised fashion. The network is trained to produce statistics that encapsulate a generative model for each dataset. Hence the network enables efficient learning from new datasets for both unsupervised and supervised tasks. We show that we are able to learn statistics that can be used for: clustering datasets, transferring generative models to new datasets, selecting representative samples of datasets and classifying previously unseen classes. We refer to our model as a neural statistician, and by this we mean a neural network that can learn to compute summary statistics of datasets without supervision.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_2",
+        "title": "1 INTRODUCTION",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "The machine learning community is well-practised at learning representations of data-points and sequences. A middle-ground between these two is representing, or summarizing, datasets - unordered collections of vectors, such as photos of a particular person, recordings of a given speaker or a doc-ument as a bag-of-words. Where these sets take the form of i.i.d samples from some distribution, such summaries are called statistics. We explore the idea of using neural networks to learn statistics and we refer to our approach as a neural statistician.\n\nThe key result of our approach is a statistic network that takes as input a set of vectors and outputs a vector of summary statistics specifying a generative model of that set a mean and variance specifying a Gaussian distribution in a latent space we term the context. The advantages of our approach are that it is:\n\n• Unsupervised: It provides principled and unsupervised way to learn summary statistics as the output of a variational encoder of a generative model.\n\n• Data efficient: If one has a large number of small but related datasets, modelling the datasets jointly enables us to gain statistical strength.\n\n• Parameter Efficient: By using summary statistics instead of say categorical labellings of each dataset, we decouple the number of parameters of the model from the number of datasets.\n\n• Capable of few-shot learning: If the datasets correspond to examples from different classes, class embeddings (summary statistics associated with examples from a class), allow us to handle new classes at test time.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_3",
+        "title": "2 PROBLEM STATEMENT",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We are given datasets D¿ for i ∈ I. Each dataset Di = {x1,...,Xk₁ } consists of a number of i.i.d samples from an associated distribution på over Rn. The task can be split into learning and inference components. The learning component is to produce a generative model îî¿ for each dataset Di. We assume there is a common underlying generative process p such that pi = p(·|ci) for ci ∈ R¹ drawn\nfrom p(c). We refer to c as the context. The inference component is to give an approximate posterior over the context q(c|D) for a given dataset produced by a statistic network.",
+        "has_footnotes": false,
+        "coverage": 0.8114478114478114,
+        "fidelity": 0.7631578947368421
+      },
+      {
+        "id": "sec_4",
+        "title": "3 NEURAL STATISTICIAN",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "from p(c). We refer to c as the context. The inference component is to give an approximate posterior over the context q(c|D) for a given dataset produced by a statistic network.\n\n3 NEURAL STATISTICIAN\n\nIn order to exploit the assumption of a hierarchical generative process over datasets we will use a 'parameter-transfer approach' (see Pan & Yang, 2010) to extend the variational autoencoder model of Kingma & Welling (2013).\n\nFigure 1: Left: basic hierarchical model, where the plate encodes the fact that the context variable c is shared across each item in a given dataset. Center: full neural statistician model with three latent layers z1, z2, z3. Each collection of incoming edges to a node is implemented as a neural network, the input of which is the concatenation of the edges’ sources, the output of which is a parameterization of a distribution over the random variable represented by that node. Right: The statistic network, which combines the data via an exchangeable statistic layer.",
+        "has_footnotes": false,
+        "coverage": 0.9208754208754208,
+        "fidelity": 0.7743589743589744
+      },
+      {
+        "id": "sec_5",
+        "title": "3.1 VARIATIONAL AUTOENCODER",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "The variational autoencoder is a latent variable model p(x|z; \nθ) (often called the decoder) with parameters θ. For each observed x, a corresponding latent variable z is drawn from p(z) so that\np(x) = ∫ p(x|z; θ)p(z) dz.\n\nThe generative parameters θ are learned by introducing a recognition network (also called an encoder) q(z|x; φ) with parameters φ. The recognition network gives an approximate posterior over the latent variables that can then be used to give the standard variational lower bound (Saul & Jordan, 1996) on the single-datum log-likelihood. I.e. log P(x|θ) ≥ Lx, where\nLx = Eq(z|x,φ) [log p(x|z; θ)] – DKL (q(z|x; φ)||p(z)) .\n\nLikewise the full-data log likelihood is lower bounded by the sum of the Lx terms over the whole dataset. We can then optimize this lower bound with respect to φ and θ using the reparameterization trick introduced by Kingma & Welling (2013) and Rezende et al. (2014) to get a Monte-Carlo estimate of the gradient.",
+        "has_footnotes": false,
+        "coverage": 0.9963702359346642,
+        "fidelity": 0.9457917261055635
+      },
+      {
+        "id": "sec_6",
+        "title": "3.2 BASIC MODEL",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "We extend the variational autoencoder to the model depicted on the left in Figure 1. This includes a latent variable c, the context, that varies between different datasets but is constant, a priori, for items within the same dataset. Now, the likelihood of the parameters @ for one single particular dataset D is given by\np(D) = p(c) \nLxED\np(x|z;0)p(z|c;0) dz dc.\n\nThe prior p(c) is chosen to be a spherical Gaussian with zero mean and unit variance. The condi-tional p(z|c; 0) is Gaussian with diagonal covariance, where all the mean and variance parameters depend on c through a neural network. Similarly the observation model p(x|z; 0) will be a simple likelihood function appropriate to the data modality with dependence on z parameterized by a neural network. For example, with real valued data, a diagonal Gaussian likelihood could be used where the mean and log variance of x are created from z via a neural network.\n\nWe use approximate inference networks q(z|x, c; φ), q(c|D; φ), with parameters collected into 4, to once again enable the calculation and optimization of a variational lower bound on the log-likelihood. The single dataset log likelihood lower bound is given by\nLD = Eq(c[D;$)\nLxEd\nEq(z|c,x;$) [log p(x|z;0)] – DKL (q(z|c, x; ¢)||p(z|c; 0))\n\nDKL (q(c|D; $)||p(c)).\n\nAs with the generative distributions, the likelihood forms for q(z|x, c; d) and q(c|D; $) are diagonal Gaussian distributions, where all the mean and log variance parameters in each distribution are pro-duced by a neural network taking the conditioning variables as inputs. Note that q(c|D; $) accepts as input a dataset D and we refer to this as the statistic network. We describe this in Subsection 3.4.\n\nThe full-data variational bound is given by summing the variational bound for each dataset in our collection of datasets. It is by learning the difference of the within-dataset and between-dataset distributions that we are able to discover an appropriate statistic network.",
+        "has_footnotes": false,
+        "coverage": 0.8867120954003407,
+        "fidelity": 0.8577154308617234
+      },
+      {
+        "id": "sec_7",
+        "title": "3.3 FULL MODEL",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "The basic model works well for modelling simple datasets, but struggles when the datasets have complex internal structure. To increase the sophistication of the model we use multiple stochastic layers z1,..., zk and introduce skip-connections for both the inference and generative networks. The generative model is shown graphically in Figure 1 in the center. The probability of a dataset D is then given by\n\np(D) = p(c) ∏ x∈D ∫ p(x|c, z1:L; θ)p(zL|c; θ) L−1∏ i=1 p(zi|zi+1, c; θ) dz1:L dc (5)\n\nwhere the p(zi|zi+1, c, θ) are again Gaussian distributions where the mean and log variance are given as the output of neural networks. The generative process for the full model is described in Algorithm 1.\n\nThe full approximate posterior factorizes analogously as\n\nq(c, z1:L|D; φ) = q(c|D; φ) ∏ x∈D ∫ q(z1|x, c; φ) L−1∏ i=1 q(zi|zi+1, x, c; φ). (6)\n\nFor convenience we give the variational lower bound as sum of a three parts, a reconstruction term RD, a context divergence CD and a latent divergence LD:\n\nLD = RD + CD + LD with\n\nRD = Eq(c|D;φ) ∑ x∈D Eq(z1:L|c,x;φ) log p(x|z1:L, c; θ) (7)\n\nCD = DKL (q(c|D; φ)||p(c)) (8)\n\nLD = Eq(c,z1:L|D;φ) ∑ x∈D DKL (q(zL|c, x; φ)||p(zL|c; θ)) (9)\n\n+ L−1∑ i=1 DKL (q(zi|zi+1, c, x; φ)||p(zi|zi+1, c; θ)) . (10)\n\nThe skip-connections p(zi|zi+1, c; θ) and q(zi|zi+1, x; φ) allow the context to specify a more precise distribution for each latent variable by explaining-away more generic aspects of the dataset at each stochastic layer. This architecture was inspired by recent work on probabilistic ladder networks in Kaae Sønderby et al. (2016). Complementing these are the skip-connections from each latent variable to the observation p(x|z1:L, c; θ), the intuition here is that each stochastic layer can focus on representing a certain level of abstraction, since its information does not need to be copied into the next layer, a similar approach was used in Maaløe et al. (2016).",
+        "has_footnotes": true,
+        "coverage": 0.7395918367346939,
+        "fidelity": 0.9328908554572272
+      },
+      {
+        "id": "sec_8",
+        "title": "3.4 STATISTIC NETWORK",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "In addition to the standard inference networks we require a statistic network q(c|D; φ) to give an approximate posterior over the context c given a dataset D = {x1,...,xk } . This inference network must capture the exchangeability of the data in D.\n\nWe use a feedforward neural network consisting of three main elements:\n\nAn instance encoder E that takes each individual datapoint xi to a vector ei = E(xi).\n\nAn exchangeable instance pooling layer that collapses the matrix (e1,..., ek) to a single pre-statistic vector v. Examples include elementwise means, sums, products, geometric means and maximum. We use the sample mean for all experiments.\n\nA final post-pooling network that takes v to a parameterization of a diagonal Gaussian.\n\nThe graphical model for this is given at the right of Figure 1.\n\nWe note that the humble sample mean already gives the statistic network a great deal of represen- tational power due to the fact that the instance encoder can learn a representation where averaging makes sense. For example since the instance encoder can approximate a polynomial on a compact domain, and so can the post-pooling network, a statistic network can approximate any moment of a distribution.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_9",
+        "title": "4 RELATED WORK",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Due to the general nature of the problem considered, our work touches on many different topics which we now attempt to summarize.\n\nTopic models and graphical models The form of the graphical model in Figure 1 on the left is equivalent to that of a standard topic model. In contrast to traditional topic models we do not use discrete latent variables, or restrict to discrete data. Work such as that by Ranganath et al. (2014) has extended topic models in various directions, but importantly we use flexible conditional distribu- tions and dependency structures parameterized by deep neural networks. Recent work has explored neural networks for document models (see e.g. Miao et al., 2015) but has been limited to modelling datapoints with little internal structure. Along related lines are ‘structured variational autoencoders' (see Johnson et al., 2016), where they treat the general problem of integrating graphical models with variational autoencoders.\n\nTransfer learning There is a considerable literature on transfer learning, for a survey see Pan & Yang (2010). There they discuss 'parameter-transfer' approaches whereby parameters or priors are shared across datasets, and our work fits into that paradigm. For examples see Lawrence & Platt (2004) where share they priors between Gaussian processes, and Evgeniou & Pontil (2004) where they take an SVM-like approach to share kernels.\n\nOne-shot Learning Learning quickly from small amounts of data is a topic of great interest. Lake et al. (2015) use Bayesian program induction for one-shot generation and classification, and Koch (2015) train a Siamese (Chopra et al. (2005)) convolutional network for one-shot image classifi- cation. We note the relation to the recent work (Rezende et al., 2016) in which the authors use a conditional recurrent variational autoencoder capable of one-shot generalization by taking as extra input a conditioning data point. The important differences here are that we jointly model datasets and datapoints and consider datasets of any size. Recent approaches to one-shot classification are matching networks (Vinyals et al., 2016b) (which was concurrent with the initial preprint of this work), and related previous work (Santoro et al., 2016). The former can be considered a kind of differentiable nearest neighbour classifier, and the latter augments their network with memory to store information about the classification problem. Both are trained end-to-end for the classification problem, whereas the present work is a general approach to learning representations of datasets. Probably the closest previous work is by Salakhutdinov et al. (2012) where the authors learn a topic model over the activations of a DBM for one-shot learning. Compared with their work we use mod- ern architectures and easier to train VAEs, in particular we have fast and amortized feedforward inference for test (and training) datasets, avoiding the need for MCMC.\n\nMultiple-Instance Learning There is previous work on classifying sets in multiple-instance learning, for a useful survey see Cheplygina et al. (2015). Typical approaches involve adapting kernel based methods such as support measure machines (Muandet et al., 2012), support distribu- tion machines (Póczos et al., 2012) and multiple-instance-kernels (Gartner et al., 2002). We do not consider applications to multiple-instance learning type problems here, but it may be fruitful to do so in the future.\n\nSet2Seq In very related work, Vinyals et al. (2016a) explore architectures for mapping sets to sequences. There they use an LSTM to repeatedly compute weighted-averages of the datapoints and use this to tackle problems such as sorting a list of numbers. The main difference between their work and ours is that they primarily consider supervised problems, whereas we present a general unsupervised method for learning representations of sets of i.i.d instances. In future work we may also explore recurrently computing statistics.\n\nABC There has also been work on learning summary statistics for Approximate Bayesian Com- putation by either learning to predict the parameters generating a sample as a supervised problem, or by using kernel embeddings as infinite dimensional summary statistics. See the work by Fukumizu et al. (2013) for an example of kernel-based approaches. More recently Jiang et al. (2015) used deep neural networks to predict the parameters generating the data. The crucial differences are that their problem is supervised, they do not leverage any exchangeability properties the data may have, nor can it deal with varying sample sizes.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_10",
+        "title": "5 EXPERIMENTAL RESULTS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Given an input set x1,... Xk we can use the statistic network to calculate an approximate posterior over contexts q(c|x1,...,xk; φ). Under the generative model, each context c specifies a conditional model p(x|c; θ). To get samples from the model corresponding to the most likely posterior value of c, we set c to the mean of the approximate posterior and then sample directly from the conditional distributions. This is described in Algorithm 2. We use this process in our experiments to show samples. In all experiments, we use the Adam optimization algorithm (Kingma & Ba, 2014) to optimize the parameters of the generative models and variational approximations. Batch normalization (Ioffe & Szegedy, 2015) is implemented for convolutional layers and we always use a batch size of 16. We primarily use the Theano (Theano Development Team, 2016) framework with the Lasagne (Dieleman et al., 2015) library, but the final experiments with face data were done using Tensorflow (Abadi et al., 2015). In all cases experiments were terminated after a given number of epochs when training appeared to have sufficiently converged (300 epochs for omniglot, youtube and spatial MNIST examples, and 50 epochs for the synthetic experiment).",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_11",
+        "title": "5.1 SIMPLE 1-D DISTRIBUTIONS",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "In our first experiment we wanted to know if the neural statistician will learn to cluster synthetic 1-D datasets by distribution family. We generated a collection of synthetic 1-D datasets each con-taining 200 samples. Datasets consist of samples from either an Exponential, Gaussian, Uniform or Laplacian distribution with equal probability. Means and variances are sampled from U[-1,1] and U[0.5, 2] respectively. The training data contains 10K sets.\n\nThe architecture for this experiment contains a single stochastic layer with 32 units for z and 3 units for c,. The model p(x|z, c; θ) and variational approximation q(z|x, c; φ) are each a diagonal Gaussian distribution with all mean and log variance parameters given by a network composed of three dense layers with ReLU activations and 128 units. The statistic network determining the mean and log variance parameters of posterior over context variables is composed of three dense layers before and after pooling, each with 128 units with Rectified Linear Unit (ReLU) activations.\n\nFigure 2 shows 3-D scatter plots of the summary statistics learned. Notice that the different families of distribution cluster. It is interesting to observe that the Exponential cluster is differently orientated to the others, perhaps reflecting the fact that it is the only non-symmetric distribution. We also see that between the Gaussian and Laplacian clusters there is an area of ambiguity which is as one might expect. We also see that within each cluster the mean and variance are mapped to orthogonal directions.",
+        "has_footnotes": false,
+        "coverage": 0.7948073701842546,
+        "fidelity": 0.9846153846153847
+      },
+      {
+        "id": "sec_12",
+        "title": "5.2 SPATIAL MNIST",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "Building on the previous experiments we investigate 2-D datasets that have complex structure, but the datapoints contain little in- formation by themselves, making it a good test of the statistic network. We created a dataset called spatial MNIST. In spatial MNIST each image from MNIST (LeCun et al., 1998) is turned into a dataset by interpreting the normalized pixel intensities as a probability density and sampling coordinate values. An ex- ample is shown in Figure 3. This creates two-dimensional spa- tial datasets. We used a sample size of 50. Note that since the pixel coordinates are discrete, it is necessary to dequantize them by adding uniform noise u ~ U[0, 1] to the coordinates if one models them as real numbers, else you can get arbitrarily high densities (see Theis et al. (2016) for a discussion of this point).\n\nThe generative architecture for this experiment contains 3 stochastic z layers, each with 2 units, and a single c layer with 64 units. The means and log variances of the Gaussian likelihood for p(x|21:3, c; 0), and each subnetwork for z in both the encoder and decoder contained 3 dense layers with 256 ReLU units each. The statistic network also contained 3 dense layers pre-pooling and 3 dense layers post pooling with 256 ReLU units.\n\nIn addition to being able to sample from the model conditioned on a set of inputs, we can also summarize a dataset by choosing a subset S C D to minimise the KL divergence of q(C|D; $) from q(CS; $). We do this greedily by iteratively discarding points from the full sample. Pseudocode for this process is given in Algorithm 3. The results are shown in Figure 4. We see that the model is capable of handling complex arrangements of datapoints. We also see that it can select sensible subsets of a dataset as a summary.",
+        "has_footnotes": false,
+        "coverage": 0.9496611810261375,
+        "fidelity": 0.949964260185847
+      },
+      {
+        "id": "sec_13",
+        "title": "5.3 OMNIGLOT",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "Next we work with the OMNIGLOT data (Lake et al., 2015). This contains 1628 classes of hand-written characters but with just 20 examples per class. This makes it an excellent test-bed for transfer / few-shot learning. We constructed datasets by splitting each class into datasets of size 5. We train on datasets drawn from 1200 classes and reserve the remaining classes to test few-shot sampling and classification. We created new classes by rotating and reflecting characters. We resized the images to 28 × 28. We sampled a binarization of each image for each epoch. We also randomly applied the dilation operator from computer vision as further data augmentation since we observed that the stroke widths are quite uniform in the OMNIGLOT data, whereas there is substantial variation in MNIST, this augmentation improved the visual quality of the few-shot MNIST samples consider-ably and increased the few-shot classification accuracy by about 3 percent. Finally we used 'sample dropout' whereby a random subset of each dataset was removed from the pooling in the statistic net-work, and then included the number of samples remaining as an extra feature. This was beneficial since it reduced overfitting and also allowed the statistic network to learn to adjust the approximate posterior over c based on the number of samples.\nWe used a single stochastic layer with 16 units for z, and 512 units for c. We used a shared convolu-tional encoder between the inference and statistic networks and a deconvolutional decoder network. Full details of the networks are given in Appendix B.1. The decoder used a Bernoulli likelihood.\nIn Figure 5 we show two examples of few-shot learning by conditioning on samples of unseen characters from OMNIGLOT, and conditioning on samples of digits from MNIST. The samples are mostly of a high-quality, and this shows that the neural statistician can generalize even to new datasets.\nAs a further test we considered few-shot classification of both unseen OMNIGLOT characters and MNIST digits. Given a sets of labelled examples of each class D0, ..., D9 (for MNIST say), we computed the approximate posteriors q(C|Di; φ) using the statistic network. Then for each test image x we also computed the posterior q(C|x; φ) and classified it according to the training dataset Di minimizing the KL divergence from the test context to the training context. This process is described in Algorithm 4. We tried this with either 1 or 5 labelled examples per class and either 5 or 20 classes. For each trial we randomly select K classes, randomly select training examples for each class, and test on the remaining examples. This process is repeated 100 times and the results averaged. The results are shown in Table 1. We compare to a number of results reported in Vinyals et al. (2016b) including Santoro et al. (2016) and Koch (2015). Overall we see that the neural statistician model can be used as a strong classifier, particularly for the 5-way tasks, but performs worse than matching networks for the 20-way tasks. One important advantage that matching networks have is that, whilst each class is processed independently in our model, the representation in matching networks is conditioned on all of the classes in the few-shot problem. This means that it can exaggerate differences between similar classes, which are more likely to appear in a 20-way problem than a 5-way problem.",
+        "has_footnotes": false,
+        "coverage": 0.8274911382434029,
+        "fidelity": 0.9930172730613744
+      },
+      {
+        "id": "sec_14",
+        "title": "5.4 YOUTUBE FACES",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "Finally, we provide a proof of concept for generating faces of a particular person. We use the Youtube Faces Database from Wolf et al. (2011). It contains 3, 245 videos of 1, 595 different people. We use the aligned and cropped to face version, resized to 64 × 64. The validation and test sets contain 100 unique people each, and there is no overlap of persons between data splits. The sets were created by sampling frames randomly without replacement from each video, we use a set size of 5 frames. We resample the sets for the training data each epoch.\n\nOur architecture for this problem is based on one presented in Lamb et al. (2016). We used a single stochastic layer with 500 dimensional latent c and 16 dimensional z variable. The statistic network and the inference network q(z|x, c; φ) share a common convolutional encoder, and the deocder uses deconvolutional layers. For full details see Appendix B.2. The likelihood function is a Gaussian, but where the variance parameters are shared across all datapoints, this was found to make training faster and more stable.\n\nThe results are shown in Figure 6. Whilst there is room for improvement, we see that it is possible to specify a complex distribution on-the-fly with a set of photos of a previously unseen person. The samples conditioned on an input set have a reasonable likeness of the input faces. We also show the ability of the model to generate new datasets and see that the samples have a consistent identity and varied poses.",
+        "has_footnotes": false,
+        "coverage": 0.8208373904576436,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_15",
+        "title": "6 CONCLUSION",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We have demonstrated a highly flexible model on a variety of tasks. Going forward our approach will naturally benefit from advances in generative models as we can simply upgrade our base generative model, and so future work will pursue this. Compared with some other approaches in the literature for few-shot learning, our requirement for supervision is weaker: we only ask at training time that we are given datasets, but we do not need labels for the datasets, nor even information on whether two datasets represent the same or different classes. It would be interesting then to explore application areas where only this weaker form of supervision is available. There are two important limitations to this work, firstly that the method is dataset hungry: it will likely not learn useful representations of datasets given only a small number of them. Secondly at test time the few-shot fit of the generative model will not be greatly improved by using larger datasets unless the model was also trained on similarly large datasets. The latter limitation seems like a promising future research direction - bridging the gap between fast adaptation and slow training.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_16",
+        "title": "ACKNOWLEDGMENTS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "This work was supported in part by the EPSRC Centre for Doctoral Training in Data Science, funded by the UK Engineering and Physical Sciences Research Council (grant EP/L016427/1) and the Uni- versity of Edinburgh.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_17",
+        "title": "REFERENCES",
+        "level": 1,
+        "parent_id": null,
+        "key": "references",
+        "text": "Martín Abadi, Ashish Agarwal, Paul Barham, Eugene Brevdo, and Zhifeng Chen et al. TensorFlow: Large-scale machine learning on heterogeneous systems, 2015. URL http://tensorflow. org/. Software available from tensorflow.org.\n\nVeronika Cheplygina, David M.J. Tax, and Marco Loog. On classification with bags, groups and sets. Pattern Recognition Letters, 59:11 – 17, 2015.\n\nS. Chopra, R. Hadsell, and Y. LeCun. Learning a similarity metric discriminatively, with applica- tion to face verification. In Computer Vision and Pattern Recognition, 2005. CVPR 2005. IEEE Computer Society Conference on, pp. 539–546 Vol. 1, June 2005.\n\nSander Dieleman, Jan Schlüter, Colin Raffel, Eben Olson, SK Sønderby, D Nouri, D Maturana, M Thoma, E Battenberg, J Kelly, et al. Lasagne: First release. Zenodo: Geneva, Switzerland, 2015.\n\nTheodoros Evgeniou and Massimiliano Pontil. Regularized multi-task learning. In Proceedings of the tenth ACM SIGKDD international conference on Knowledge discovery and data mining, pp. 109-117. ACM, 2004.\n\nKenji Fukumizu, Le Song, and Arthur Gretton. Kernel Bayes' rule: Bayesian inference with positive definite kernels. The Journal of Machine Learning Research, 14(1):3753–3783, 2013.\n\nThomas Gartner, Peter A. Flach, Adam Kowalczyk, and Alex J. Smola. Multi-instance kernels. In In Proc. 19th International Conf. on Machine Learning, pp. 179–186. Morgan Kaufmann, 2002.\n\nSergey Ioffe and Christian Szegedy. Batch normalization: Accelerating deep network training by re- ducing internal covariate shift. In Proceedings of The 32nd International Conference on Machine Learning, pp. 448-456, 2015.\n\nBai Jiang, Tung-yu Wu, Charles Zheng, and Wing H Wong. Learning summary statistic for approx- imate Bayesian computation via deep neural network. arXiv preprint arXiv:1510.02175, 2015.\n\nMatthew J Johnson, David Duvenaud, Alexander B Wiltschko, Sandeep R Datta, and Ryan P Adams. Structured vaes: Composing probabilistic graphical models and variational autoencoders. arXiv preprint arXiv:1603.06277, 2016.\n\nCasper Kaae Sønderby, Tapani Raiko, Lars Maaløe, Søren Kaae Sønderby, and Ole Winther. How to train deep variational autoencoders and probabilistic ladder networks. arXiv preprint arXiv:1602.02282, 2016.\n\nDiederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980, 2014.\n\nDiederik P Kingma and Max Welling. Auto-encoding variational Bayes. In Proceedings of the 2nd International Conference on Learning Representations (ICLR), number 2014, 2013.\n\nGregory Koch. Siamese neural networks for one-shot image recognition. Doctoral dissertation, University of Toronto, 2015.\n\nBrenden M Lake, Ruslan Salakhutdinov, and Joshua B Tenenbaum. Human-level concept learning through probabilistic program induction. Science, 350(6266):1332-1338, 2015.\n\nAlex Lamb, Vincent Dumoulin, and Aaron Courville. Discriminative regularization for generative models. arXiv preprint arXiv:1602.03220, 2016.\n\nNeil D Lawrence and John C Platt. Learning to learn with the informative vector machine. In Proceedings of the twenty-first international conference on Machine learning, pp. 65. ACM, 2004.\n\nYann LeCun, Léon Bottou, Yoshua Bengio, and Patrick Haffner. Gradient-based learning applied to document recognition. Proceedings of the IEEE, 86(11):2278–2324, 1998.\n\nLars Maaløe, Casper Kaae Sønderby, Søren Kaae Sønderby, and Ole Winther. Auxiliary deep gen- erative models. arXiv preprint arXiv:1602.05473, 2016.\n\nYishu Miao, Lei Yu, and Phil Blunsom. Neural variational inference for text processing. arXiv preprint arXiv:1511.06038, 2015.\n\nKrikamol Muandet, Kenji Fukumizu, Francesco Dinuzzo, and Bernhard Schlkopf. Learning from distributions via support measure machines. In P. Bartlett, FCN. Pereira, CJC. Burges, L. Bottou, and KQ. Weinberger (eds.), Advances in Neural Information Processing Systems 25, pp. 10–18. 2012.\n\nSinno Jialin Pan and Qiang Yang. A survey on transfer learning. Knowledge and Data Engineering, IEEE Transactions on, 22(10):1345–1359, 2010.\n\nBarnabás Póczos, Liang Xiong, Dougal J Sutherland, and Jeff Schneider. Support distribution ma- chines. Technical Report, 2012. URL http://arxiv.org/abs/1202.0302.\n\nRajesh Ranganath, Sean Gerrish, and David M Blei. Black box variational inference. In AISTATS, pp. 814-822, 2014.\n\nDanilo Jimenez Rezende, Shakir Mohamed, and Daan Wierstra. Stochastic backpropagation and approximate inference in deep generative models. In Proceedings of The 31st International Con- ference on Machine Learning, pp. 1278–1286, 2014.\n\nDanilo Jimenez Rezende, Shakir Mohamed, Ivo Danihelka, Karol Gregor, and Daan Wierstra. One- shot generalization in deep generative models. arXiv preprint arXiv:1603.05106, 2016.\n\nRuslan Salakhutdinov, Joshua B Tenenbaum, and Antonio Torralba. One-shot learning with a hi- erarchical nonparametric bayesian model. In ICML Unsupervised and Transfer Learning, pp. 195-206, 2012.\n\nAdam Santoro, Sergey Bartunov, Matthew Botvinick, Daan Wierstra, and Timothy Lillicrap. One- shot learning with memory-augmented neural networks. arXiv preprint arXiv:1605.06065, 2016.\n\nLawrence K Saul and Michael I Jordan. Exploiting tractable substructures in intractable networks. In Advances in Neural Processing Systems 8, 1996.\n\nTheano Development Team. Theano: A Python framework for fast computation of mathematical expressions. arXiv e-prints, abs/1605.02688, May 2016. URL http://arxiv.org/abs/ 1605.02688.\n\nL. Theis, A. van den Oord, and M. Bethge. A note on the evaluation of generative models. In International Conference on Learning Representations (ICLR), 2016.\n\nOriol Vinyals, Samy Bengio, and Manjunath Kudlur. Order matters: sequence to sequence for sets. In International Conference on Learning Representations (ICLR), 2016a.\n\nOriol Vinyals, Charles Blundell, Timothy Lillicrap, Koray Kavukcuoglu, and Daan Wierstra. Match- ing networks for one shot learning. arXiv preprint arXiv:1606.04080, 2016b.\n\nLior Wolf, Tal Hassner, and Itay Maoz. Face recognition in unconstrained videos with matched background similarity. In Computer Vision and Pattern Recognition (CVPR), 2011 IEEE Confer- ence on, pp. 529–534. IEEE, 2011.",
+        "has_footnotes": false,
+        "coverage": 0.9858342077649528,
+        "fidelity": 0.983989614885331
+      },
+      {
+        "id": "sec_18",
+        "title": "A APPENDIX A: PSEUDOCODE",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "",
+        "has_footnotes": false,
+        "coverage": null,
+        "fidelity": null
+      },
+      {
+        "id": "sec_19",
+        "title": "B APPENDIX B: FURTHER EXPERIMENTAL DETAILS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "",
+        "has_footnotes": false,
+        "coverage": null,
+        "fidelity": null
+      },
+      {
+        "id": "sec_20",
+        "title": "B.1 OMNIGLOT",
+        "level": 2,
+        "parent_id": "sec_19",
+        "key": null,
+        "text": "Shared encoder x → h\n2× { conv2d 64 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 64 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n2× {conv2d 128 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 128 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n2× { conv2d 256 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 256 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n\nStatistic network q(c|D; $) : h1, ..., hk → με, σ2\nfully-connected layer with 256 units and ELU activations\nsample-dropout and concatenation with number of samples\naverage pooling within each dataset\n2× {fully-connected layer with 256 units and ELU activations }\nfully-connected linear layers to με and log σc2\n\nInference network q(z|x, c; φ) : h, c → μz, σ2\nconcatenate c and h\n3× {fully-connected layer with 256 units and ELU activations }\nfully-connected linear layers to μz and log σz2\n\nLatent decoder network p(z|c; θ) : c → μz, σ2\n3× {fully-connected layer with 256 units and ELU activations }\nfully-connected linear layers to μz and log σz2\n\nObservation decoder network p(x|c, z; θ) : c, z → μx\nconcatenate z and c\nfully-connected linear layers with 4.4.256 units\n2× { conv2d 256 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 256 feature maps with 2 × 2 kernels, stride 2, ELU activations\n2× { conv2d 128 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 128 feature maps with 2 × 2 kernels, stride 2, ELU activations\n2× { conv2d 64 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 64 feature maps with 2 × 2 kernels, stride 2, ELU activations\nconv2d 1 feature map with 1 × 1 kernels, sigmoid activations",
+        "has_footnotes": false,
+        "coverage": 0.8167330677290837,
+        "fidelity": 0.8221925133689839
+      },
+      {
+        "id": "sec_21",
+        "title": "B.2 YOUTUBE FACES",
+        "level": 2,
+        "parent_id": "sec_19",
+        "key": null,
+        "text": "Shared encoder x → h2× { conv2d 32 feature maps with 3 × 3 kernels and ELU activations }conv2d 32 feature maps with 3 × 3 kernels, stride 2 and ELU activations2× {conv2d 64 feature maps with 3 × 3 kernels and ELU activations }conv2d 64 feature maps with 3 × 3 kernels, stride 2 and ELU activations2× { conv2d 128 feature maps with 3 × 3 kernels and ELU activations }conv2d 128 feature maps with 3 × 3 kernels, stride 2 and ELU activations2× { conv2d 256 feature maps with 3 × 3 kernels and ELU activations }conv2d 256 feature maps with 3 × 3 kernels, stride 2 and ELU activationsStatistic network q(c|D, $) : h1, ..., hk → με, σ2fully-connected layer with 1000 units and ELU activationsaverage pooling within each datasetfully-connected linear layers to με and log σεInference network q(z|x, c, ¢) : h, c → μz, σ2concatenate c and hfully-connected layer with 1000 units and ELU activationsfully-connected linear layers to µz and log σLatent decoder network p(z|c, ; 0) : c → μz, σεfully-connected layer with 1000 units and ELU activationsfully-connected linear layers to μ₂ and log σεObservation decoder network p(x|c, z; 0) : c, z → μαconcatenate z and cfully-connected layer with 1000 units and ELU activationsfully-connected linear layer with 8.8.256 units2× { conv2d 256 feature maps with 3 × 3 kernels and ELU activations }deconv2d 256 feature maps with 2 × 2 kernels, stride 2, ELU activations2x { conv2d 128 feature maps with 3 × 3 kernels and ELU activations }deconv2d 128 feature maps with 2 × 2 kernels, stride 2, ELU activations2× { conv2d 64 feature maps with 3 × 3 kernels and ELU activations }deconv2d 64 feature maps with 2 × 2 kernels, stride 2, ELU activations2× { conv2d 32 feature maps with 3 × 3 kernels and ELU activations }deconv2d 32 feature maps with 2 × 2 kernels, stride 2, ELU activationsconv2d 3 feature maps with 1 × 1 kernels, sigmoid activations",
+        "has_footnotes": false,
+        "coverage": 0.7695364238410596,
+        "fidelity": 0.7477477477477478
+      }
+    ],
+    "references": [
+      {
+        "id": "ref_1",
+        "raw": "Martín Abadi, Ashish Agarwal, Paul Barham, Eugene Brevdo, and Zhifeng Chen et al. TensorFlow: Large-scale machine learning on heterogeneous systems, 2015. URL http://tensorflow. org/. Software available from tensorflow.org.",
+        "marker": null,
+        "authors": [
+          "Martín Abadi",
+          "Ashish Agarwal",
+          "Paul Barham",
+          "Eugene Brevdo",
+          "Zhifeng Chen et al."
+        ],
+        "title": "TensorFlow: Large-scale machine learning on heterogeneous systems",
+        "year": "2015",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_2",
+        "raw": "Veronika Cheplygina, David M.J. Tax, and Marco Loog. On classification with bags, groups and sets. Pattern Recognition Letters, 59:11 – 17, 2015.",
+        "marker": null,
+        "authors": [
+          "Veronika Cheplygina",
+          "David M.J. Tax",
+          "Marco Loog"
+        ],
+        "title": "On classification with bags, groups and sets",
+        "year": "2015",
+        "venue": "Pattern Recognition Letters",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_3",
+        "raw": "S. Chopra, R. Hadsell, and Y. LeCun. Learning a similarity metric discriminatively, with applica- tion to face verification. In Computer Vision and Pattern Recognition, 2005. CVPR 2005. IEEE Computer Society Conference on, pp. 539–546 Vol. 1, June 2005.",
+        "marker": null,
+        "authors": [
+          "S. Chopra",
+          "R. Hadsell",
+          "Y. LeCun"
+        ],
+        "title": "Learning a similarity metric discriminatively, with applica- tion to face verification",
+        "year": "2005",
+        "venue": "Computer Vision and Pattern Recognition, 2005. CVPR 2005. IEEE Computer Society Conference on",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_4",
+        "raw": "Sander Dieleman, Jan Schlüter, Colin Raffel, Eben Olson, SK Sønderby, D Nouri, D Maturana, M Thoma, E Battenberg, J Kelly, et al. Lasagne: First release. Zenodo: Geneva, Switzerland, 2015.",
+        "marker": null,
+        "authors": [
+          "Sander Dieleman",
+          "Jan Schlüter",
+          "Colin Raffel",
+          "Eben Olson",
+          "SK Sønderby",
+          "D Nouri",
+          "D Maturana",
+          "M Thoma",
+          "E Battenberg",
+          "J Kelly",
+          "et al."
+        ],
+        "title": "Lasagne: First release",
+        "year": "2015",
+        "venue": "Zenodo: Geneva, Switzerland",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_5",
+        "raw": "Theodoros Evgeniou and Massimiliano Pontil. Regularized multi-task learning. In Proceedings of the tenth ACM SIGKDD international conference on Knowledge discovery and data mining, pp. 109-117. ACM, 2004.",
+        "marker": null,
+        "authors": [
+          "Theodoros Evgeniou",
+          "Massimiliano Pontil"
+        ],
+        "title": "Regularized multi-task learning",
+        "year": "2004",
+        "venue": "Proceedings of the tenth ACM SIGKDD international conference on Knowledge discovery and data mining",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_6",
+        "raw": "Kenji Fukumizu, Le Song, and Arthur Gretton. Kernel Bayes' rule: Bayesian inference with positive definite kernels. The Journal of Machine Learning Research, 14(1):3753–3783, 2013.",
+        "marker": null,
+        "authors": [
+          "Kenji Fukumizu",
+          "Le Song",
+          "Arthur Gretton"
+        ],
+        "title": "Kernel Bayes' rule: Bayesian inference with positive definite kernels",
+        "year": "2013",
+        "venue": "The Journal of Machine Learning Research",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_7",
+        "raw": "Thomas Gartner, Peter A. Flach, Adam Kowalczyk, and Alex J. Smola. Multi-instance kernels. In In Proc. 19th International Conf. on Machine Learning, pp. 179–186. Morgan Kaufmann, 2002.",
+        "marker": null,
+        "authors": [
+          "Thomas Gartner",
+          "Peter A. Flach",
+          "Adam Kowalczyk",
+          "Alex J. Smola"
+        ],
+        "title": "Multi-instance kernels",
+        "year": "2002",
+        "venue": "In Proc. 19th International Conf. on Machine Learning",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_8",
+        "raw": "Sergey Ioffe and Christian Szegedy. Batch normalization: Accelerating deep network training by re- ducing internal covariate shift. In Proceedings of The 32nd International Conference on Machine Learning, pp. 448-456, 2015.",
+        "marker": null,
+        "authors": [
+          "Sergey Ioffe",
+          "Christian Szegedy"
+        ],
+        "title": "Batch normalization: Accelerating deep network training by re- ducing internal covariate shift",
+        "year": "2015",
+        "venue": "Proceedings of The 32nd International Conference on Machine Learning",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_9",
+        "raw": "Bai Jiang, Tung-yu Wu, Charles Zheng, and Wing H Wong. Learning summary statistic for approx- imate Bayesian computation via deep neural network. arXiv preprint arXiv:1510.02175, 2015.",
+        "marker": null,
+        "authors": [
+          "Bai Jiang",
+          "Tung-yu Wu",
+          "Charles Zheng",
+          "Wing H Wong"
+        ],
+        "title": "Learning summary statistic for approx- imate Bayesian computation via deep neural network",
+        "year": "2015",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1510.02175"
+      },
+      {
+        "id": "ref_10",
+        "raw": "Matthew J Johnson, David Duvenaud, Alexander B Wiltschko, Sandeep R Datta, and Ryan P Adams. Structured vaes: Composing probabilistic graphical models and variational autoencoders. arXiv preprint arXiv:1603.06277, 2016.",
+        "marker": null,
+        "authors": [
+          "Matthew J Johnson",
+          "David Duvenaud",
+          "Alexander B Wiltschko",
+          "Sandeep R Datta",
+          "Ryan P Adams"
+        ],
+        "title": "Structured vaes: Composing probabilistic graphical models and variational autoencoders",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1603.06277"
+      },
+      {
+        "id": "ref_11",
+        "raw": "Casper Kaae Sønderby, Tapani Raiko, Lars Maaløe, Søren Kaae Sønderby, and Ole Winther. How to train deep variational autoencoders and probabilistic ladder networks. arXiv preprint arXiv:1602.02282, 2016.",
+        "marker": null,
+        "authors": [
+          "Casper Kaae Sønderby",
+          "Tapani Raiko",
+          "Lars Maaløe",
+          "Søren Kaae Sønderby",
+          "Ole Winther"
+        ],
+        "title": "How to train deep variational autoencoders and probabilistic ladder networks",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1602.02282"
+      },
+      {
+        "id": "ref_12",
+        "raw": "Diederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980, 2014.",
+        "marker": null,
+        "authors": [
+          "Diederik Kingma",
+          "Jimmy Ba"
+        ],
+        "title": "Adam: A method for stochastic optimization",
+        "year": "2014",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1412.6980"
+      },
+      {
+        "id": "ref_13",
+        "raw": "Diederik P Kingma and Max Welling. Auto-encoding variational Bayes. In Proceedings of the 2nd International Conference on Learning Representations (ICLR), number 2014, 2013.",
+        "marker": null,
+        "authors": [
+          "Diederik P Kingma",
+          "Max Welling"
+        ],
+        "title": "Auto-encoding variational Bayes",
+        "year": "2013",
+        "venue": "Proceedings of the 2nd International Conference on Learning Representations (ICLR)",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_14",
+        "raw": "Gregory Koch. Siamese neural networks for one-shot image recognition. Doctoral dissertation, University of Toronto, 2015.",
+        "marker": null,
+        "authors": [
+          "Gregory Koch"
+        ],
+        "title": "Siamese neural networks for one-shot image recognition",
+        "year": "2015",
+        "venue": "Doctoral dissertation, University of Toronto",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_15",
+        "raw": "Brenden M Lake, Ruslan Salakhutdinov, and Joshua B Tenenbaum. Human-level concept learning through probabilistic program induction. Science, 350(6266):1332-1338, 2015.",
+        "marker": null,
+        "authors": [
+          "Brenden M Lake",
+          "Ruslan Salakhutdinov",
+          "Joshua B Tenenbaum"
+        ],
+        "title": "Human-level concept learning through probabilistic program induction",
+        "year": "2015",
+        "venue": "Science",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_16",
+        "raw": "Alex Lamb, Vincent Dumoulin, and Aaron Courville. Discriminative regularization for generative models. arXiv preprint arXiv:1602.03220, 2016.",
+        "marker": null,
+        "authors": [
+          "Alex Lamb",
+          "Vincent Dumoulin",
+          "Aaron Courville"
+        ],
+        "title": "Discriminative regularization for generative models",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1602.03220"
+      },
+      {
+        "id": "ref_17",
+        "raw": "Neil D Lawrence and John C Platt. Learning to learn with the informative vector machine. In Proceedings of the twenty-first international conference on Machine learning, pp. 65. ACM, 2004.",
+        "marker": null,
+        "authors": [
+          "Neil D Lawrence",
+          "John C Platt"
+        ],
+        "title": "Learning to learn with the informative vector machine",
+        "year": "2004",
+        "venue": "Proceedings of the twenty-first international conference on Machine learning",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_18",
+        "raw": "Yann LeCun, Léon Bottou, Yoshua Bengio, and Patrick Haffner. Gradient-based learning applied to document recognition. Proceedings of the IEEE, 86(11):2278–2324, 1998.",
+        "marker": null,
+        "authors": [
+          "Yann LeCun",
+          "Léon Bottou",
+          "Yoshua Bengio",
+          "Patrick Haffner"
+        ],
+        "title": "Gradient-based learning applied to document recognition",
+        "year": "1998",
+        "venue": "Proceedings of the IEEE",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_19",
+        "raw": "Lars Maaløe, Casper Kaae Sønderby, Søren Kaae Sønderby, and Ole Winther. Auxiliary deep gen- erative models. arXiv preprint arXiv:1602.05473, 2016.",
+        "marker": null,
+        "authors": [
+          "Lars Maaløe",
+          "Casper Kaae Sønderby",
+          "Søren Kaae Sønderby",
+          "Ole Winther"
+        ],
+        "title": "Auxiliary deep gen- erative models",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1602.05473"
+      },
+      {
+        "id": "ref_20",
+        "raw": "Yishu Miao, Lei Yu, and Phil Blunsom. Neural variational inference for text processing. arXiv preprint arXiv:1511.06038, 2015.",
+        "marker": null,
+        "authors": [
+          "Yishu Miao",
+          "Lei Yu",
+          "Phil Blunsom"
+        ],
+        "title": "Neural variational inference for text processing",
+        "year": "2015",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1511.06038"
+      },
+      {
+        "id": "ref_21",
+        "raw": "Krikamol Muandet, Kenji Fukumizu, Francesco Dinuzzo, and Bernhard Schlkopf. Learning from distributions via support measure machines. In P. Bartlett, FCN. Pereira, CJC. Burges, L. Bottou, and KQ. Weinberger (eds.), Advances in Neural Information Processing Systems 25, pp. 10–18. 2012.",
+        "marker": null,
+        "authors": [
+          "Krikamol Muandet",
+          "Kenji Fukumizu",
+          "Francesco Dinuzzo",
+          "Bernhard Schlkopf"
+        ],
+        "title": "Learning from distributions via support measure machines",
+        "year": "2012",
+        "venue": "P. Bartlett, FCN. Pereira, CJC. Burges, L. Bottou, and KQ. Weinberger (eds.), Advances in Neural Information Processing Systems 25",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_22",
+        "raw": "Sinno Jialin Pan and Qiang Yang. A survey on transfer learning. Knowledge and Data Engineering, IEEE Transactions on, 22(10):1345–1359, 2010.",
+        "marker": null,
+        "authors": [
+          "Sinno Jialin Pan",
+          "Qiang Yang"
+        ],
+        "title": "A survey on transfer learning",
+        "year": "2010",
+        "venue": "Knowledge and Data Engineering, IEEE Transactions on",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_23",
+        "raw": "Barnabás Póczos, Liang Xiong, Dougal J Sutherland, and Jeff Schneider. Support distribution ma- chines. Technical Report, 2012. URL http://arxiv.org/abs/1202.0302.",
+        "marker": null,
+        "authors": [
+          "Barnabás Póczos",
+          "Liang Xiong",
+          "Dougal J Sutherland",
+          "Jeff Schneider"
+        ],
+        "title": "Support distribution ma- chines",
+        "year": "2012",
+        "venue": "Technical Report",
+        "doi": null,
+        "arxiv_id": "1202.0302"
+      },
+      {
+        "id": "ref_24",
+        "raw": "Rajesh Ranganath, Sean Gerrish, and David M Blei. Black box variational inference. In AISTATS, pp. 814-822, 2014.",
+        "marker": null,
+        "authors": [
+          "Rajesh Ranganath",
+          "Sean Gerrish",
+          "David M Blei"
+        ],
+        "title": "Black box variational inference",
+        "year": "2014",
+        "venue": "AISTATS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_25",
+        "raw": "Danilo Jimenez Rezende, Shakir Mohamed, and Daan Wierstra. Stochastic backpropagation and approximate inference in deep generative models. In Proceedings of The 31st International Con- ference on Machine Learning, pp. 1278–1286, 2014.",
+        "marker": null,
+        "authors": [
+          "Danilo Jimenez Rezende",
+          "Shakir Mohamed",
+          "Daan Wierstra"
+        ],
+        "title": "Stochastic backpropagation and approximate inference in deep generative models",
+        "year": "2014",
+        "venue": "Proceedings of The 31st International Con- ference on Machine Learning",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_26",
+        "raw": "Danilo Jimenez Rezende, Shakir Mohamed, Ivo Danihelka, Karol Gregor, and Daan Wierstra. One- shot generalization in deep generative models. arXiv preprint arXiv:1603.05106, 2016.",
+        "marker": null,
+        "authors": [
+          "Danilo Jimenez Rezende",
+          "Shakir Mohamed",
+          "Ivo Danihelka",
+          "Karol Gregor",
+          "Daan Wierstra"
+        ],
+        "title": "One- shot generalization in deep generative models",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1603.05106"
+      },
+      {
+        "id": "ref_27",
+        "raw": "Ruslan Salakhutdinov, Joshua B Tenenbaum, and Antonio Torralba. One-shot learning with a hi- erarchical nonparametric bayesian model. In ICML Unsupervised and Transfer Learning, pp. 195-206, 2012.",
+        "marker": null,
+        "authors": [
+          "Ruslan Salakhutdinov",
+          "Joshua B Tenenbaum",
+          "Antonio Torralba"
+        ],
+        "title": "One-shot learning with a hi- erarchical nonparametric bayesian model",
+        "year": "2012",
+        "venue": "ICML Unsupervised and Transfer Learning",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_28",
+        "raw": "Adam Santoro, Sergey Bartunov, Matthew Botvinick, Daan Wierstra, and Timothy Lillicrap. One- shot learning with memory-augmented neural networks. arXiv preprint arXiv:1605.06065, 2016.",
+        "marker": null,
+        "authors": [
+          "Adam Santoro",
+          "Sergey Bartunov",
+          "Matthew Botvinick",
+          "Daan Wierstra",
+          "Timothy Lillicrap"
+        ],
+        "title": "One- shot learning with memory-augmented neural networks",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1605.06065"
+      },
+      {
+        "id": "ref_29",
+        "raw": "Lawrence K Saul and Michael I Jordan. Exploiting tractable substructures in intractable networks. In Advances in Neural Processing Systems 8, 1996.",
+        "marker": null,
+        "authors": [
+          "Lawrence K Saul",
+          "Michael I Jordan"
+        ],
+        "title": "Exploiting tractable substructures in intractable networks",
+        "year": "1996",
+        "venue": "Advances in Neural Processing Systems 8",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_30",
+        "raw": "Theano Development Team. Theano: A Python framework for fast computation of mathematical expressions. arXiv e-prints, abs/1605.02688, May 2016. URL http://arxiv.org/abs/ 1605.02688.",
+        "marker": null,
+        "authors": [
+          "Theano Development Team"
+        ],
+        "title": "Theano: A Python framework for fast computation of mathematical expressions",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1605.02688"
+      },
+      {
+        "id": "ref_31",
+        "raw": "L. Theis, A. van den Oord, and M. Bethge. A note on the evaluation of generative models. In International Conference on Learning Representations (ICLR), 2016.",
+        "marker": null,
+        "authors": [
+          "L. Theis",
+          "A. van den Oord",
+          "M. Bethge"
+        ],
+        "title": "A note on the evaluation of generative models",
+        "year": "2016",
+        "venue": "International Conference on Learning Representations (ICLR)",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_32",
+        "raw": "Oriol Vinyals, Samy Bengio, and Manjunath Kudlur. Order matters: sequence to sequence for sets. In International Conference on Learning Representations (ICLR), 2016a.",
+        "marker": null,
+        "authors": [
+          "Oriol Vinyals",
+          "Samy Bengio",
+          "Manjunath Kudlur"
+        ],
+        "title": "Order matters: sequence to sequence for sets",
+        "year": "2016a",
+        "venue": "International Conference on Learning Representations (ICLR)",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_33",
+        "raw": "Oriol Vinyals, Charles Blundell, Timothy Lillicrap, Koray Kavukcuoglu, and Daan Wierstra. Match- ing networks for one shot learning. arXiv preprint arXiv:1606.04080, 2016b.",
+        "marker": null,
+        "authors": [
+          "Oriol Vinyals",
+          "Charles Blundell",
+          "Timothy Lillicrap",
+          "Koray Kavukcuoglu",
+          "Daan Wierstra"
+        ],
+        "title": "Match- ing networks for one shot learning",
+        "year": "2016b",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1606.04080"
+      },
+      {
+        "id": "ref_34",
+        "raw": "Lior Wolf, Tal Hassner, and Itay Maoz. Face recognition in unconstrained videos with matched background similarity. In Computer Vision and Pattern Recognition (CVPR), 2011 IEEE Confer- ence on, pp. 529–534. IEEE, 2011.",
+        "marker": null,
+        "authors": [
+          "Lior Wolf",
+          "Tal Hassner",
+          "Itay Maoz"
+        ],
+        "title": "Face recognition in unconstrained videos with matched background similarity",
+        "year": "2011",
+        "venue": "Computer Vision and Pattern Recognition (CVPR), 2011 IEEE Confer- ence on",
+        "doi": null,
+        "arxiv_id": null
+      }
+    ],
+    "citations": [
+      {
+        "reference_id": "ref_13",
+        "marker": "Kingma & Welling (2013)",
+        "sentence": "In order to exploit the assumption of a hierarchical generative process over datasets we will use a 'parameter-transfer approach' (see Pan & Yang, 2010) to extend the variational autoencoder model of Kingma & Welling (2013).",
+        "section_id": "sec_4",
+        "start": 402,
+        "end": 425
+      },
+      {
+        "reference_id": "ref_22",
+        "marker": "Pan & Yang, 2010",
+        "sentence": "In order to exploit the assumption of a hierarchical generative process over datasets we will use a 'parameter-transfer approach' (see Pan & Yang, 2010) to extend the variational autoencoder model of Kingma & Welling (2013).",
+        "section_id": "sec_4",
+        "start": 337,
+        "end": 353
+      },
+      {
+        "reference_id": "ref_13",
+        "marker": "Kingma & Welling (2013)",
+        "sentence": "We can then optimize this lower bound with respect to φ and θ using the reparameterization trick introduced by Kingma & Welling (2013) and Rezende et al. (2014) to get a Monte-Carlo estimate of the gradient.",
+        "section_id": "sec_5",
+        "start": 862,
+        "end": 885
+      },
+      {
+        "reference_id": "ref_25",
+        "marker": "Rezende et al. (2014)",
+        "sentence": "We can then optimize this lower bound with respect to φ and θ using the reparameterization trick introduced by Kingma & Welling (2013) and Rezende et al. (2014) to get a Monte-Carlo estimate of the gradient.",
+        "section_id": "sec_5",
+        "start": 890,
+        "end": 911
+      },
+      {
+        "reference_id": "ref_29",
+        "marker": "Saul & Jordan, 1996",
+        "sentence": "The recognition network gives an approximate posterior over the latent variables that can then be used to give the standard variational lower bound (Saul & Jordan, 1996) on the single-datum log-likelihood.",
+        "section_id": "sec_5",
+        "start": 502,
+        "end": 521
+      },
+      {
+        "reference_id": "ref_11",
+        "marker": "Sønderby et al. (2016)",
+        "sentence": "This architecture was inspired by recent work on probabilistic ladder networks in Kaae Sønderby et al. (2016).",
+        "section_id": "sec_7",
+        "start": 1554,
+        "end": 1576
+      },
+      {
+        "reference_id": "ref_19",
+        "marker": "Maaløe et al. (2016)",
+        "sentence": "Complementing these are the skip-connections from each latent variable to the observation p(x|z1:L, c; θ), the intuition here is that each stochastic layer can focus on representing a certain level of abstraction, since its information does not need to be copied into the next layer, a similar approach was used in Maaløe et al. (2016).",
+        "section_id": "sec_7",
+        "start": 1893,
+        "end": 1913
+      },
+      {
+        "reference_id": "ref_24",
+        "marker": "Ranganath et al. (2014)",
+        "sentence": "Work such as that by Ranganath et al. (2014) has extended topic models in various directions, but importantly we use flexible conditional distribu- tions and dependency structures parameterized by deep neural networks.",
+        "section_id": "sec_9",
+        "start": 402,
+        "end": 425
+      },
+      {
+        "reference_id": "ref_22",
+        "marker": "Pan & Yang (2010)",
+        "sentence": "Transfer learning There is a considerable literature on transfer learning, for a survey see Pan & Yang (2010).",
+        "section_id": "sec_9",
+        "start": 1050,
+        "end": 1067
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Lawrence & Platt (2004)",
+        "sentence": "For examples see Lawrence & Platt (2004) where share they priors between Gaussian processes, and Evgeniou & Pontil (2004) where they take an SVM-like approach to share kernels.",
+        "section_id": "sec_9",
+        "start": 1232,
+        "end": 1255
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Evgeniou & Pontil (2004)",
+        "sentence": "For examples see Lawrence & Platt (2004) where share they priors between Gaussian processes, and Evgeniou & Pontil (2004) where they take an SVM-like approach to share kernels.",
+        "section_id": "sec_9",
+        "start": 1312,
+        "end": 1336
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Lake et al. (2015)",
+        "sentence": "Lake et al. (2015) use Bayesian program induction for one-shot generation and classification, and Koch (2015) train a Siamese (Chopra et al. (2005)) convolutional network for one-shot image classifi- cation.",
+        "section_id": "sec_9",
+        "start": 1485,
+        "end": 1503
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "Koch (2015)",
+        "sentence": "Lake et al. (2015) use Bayesian program induction for one-shot generation and classification, and Koch (2015) train a Siamese (Chopra et al. (2005)) convolutional network for one-shot image classifi- cation.",
+        "section_id": "sec_9",
+        "start": 1583,
+        "end": 1594
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Chopra et al. (2005)",
+        "sentence": "Lake et al. (2015) use Bayesian program induction for one-shot generation and classification, and Koch (2015) train a Siamese (Chopra et al. (2005)) convolutional network for one-shot image classifi- cation.",
+        "section_id": "sec_9",
+        "start": 1612,
+        "end": 1632
+      },
+      {
+        "reference_id": "ref_27",
+        "marker": "Salakhutdinov et al. (2012)",
+        "sentence": "Probably the closest previous work is by Salakhutdinov et al. (2012) where the authors learn a topic model over the activations of a DBM for one-shot learning.",
+        "section_id": "sec_9",
+        "start": 2614,
+        "end": 2641
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Cheplygina et al. (2015)",
+        "sentence": "Multiple-Instance Learning There is previous work on classifying sets in multiple-instance learning, for a useful survey see Cheplygina et al. (2015).",
+        "section_id": "sec_9",
+        "start": 3065,
+        "end": 3089
+      },
+      {
+        "reference_id": "ref_32",
+        "marker": "Vinyals et al. (2016a)",
+        "sentence": "Set2Seq In very related work, Vinyals et al. (2016a) explore architectures for mapping sets to sequences.",
+        "section_id": "sec_9",
+        "start": 3473,
+        "end": 3495
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Fukumizu et al. (2013)",
+        "sentence": "See the work by Fukumizu et al. (2013) for an example of kernel-based approaches.",
+        "section_id": "sec_9",
+        "start": 4253,
+        "end": 4275
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Jiang et al. (2015)",
+        "sentence": "More recently Jiang et al. (2015) used deep neural networks to predict the parameters generating the data.",
+        "section_id": "sec_9",
+        "start": 4333,
+        "end": 4352
+      },
+      {
+        "reference_id": "ref_20",
+        "marker": "e.g. Miao et al., 2015",
+        "sentence": "Recent work has explored neural networks for document models (see e.g. Miao et al., 2015) but has been limited to modelling datapoints with little internal structure.",
+        "section_id": "sec_9",
+        "start": 666,
+        "end": 688
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Johnson et al., 2016",
+        "sentence": "Along related lines are ‘structured variational autoencoders' (see Johnson et al., 2016), where they treat the general problem of integrating graphical models with variational autoencoders.",
+        "section_id": "sec_9",
+        "start": 834,
+        "end": 854
+      },
+      {
+        "reference_id": "ref_26",
+        "marker": "Rezende et al., 2016",
+        "sentence": "We note the relation to the recent work (Rezende et al., 2016) in which the authors use a conditional recurrent variational autoencoder capable of one-shot generalization by taking as extra input a conditioning data point.",
+        "section_id": "sec_9",
+        "start": 1734,
+        "end": 1754
+      },
+      {
+        "reference_id": "ref_33",
+        "marker": "Vinyals et al., 2016b",
+        "sentence": "Recent approaches to one-shot classification are matching networks (Vinyals et al., 2016b) (which was concurrent with the initial preprint of this work), and related previous work (Santoro et al., 2016).",
+        "section_id": "sec_9",
+        "start": 2100,
+        "end": 2121
+      },
+      {
+        "reference_id": "ref_28",
+        "marker": "Santoro et al., 2016",
+        "sentence": "Recent approaches to one-shot classification are matching networks (Vinyals et al., 2016b) (which was concurrent with the initial preprint of this work), and related previous work (Santoro et al., 2016).",
+        "section_id": "sec_9",
+        "start": 2213,
+        "end": 2233
+      },
+      {
+        "reference_id": "ref_21",
+        "marker": "Muandet et al., 2012",
+        "sentence": "Typical approaches involve adapting kernel based methods such as support measure machines (Muandet et al., 2012), support distribu- tion machines (Póczos et al., 2012) and multiple-instance-kernels (Gartner et al., 2002).",
+        "section_id": "sec_9",
+        "start": 3182,
+        "end": 3202
+      },
+      {
+        "reference_id": "ref_23",
+        "marker": "Póczos et al., 2012",
+        "sentence": "Typical approaches involve adapting kernel based methods such as support measure machines (Muandet et al., 2012), support distribu- tion machines (Póczos et al., 2012) and multiple-instance-kernels (Gartner et al., 2002).",
+        "section_id": "sec_9",
+        "start": 3238,
+        "end": 3257
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Gartner et al., 2002",
+        "sentence": "Typical approaches involve adapting kernel based methods such as support measure machines (Muandet et al., 2012), support distribu- tion machines (Póczos et al., 2012) and multiple-instance-kernels (Gartner et al., 2002).",
+        "section_id": "sec_9",
+        "start": 3290,
+        "end": 3310
+      },
+      {
+        "reference_id": "ref_12",
+        "marker": "Kingma & Ba, 2014",
+        "sentence": "In all experiments, we use the Adam optimization algorithm (Kingma & Ba, 2014) to optimize the parameters of the generative models and variational approximations.",
+        "section_id": "sec_10",
+        "start": 563,
+        "end": 580
+      },
+      {
+        "reference_id": "ref_8",
+        "marker": "Ioffe & Szegedy, 2015",
+        "sentence": "Batch normalization (Ioffe & Szegedy, 2015) is implemented for convolutional layers and we always use a batch size of 16.",
+        "section_id": "sec_10",
+        "start": 687,
+        "end": 708
+      },
+      {
+        "reference_id": null,
+        "marker": "Theano Development Team, 2016",
+        "sentence": "We primarily use the Theano (Theano Development Team, 2016) framework with the Lasagne (Dieleman et al., 2015) library, but the final experiments with face data were done using Tensorflow (Abadi et al., 2015).",
+        "section_id": "sec_10",
+        "start": 817,
+        "end": 846
+      },
+      {
+        "reference_id": "ref_4",
+        "marker": "Dieleman et al., 2015",
+        "sentence": "We primarily use the Theano (Theano Development Team, 2016) framework with the Lasagne (Dieleman et al., 2015) library, but the final experiments with face data were done using Tensorflow (Abadi et al., 2015).",
+        "section_id": "sec_10",
+        "start": 876,
+        "end": 897
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Abadi et al., 2015",
+        "sentence": "We primarily use the Theano (Theano Development Team, 2016) framework with the Lasagne (Dieleman et al., 2015) library, but the final experiments with face data were done using Tensorflow (Abadi et al., 2015).",
+        "section_id": "sec_10",
+        "start": 977,
+        "end": 995
+      },
+      {
+        "reference_id": "ref_31",
+        "marker": "Theis et al. (2016)",
+        "sentence": "Note that since the pixel coordinates are discrete, it is necessary to dequantize them by adding uniform noise u ~ U[0, 1] to the coordinates if one models them as real numbers, else you can get arbitrarily high densities (see Theis et al. (2016) for a discussion of this point).",
+        "section_id": "sec_12",
+        "start": 779,
+        "end": 798
+      },
+      {
+        "reference_id": "ref_18",
+        "marker": "LeCun et al., 1998",
+        "sentence": "In spatial MNIST each image from MNIST (LeCun et al., 1998) is turned into a dataset by interpreting the normalized pixel intensities as a probability density and sampling coordinate values.",
+        "section_id": "sec_12",
+        "start": 288,
+        "end": 306
+      },
+      {
+        "reference_id": "ref_33",
+        "marker": "Vinyals et al. (2016b)",
+        "sentence": "We compare to a number of results reported in Vinyals et al. (2016b) including Santoro et al. (2016) and Koch (2015).",
+        "section_id": "sec_13",
+        "start": 2782,
+        "end": 2804
+      },
+      {
+        "reference_id": "ref_28",
+        "marker": "Santoro et al. (2016)",
+        "sentence": "We compare to a number of results reported in Vinyals et al. (2016b) including Santoro et al. (2016) and Koch (2015).",
+        "section_id": "sec_13",
+        "start": 2815,
+        "end": 2836
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "Koch (2015)",
+        "sentence": "We compare to a number of results reported in Vinyals et al. (2016b) including Santoro et al. (2016) and Koch (2015).",
+        "section_id": "sec_13",
+        "start": 2841,
+        "end": 2852
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Lake et al., 2015",
+        "sentence": "Next we work with the OMNIGLOT data (Lake et al., 2015).",
+        "section_id": "sec_13",
+        "start": 37,
+        "end": 54
+      },
+      {
+        "reference_id": "ref_34",
+        "marker": "Wolf et al. (2011)",
+        "sentence": "We use the Youtube Faces Database from Wolf et al. (2011).",
+        "section_id": "sec_14",
+        "start": 123,
+        "end": 141
+      },
+      {
+        "reference_id": "ref_16",
+        "marker": "Lamb et al. (2016)",
+        "sentence": "Our architecture for this problem is based on one presented in Lamb et al. (2016).",
+        "section_id": "sec_14",
+        "start": 619,
+        "end": 637
+      }
+    ],
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "label": "Figure 1",
+        "number": "1",
+        "page": 2,
+        "caption": "Figure 1: Left: basic hierarchical model, where the plate encodes the fact that the context variable c is shared across each item in a given dataset. Center: full neural statistician model with three latent layers z1, z2, z3. Each collection of incoming edges to a node is implemented as a neural network, the input of which is the concatenation of the edges' sources, the output of which is a parameterization of a distribution over the random variable represented by that node. Right: The statistic network, which combines the data via an exchangeable statistic layer.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This figure displays three graphical models. The left panel shows a basic hierarchical model with a context variable 'c' shared across items 'X' within a dataset, represented by a plate. The center panel illustrates a full neural statistician model with three latent layers (z1, z2, z3) and a context variable 'c', where connections are implemented as neural networks. The right panel depicts the statistic network, which combines data 'X' through an exchangeable statistic layer to produce parameters for a distribution over 'c' (μc, σc).",
+          "data_read": [
+            "Left panel: Nodes 'c' and 'z', with 'X' inside a plate. An arrow goes from 'c' to 'z', and from 'z' to 'X'.",
+            "Center panel: Nodes 'c', 'z1', 'z2', 'z3', and 'X'. Arrows indicate dependencies: 'c' to 'z3', 'z3' to 'z2', 'z2' to 'z1', and 'z1' to 'X'. Additionally, 'c' has skip connections to 'z2', 'z1', and 'X'.",
+            "Right panel: Nodes 'X', 'e1', 'e2', 'e3', 'v', 'μc', and 'σc'. Arrows show 'X' feeding into 'e1', 'e2', 'e3' (within a plate), which then feed into 'v'. 'v' then feeds into 'μc' and 'σc'."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure visually represents the three models as described in the text: the basic hierarchical model (left), the full neural statistician model with three latent layers (center), and the statistic network (right). The graphical elements like plates and arrows correctly depict the shared context variable 'c' and the flow of information through latent layers and neural networks as stated in the claims.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "label": "Figure 2",
+        "number": "2",
+        "page": 6,
+        "caption": "Figure 2: Three different views of the same data. Each point is the mean of the approximate posterior over the context q(c|D; φ) where c∈ R³. Each point is a summary statistic for a single dataset with 200 samples. Top plot shows points colored by distribution family, left plot colored by the mean and right plot colored by the variance. The plots have been rotated to illustrative angles.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "scatter plot",
+          "description": "This figure displays three 3-D scatter plots of summary statistics. Each point represents the mean of the approximate posterior over the context q(c|D; φ) for a single dataset with 200 samples. The top plot colors points by distribution family (Gaussian, Exponential, Laplacian, Uniform), the left plot colors points by their mean, and the right plot colors points by their variance. The plots are rotated to illustrative angles.",
+          "data_read": [
+            "Top plot: Points are clustered by distribution family. Gaussian, Laplacian, and Uniform distributions form distinct clusters, while the Exponential cluster is oriented differently.",
+            "Left plot: Points are colored by 'Mean' ranging from approximately -0.8 to 0.8. There is a color gradient from dark blue (low mean) to red (high mean).",
+            "Right plot: Points are colored by 'Variance' ranging from approximately 0.6 to 1.8. There is a color gradient from dark blue (low variance) to red (high variance).",
+            "Within each cluster, the mean and variance appear to be mapped to orthogonal directions."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure clearly shows 3-D scatter plots of learned summary statistics. The caption states that the points are colored by distribution family, mean, and variance, which is visually confirmed. The article claims that 'the different families of distribution cluster' and 'the Exponential cluster is differently orientated to the others', which is evident in the top plot. It also states that 'between the Gaussian and Laplacian clusters there is an area of ambiguity', which can be observed as some overlap. Finally, the claim that 'within each cluster the mean and variance are mapped to orthogonal directions' is supported by the distinct color gradients in the left and right plots within the clusters.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_3",
+        "kind": "figure",
+        "label": "Figure 3",
+        "number": "3",
+        "page": 6,
+        "caption": "Figure 3: An image from MNIST on the left, transformed to a set of 50 (x, y) coordinates, shown as a scatter plot on the right.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "image and scatter plot",
+          "description": "The figure displays an example of an MNIST digit (a handwritten '5') on the left, and its transformation into a scatter plot of 50 (x, y) coordinates on the right. The scatter plot visually represents the spatial distribution of the digit's pixels.",
+          "data_read": [
+            "Left image: A handwritten digit '5' from the MNIST dataset, rendered as a grayscale image.",
+            "Right plot: A scatter plot with 50 points, each representing an (x, y) coordinate. The points form a shape resembling the digit '5', indicating the spatial distribution of the original image's pixels."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure clearly shows an MNIST image on the left and its transformation into a scatter plot of 50 (x, y) coordinates on the right, directly illustrating the example mentioned in the text.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "label": "Figure 4",
+        "number": "4",
+        "page": 7,
+        "caption": "Figure 4: Conditioned samples from spatial MNIST data. Blue and red digits are the input sets, black digits above correspond to samples given the input. Red points correspond to a 6-sample summary of the dataset",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "grid of images",
+          "description": "This figure displays two rows of handwritten digits, likely from the MNIST dataset. The blue and red digits in the first row represent input sets, while the black digits above them are samples conditioned on these inputs. The second row shows a 6-sample summary of the dataset, with red points highlighting these summary samples.",
+          "data_read": [
+            "The first row shows pairs of digits. The bottom digit in each pair is either blue or red, representing an input. The top digit in each pair is black, representing a sample conditioned on the input.",
+            "Examples of input digits (blue/red) include '3', '1', '3', '7', '2', '7', '1', '3', '1'.",
+            "Examples of conditioned samples (black) include '3', '1', '3', '7', '2', '7', '1', '2', '8'.",
+            "The second row displays a grid of digits, where some digits are highlighted with red points, indicating a 6-sample summary of the dataset. These digits appear to be '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' repeated multiple times."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure visually demonstrates the model's ability to generate samples conditioned on input digits (blue and red) and to select sensible subsets of a dataset as a summary (red points in the 6-sample summary). This directly supports the claim that 'The results are shown in Figure 4' and that 'the model is capable of handling complex arrangements of datapoints. We also see that it can select sensible subsets of a dataset as a summary.'",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_5",
+        "kind": "figure",
+        "label": "Figure 5",
+        "number": "5",
+        "page": 7,
+        "caption": "Figure 5: Few-shot learning Left: Few-shot learning from OMNIGLOT to MNIST. Left rows are input sets, right rows are samples given the inputs. Right: Few-shot learning from with OMNIGLOT data to unseen classes. Left rows are input sets, right rows are samples given the inputs. Black-white inversion is applied for ease of viewing.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "image grid",
+          "description": "This figure displays two examples of few-shot learning. The left panel shows learning from OMNIGLOT characters to MNIST digits, while the right panel shows learning from OMNIGLOT data to unseen OMNIGLOT classes. Each example consists of input sets (left rows) and generated samples based on these inputs (right rows). Black-white inversion is applied for better viewing.",
+          "data_read": [
+            "Left panel: Input sets are rows of OMNIGLOT characters (e.g., '0', '1', '2', '3', '4', '5', '6', '7', '8', '9').",
+            "Left panel: Corresponding right rows show generated MNIST-like digits that resemble the input OMNIGLOT characters.",
+            "Right panel: Input sets are rows of OMNIGLOT characters (e.g., 'ε', 'A', 'P', 'p', 'o', '>', 'S').",
+            "Right panel: Corresponding right rows show generated OMNIGLOT characters that resemble the input characters, demonstrating generalization to unseen classes.",
+            "The generated samples appear to be of high quality, accurately reflecting the style and identity of the input characters/digits."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure clearly shows two examples of few-shot learning as described in the text. The left side demonstrates conditioning on samples of MNIST digits, where the generated samples (right rows) successfully mimic the input OMNIGLOT characters (left rows) in the style of MNIST. The right side shows conditioning on samples of unseen OMNIGLOT characters, and the generated samples (right rows) accurately reproduce the input OMNIGLOT characters (left rows), indicating generalization to new datasets. The visual quality of the samples supports the claim that the neural statistician can generalize.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "label": "Table 1",
+        "number": "1",
+        "page": 8,
+        "caption": "Table 1: The table shows the classification accuracies of various few-shot learning tasks. Models are trained on OMNIGLOT data and tested on either unseen OMNIGLOT classes or MNIST with vary- ing numbers of samples per class (K-shot) with varying numbers of classes (K-way). Comparisons are to Vinyals et al. (2016b) (Matching), Santoro et al. (2016) (MANN) and Koch (2015) (Siamese). 5-shot MNIST results are included for completeness.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the classification accuracies of different few-shot learning models across various tasks. The models are trained on OMNIGLOT data and evaluated on either unseen OMNIGLOT classes or MNIST digits, with varying numbers of samples per class (K-shot) and varying numbers of classes (K-way). It compares the performance of the proposed 'Ours' model against existing methods: Siamese, MANN, and Matching.",
+          "data_read": [
+            "The table has columns: 'Test Dataset', 'K Shot', 'K Way', 'Siamese', 'MANN', 'Matching', and 'Ours'.",
+            "For MNIST, 1 K Shot, 10 K Way:",
+            "- Siamese: 70",
+            "- MANN: -",
+            "- Matching: 72",
+            "- Ours: 78.6",
+            "For MNIST, 5 K Shot, 10 K Way:",
+            "- Siamese: -",
+            "- MANN: -",
+            "- Matching: -",
+            "- Ours: 93.2",
+            "For OMNIGLOT, 1 K Shot, 5 K Way:",
+            "- Siamese: 97.3",
+            "- MANN: 82.8",
+            "- Matching: 98.1",
+            "- Ours: 98.1",
+            "For OMNIGLOT, 5 K Shot, 5 K Way:",
+            "- Siamese: 98.4",
+            "- MANN: 94.9",
+            "- Matching: 98.9",
+            "- Ours: 99.5",
+            "For OMNIGLOT, 1 K Shot, 20 K Way:",
+            "- Siamese: 88.1",
+            "- MANN: -",
+            "- Matching: 93.8",
+            "- Ours: 93.2",
+            "For OMNIGLOT, 5 K Shot, 20 K Way:",
+            "- Siamese: 97.0",
+            "- MANN: -",
+            "- Matching: 98.7",
+            "- Ours: 98.1",
+            "The 'Ours' model generally shows competitive or superior performance, especially in the 5-way tasks, achieving the highest accuracy of 99.5% for OMNIGLOT 5-shot, 5-way."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states, \"The results are shown in Table 1.\" The table indeed presents results, specifically classification accuracies, for various few-shot learning tasks, which aligns with the general statement. The text also mentions that the neural statistician model can be used as a strong classifier, particularly for the 5-way tasks, and the table shows that 'Ours' (neural statistician) achieves the highest accuracies in the 5-way OMNIGLOT tasks (98.1% and 99.5%).",
+          "issues": [],
+          "table_markdown": "| Test Dataset | K Shot | K Way | Siamese | MANN | Matching | Ours |\n|---|---|---|---|---|---|---|\n| MNIST | 1 | 10 | 70 | - | 72 | 78.6 |\n| MNIST | 5 | 10 | - | - | - | 93.2 |\n| OMNIGLOT | 1 | 5 | 97.3 | 82.8 | 98.1 | 98.1 |\n| OMNIGLOT | 5 | 5 | 98.4 | 94.9 | 98.9 | 99.5 |\n| OMNIGLOT | 1 | 20 | 88.1 | - | 93.8 | 93.2 |\n| OMNIGLOT | 5 | 20 | 97.0 | - | 98.7 | 98.1 |"
+        }
+      },
+      {
+        "id": "fig_7",
+        "kind": "figure",
+        "label": "Figure 6",
+        "number": "6",
+        "page": 8,
+        "caption": "Figure 6: Few-shot learning for face data. Samples are from model trained on Youtube Faces Database. Left: Each row shows an input set of size 5. Center: Each row shows 5 samples from the model corresponding to the input set on the left. Right: Imagined new faces generated by sampling contexts from the prior. Each row consists of 5 samples from the model given a particular sampled context.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "photo",
+          "description": "This figure displays three sets of facial images. The left column shows input sets of 5 faces each. The center column shows 5 samples generated by the model corresponding to the input set on the left. The right column shows 5 imagined new faces generated by sampling contexts from the prior.",
+          "data_read": [
+            "Left column: Each row contains 5 distinct facial images, representing an input set.",
+            "Center column: Each row contains 5 facial images generated by the model, which appear to be variations or reconstructions of the faces in the corresponding input set on the left.",
+            "Right column: Each row contains 5 newly generated facial images, which appear to be distinct individuals, demonstrating the model's ability to create new faces from sampled contexts."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure supports the claim that 'The results are shown in Figure 6' by visually demonstrating the model's capabilities in few-shot learning for face data, as described in the caption. The generated samples in the center column show reasonable likeness to the input faces, and the imagined new faces in the right column demonstrate the model's ability to generate new, consistent identities with varied poses, as mentioned in the surrounding text.",
+          "issues": [],
+          "table_markdown": null
+        }
+      }
+    ],
+    "figure_mentions": [
+      {
+        "figure_id": "fig_1",
+        "marker": "Figure 1",
+        "sentence": "Figure 1: Left: basic hierarchical model, where the plate encodes the fact that the context variable c is shared across each item in a given dataset.",
+        "section_id": "sec_4",
+        "start": 428,
+        "end": 436
+      },
+      {
+        "figure_id": "fig_1",
+        "marker": "Figure 1",
+        "sentence": "We extend the variational autoencoder to the model depicted on the left in Figure 1.",
+        "section_id": "sec_6",
+        "start": 75,
+        "end": 83
+      },
+      {
+        "figure_id": "fig_1",
+        "marker": "Figure 1",
+        "sentence": "The generative model is shown graphically in Figure 1 in the center.",
+        "section_id": "sec_7",
+        "start": 336,
+        "end": 344
+      },
+      {
+        "figure_id": "fig_1",
+        "marker": "Figure 1",
+        "sentence": "The graphical model for this is given at the right of Figure 1.",
+        "section_id": "sec_8",
+        "start": 792,
+        "end": 800
+      },
+      {
+        "figure_id": "fig_1",
+        "marker": "Figure 1",
+        "sentence": "Topic models and graphical models The form of the graphical model in Figure 1 on the left is equivalent to that of a standard topic model.",
+        "section_id": "sec_9",
+        "start": 200,
+        "end": 208
+      },
+      {
+        "figure_id": "fig_2",
+        "marker": "Figure 2",
+        "sentence": "Figure 2 shows 3-D scatter plots of the summary statistics learned.",
+        "section_id": "sec_11",
+        "start": 1039,
+        "end": 1047
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Figure 3",
+        "sentence": "An ex- ample is shown in Figure 3.",
+        "section_id": "sec_12",
+        "start": 464,
+        "end": 472
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Figure 4",
+        "sentence": "The results are shown in Figure 4.",
+        "section_id": "sec_12",
+        "start": 1624,
+        "end": 1632
+      },
+      {
+        "figure_id": "fig_5",
+        "marker": "Figure 5",
+        "sentence": "In Figure 5 we show two examples of few-shot learning by conditioning on samples of unseen characters from OMNIGLOT, and conditioning on samples of digits from MNIST.",
+        "section_id": "sec_13",
+        "start": 1628,
+        "end": 1636
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 1",
+        "sentence": "The results are shown in Table 1.",
+        "section_id": "sec_13",
+        "start": 2727,
+        "end": 2734
+      },
+      {
+        "figure_id": "fig_7",
+        "marker": "Figure 6",
+        "sentence": "The results are shown in Figure 6.",
+        "section_id": "sec_14",
+        "start": 1102,
+        "end": 1110
+      }
+    ],
+    "hidden_text_findings": []
+  }
+}

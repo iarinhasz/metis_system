@@ -1,0 +1,1860 @@
+{
+  "sha256": "b7efaf33ae6d4e142b7fa143a58fadfaf5df5ba944c1ea1f82d1052592640b3d",
+  "version": "2a9b3bd344b6070b",
+  "created_at": "2026-11-17T02:23:53.592798+00:00",
+  "article": {
+    "title": "Detecting Lexical Entailment in Context",
+    "authors": [
+      "Anonymous ACL submission"
+    ],
+    "language": "en",
+    "model": "google/gemini-2.5-flash",
+    "sections": [
+      {
+        "id": "sec_1",
+        "title": "Abstract",
+        "level": 1,
+        "parent_id": null,
+        "key": "abstract",
+        "text": "Detecting entailment between words is a key task for several NLP applications. Pre- vious work has largely focused on en- tailment between words out of context. We propose, instead, to address lexical entailment in context, providing exem- plar sentences to ground the meaning of words considered in the entailment rela- tion. We show that contextualized word representations constructed from existing word embeddings, and word-context simi- larity features lead to significant improve- ments over context-agnostic models on two novel entailment test sets, and also improve the state-of-the-art on the related task of detecting semantic relations in con- text (Shwartz and Dagan, 2015).",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_2",
+        "title": "1 Introduction",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Many NLP applications require detecting relations between word meanings beyond synonymy and paraphrasing. For instance, given “Carlsen plays chess.\" and the question “Which game does Carlsen play?”, successfully answering the question requires knowing that chess is a kind of game, or more generally, that chess entails game.\n\nWhile prior work has defined lexical entailment as a relation between word types (Turney and Mohammad, 2013), we argue entailment relations are better defined when illustrating word meaning with an example in context. Ignoring context is problematic since entailment might hold between some senses of the words, but not others. Consider the word game in two distinct contexts:\n\n1. The championship game was played in NYC.\n\n2. The hunters were interested in the big game.\n\nGiven the sentence, Carlsen is the world chess champion, chess =⇒ game as used in the first context, while chess ⁄=⇒ game in the second context.\n\nIn this paper, we investigate how to represent and compare the meaning of words in context for lexical entailment. Since distributional representations for word types have proved useful to detect lexical entailment out of context in supervised settings (Baroni et al., 2012; Roller et al., 2014; Turney and Mohammad, 2013), we propose to transform context-agnostic word type representations into contextualized representations that highlight salient properties of the context (Section 3), and use these contextualized representations with a range of semantic similarity features (Section 4) to successfully detect entailment.\n\nAs we will see, these context representations significantly improve performance over context-agnostic baselines not only in English, but also between English and French words (Section 7) on two novel datasets (Section 5). We also show that our features are sensitive to word sense changes indicated by context, and adequately capture the direction of entailment relation (Section 8). Moreover, we establish a new state-of-the-art on an existing dataset that captures a broader range of semantic relations in context (Shwartz and Dagan, 2015), and show that the proposed features, induced solely from large amounts of raw text, yield systems that perform as well, or better than existing systems that require additional human annotation.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_3",
+        "title": "2 Defining Lexical Entailment in Context",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We frame the task of lexical entailment in context as a binary classification task on examples consist- ing of a 4-tuple (wl, wr, Cl, Cr), where wι and wr are two words, and ci and cr are sentences which illustrate each word usage. The example is treated as positive if w₁ ⇒ wr, given the meaning of each word exemplified by the contexts, and nega- tive otherwise. Table 1 provides examples.\n\nWe say that entailment holds if the meaning of wr in the context of ca is more specific than the meaning of wr in the context of cr. The nature of entailment relations captured out-of-context can be broader depending on the test beds considered. Zhitomirsky-Geffet and Dagan (2009) formalize lexical entailment as a substitutional relationship, which encompasses synonymy, hypernymy, some meronymy relations, and also cause-effect rela- tions. However, we limit entailment to the speci- ficity relation in this work to better understand the impact of context.\n\nNote that lexical entailment in context is not textual entailment. Recognizing textual entail- ment (Dagan et al., 2013) and natural language inference (Bowman et al., 2015) involves detect- ing entailment relations between sentences, while lexical entailment is a relation between words.",
+        "has_footnotes": true,
+        "coverage": 0.7076142131979696,
+        "fidelity": 0.8709677419354839
+      },
+      {
+        "id": "sec_4",
+        "title": "3 Representing Words and their Contexts for Entailment",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "How can we construct vector representations of the meaning of target words wι and wr in their respective exemplar contexts Cι and Cr? We start from existing representations for word types which have proven useful for detecting lexical entailment and other semantic relations out of context (Baroni et al., 2012; Kruszewski and Baroni, 2015; Vylomova et al., 2016; Turney and Mohammad, 2013).\n\nGiven an example (wι, wr, Cι, Cr), let wι and wr refer to the context-agnostic representations of wι and wr, and let Cι and Cr represent the matrices obtained by row-wise stacking of the context-agnostic representations of words in cι and cr respectively.",
+        "has_footnotes": true,
+        "coverage": 0.4058679706601467,
+        "fidelity": 0.7287784679089027
+      },
+      {
+        "id": "sec_5",
+        "title": "3.1 Contextualized Word Representations",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "Following Thater et al. (2011); Erk and Padó (2008), our first approach is to apply a filter to word type representations to highlight the salient dimensions of the exemplar context, emphasiz- ing relevant dimensions of and downplaying unim- portant ones. However, while prior work repre- sents context by averaging word vectors, we pro- pose richer representations that better capture the salient geometrical properties of the exemplar con- text that might get lost by averaging (Figure 1).\n\nFirst, we construct fixed length representations for the contexts cı and cr by running convo- lutional filters over Ci and Cr. Specifically, we calculate the column-wise maximum, mini- mum and the mean over the matrices Ci and Cr, as done by (Tang et al., 2014) for super- vised sentiment classification. This yields three d- dimensional vectors for cı (Ĉi,max, Cl,min, Cl,mean), and three d-dimensional vectors for Cr (Cr,max, Cr,min, Cr,mean). Computing the maximum and minimum across all vector dimensions captures the exterior surface of the \"instance manifold\" (the volume in embedding space within which all words in the instance reside), while the mean sum- marizes the density per-dimension within the man- ifold (Hovy, 2015).\n\nSecond, we transform initial context-agnostic representations for target word types by taking an element-wise product of the word type vectors (w) with vectors representing salient dimensions of the exemplar context (C*,max, C∗,min, C∗,mean) where * ∈ {l, r} . This yields three d-dimensional vectors for wι (1,max, WI,min, Wi,mean), and three for wr (Wr,max, Wr,min, Wr,mean). We refer to our final word-in-context representations for ωι and wr as Wi, mask and Wr,mask respectively, where Wl,mask is the concatenation of wi,max, WI,min, Wi,mean, and wr,mask is also similarly constructed.",
+        "has_footnotes": false,
+        "coverage": 0.8653198653198653,
+        "fidelity": 0.8726067746686303
+      },
+      {
+        "id": "sec_6",
+        "title": "3.2 A Shared Vector Space for Words and Contexts: Context2vec",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "An alternative approach to contextualizing word representations is to directly compare the repre- sentations of words with representations of con- texts. In a single language, this can be done us- ing Context2Vec (Melamud et al., 2016), a neu- ral model that, given a target word and its senten- tial context, embeds both the word and the con- text in the same low-dimensional space, with the objective of having the context predict the tar- get word via a log linear model. This model ap- proaches the state-of-the-art on lexical substitu- tion, sentence completion, and supervised word sense disambiguation.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_7",
+        "title": "4 Comparing Words and Contexts for Entailment",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Given words and context representations de- scribed above, how can we predict entailment?",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_8",
+        "title": "4.1 Supervised Logistic Regression model",
+        "level": 2,
+        "parent_id": "sec_7",
+        "key": null,
+        "text": "Prior work on lexical entailment out of context suggests that the entailment relationship between words is a learnable function of the concatenation of their individual representations (Baroni et al., 2012; Turney and Mohammad, 2013). After con-catenation, they are used as features for a logistic regression (Roller et al., 2014) or an SVM clas-sifier (Baroni et al., 2012; Turney and Moham-mad, 2013). We follow the same practice with our context-aware word representations. Intuitively, the classifier learns to weight the importance of each dimension of a word representation to detect entailment. By learning different weights for the same features describing ωι or wr, the classifier can detect asymmetric behavior too, as we will see in Section 8.",
+        "has_footnotes": false,
+        "coverage": 0.6127770534550195,
+        "fidelity": 0.9340277777777778
+      },
+      {
+        "id": "sec_9",
+        "title": "4.2 Similarity Features",
+        "level": 2,
+        "parent_id": "sec_7",
+        "key": null,
+        "text": "We hypothesize that entailment relations hold be- tween related words and introduce similarity fea- tures to capture this non-directional relation be- tween words and contexts.\nGiven a pair of vectors (l, r), we use three simi- larity measures: the cosine similarity cosine(l, r), the dot product l · r, and the euclidean distance ||l - r||. The cosine similarity captures the dif- ference in the two vectors in terms of the angle between then, the euclidean distance measures the difference in magnitude, and the dot product cap- tures both magnitude and angle.\nWe apply these measures to three types of representations. Our first set of similarities is intended to directly capture the similarities be- tween contextualized word representations (Sec- tion 3.1). We calculate pairwise similari- ties between (Wl,max, Wr,max), (Wl,min, Wr,min), (Wl,mean, Wr,mean), as well as between the context-agnostic representations (wl, wr). Sec- ond, we add similarities based on Context2Vec representations, i.e. between each pair of Wl,c2v, Wr,c2v, Cl,c2v, and Cr,c2v. Finally, following Shwartz and Dagan (2015), we capture the simi- larity of the most relevant word to wl in cr, that to wr in cl, as well as between cl and cr. We there- fore add the following three similarities, as well as their pairwise products:\nmax wl · w, max wr · w, max w · w'\nw∈cr w∈cl w∈cl,w'∈cr",
+        "has_footnotes": false,
+        "coverage": 0.7030603804797353,
+        "fidelity": 0.9756572541382668
+      },
+      {
+        "id": "sec_10",
+        "title": "5 Evaluation Framework",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We evaluate our models of lexical entailment in context on three complementary datasets.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_11",
+        "title": "5.1 CONTEXT-PPDB",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "The first dataset, CONTEXT-PPDB, is a fine-grained lexical inference dataset created using 375 word pairs from a subset of the English Paraphrase Database (Ganitkevitch et al., 2013; Pavlick et al., 2015b). These word pairs are semi-automatically labeled with semantic relations out-of-context. Shwartz and Dagan (2015) augmented them with examples of word usage in context, and re-annotating word pairs given the extra contextual information. The final dataset consists of 3750 words/contexts tuples with a corresponding label from Table 2, one of which is entailment.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_12",
+        "title": "5.2 CONTEXT-WN",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "In addition to CONTEXT-PPDB, we would like a test set for controlled analysis of lexical entailment in context. We would like to directly assess the sensitivity of our models to contexts that signal different word senses, as well as quantify the extent to which our models detect asymmetric entailment relations rather than semantic similarity.\n\nBased on the above criteria, we introduce a large-scale dataset automatically extracted from WordNet (Fellbaum, 1998a). We call this dataset CONTEXT-WN. WordNet groups synonyms into synsets. Most synsets are further accompanied by one or more short sentences illustrating the use of the members of the synset. The idea behind CONTEXT-WN is to use these example sentences as context for the words, and hypernymy relations to draw examples of lexical entailment relations. The entire process starts from a seed list of words W and proceeds as follows (see Figure 2 for an illustration) :\n\n1. For each word type w ∈ W with multiple synsets, obtain all synsets Sw.\n\n2. For each synset i ∈ Sw, pick a hypernym synset sh, with a corresponding word form wh. Also obtain cl and ch which are example sentences corresponding to wl and wh respectively - (wl, wh, cl, ch) serves as a positive example.\n\n3. Permute the positive examples to get negative examples. From (wl, wh, cl, ch) and (wl, wh, cl, ch), generate negative examples (wl, wh, cl, ch) and (wl, wh, cl, ch).\n\n4. Flip the positive examples to generate more negative examples. From (wl, wh, cl, ch) generate the negative example (wh, wl, ch, cl).\n\nWe run this process using the 9000 most frequent words from Wikipedia as W (after filtering the top 1000 as stopwords). This yields a total of 5239 positive examples. We sample an equal number of negative examples from Step 3, with another 5239 examples being generated in Step 4. The final dataset consists of 10478 negative examples.\n\nCONTEXT-WN satisfies our desiderata. The dataset has a very specific focus since we only pick hypernym-hyponym pairs. The negative examples generated in Steps 3 and 4 require discriminating between different word senses and entailment directions. Finally, with over 15000 examples distributed over 6000 word pairs, the dataset is almost five times as large as CONTEXT-PPDB.\n\nWe use a 70/5/25 train/dev/test split as in CONTEXT-PPDB. We also ensure that each set contains different word pairs, to avoid memorization and overfitting (Levy et al., 2015).",
+        "has_footnotes": false,
+        "coverage": 0.8891257995735607,
+        "fidelity": 0.8861831656961355
+      },
+      {
+        "id": "sec_13",
+        "title": "5.3 Crosslingual dataset",
+        "level": 2,
+        "parent_id": "sec_10",
+        "key": null,
+        "text": "Our final dataset takes a cross-lingual view of lexical entailment in context. To create this dataset, we follow the same methodology that was used to create CONTEXT-PPDB, replacing word pairs from PPDB with a set of 100 English-French word pairs labeled as positive out-of-context in the cross-lingual lexical entailment dataset of Vyas and Carpuat (2016). Each word pair (ωι, wr) consists of an English word and a French word. To add context, we extract 10 sentence pairs (Cl, Cr) per word pair from the Wikipedia in the corresponding language. These thousand examples are then given to annotators on a crowdsourcing platform. For each example (ωι, wr, Cl, Cr), the annotators were asked to judge whether ωι⇒ Wr given the contexts ci and Cr. Each example was annotated by 5 workers.\n\nFor each example, we assign the majority judgment as the correct label. 4 or more annotators agree on the label on 540 examples, and we retain only these examples as our test set. This yields a dataset of 374 positive examples and 166 negative examples.",
+        "has_footnotes": true,
+        "coverage": 0.9072,
+        "fidelity": 0.8566131025957973
+      },
+      {
+        "id": "sec_14",
+        "title": "6 Experimental Set-up",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "",
+        "has_footnotes": false,
+        "coverage": null,
+        "fidelity": null
+      },
+      {
+        "id": "sec_15",
+        "title": "6.1 Monolingual",
+        "level": 2,
+        "parent_id": "sec_14",
+        "key": null,
+        "text": "All experiments on CONTEXT-PPDB and CONTEXT-WN are with the default train/dev/test splits. We use 50 dimensional off-the-shelf GloVe embeddings (Pennington et al., 2014) to create w̃l, w̃r, Cl, and Cr. To obtain the Context2Vec representations Wl,c2v, Wr,c2v, Cl,c2v, and Cr,c2v, we use an existing model trained on the ukWaC corpus (Ferraresi et al., 2006) .\n\nWe use Logistic Regression as our classifier for both tasks, to allow for direct comparisons with previous work. We do not tune parameters of the classifier, except for adding class weights in the CONTEXT-WN experiments to account for the unbalanced data. As evaluation metric, we use weighted F1 score to compare against previous results, as well as to account for label imbalance in CONTEXT-WN.",
+        "has_footnotes": false,
+        "coverage": 0.9587628865979382,
+        "fidelity": 0.9655172413793104
+      },
+      {
+        "id": "sec_16",
+        "title": "6.2 Crosslingual",
+        "level": 2,
+        "parent_id": "sec_14",
+        "key": null,
+        "text": "We evaluate our models on cross-lingual test set in a transfer setting by training on the training set of CONTEXT-PPDB. To represent wι, wr, we experiment with two different pre-trained, 200-dimensional, bilingual embeddings - BiVec (Luong et al., 2015) and BiCVM (Hermann and Blunsom, 2014), both of which have been shown to be suitable for cross-lingual semantic tasks such as dictionary induction and document classification (Upadhyay et al., 2016). The classifier is again a Logistic Regression classifier with class weights.",
+        "has_footnotes": true,
+        "coverage": 0.6857142857142857,
+        "fidelity": 0.9039408866995073
+      },
+      {
+        "id": "sec_17",
+        "title": "7 Results",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "",
+        "has_footnotes": false,
+        "coverage": null,
+        "fidelity": null
+      },
+      {
+        "id": "sec_18",
+        "title": "7.1 CONTEXT-PPDB",
+        "level": 2,
+        "parent_id": "sec_17",
+        "key": null,
+        "text": "Representation-based features only A context-agnostic baseline (Baroni et al., 2012) based on the concatenation of the word type features for (ωι, wr) reaches F1 scores of 53.5 using Glove and 54 with Context2Vec (Table 4). The contextualized word representations and sim-ilarity features yield the best result and improves performance by 14 points. The similarity features are also effective when used in combination with the Glove or Context2Vec representations, yielding improvements of 12 to 13 points on the baseline. We also note that using Ci,c2v and Cr,c2v to add contextual information performs very poorly (F = ~60), regardless of the word type feature, indicating the superiority of our masked representations.\n\nAdding PPDB-specific features CONTEXT-PPDB comes with rich information about word pairs drawn from PPDB (Pavlick et al., 2015a,b). These features include scores for likelihood of context-agnostic entailment labels, distributional similarities, and probabilities of the word pair being paraphrases, among other scores. Shwartz and Dagan (2015) establish a strong baseline of 67 F1 using these features and the most salient word/context similarities described in Section 4.2. Augmenting this system with our proposed context-aware similarities, we observe an im-provement of ~2 F1 points. The contextualized representations further gives a ~3 point boost. Overall, our new context aware features help in improving upon the previous state-of-the-art by 4.8 F1 points.",
+        "has_footnotes": false,
+        "coverage": 0.9584178498985801,
+        "fidelity": 0.9656616415410385
+      },
+      {
+        "id": "sec_19",
+        "title": "7.2 CONTEXT-WN",
+        "level": 2,
+        "parent_id": "sec_17",
+        "key": null,
+        "text": "We repeat all experiments on CONTEXT-WN (Table 4), except for those that require PPDB-specific features. The trends on CONTEXT-WN are sim-ilar to those on CONTEXT-PPDB. Using similar-ity features with the context-agnostic baseline, im-proves performance by ~4 F1 points. Adding the context-aware representations, further gives a tiny boost, enabling us to score 5 F1 points more than the baseline. Again, we observe that using Ĉi,c2v and Cr,c2v does worse than the alternatives.\nThe absolute value of gains on CONTEXT-WN is smaller than on CONTEXT-PPDB, as can be ex-pected, given that CONTEXT-WN was designed to be challenging (Section 5.2).",
+        "has_footnotes": false,
+        "coverage": 0.8621700879765396,
+        "fidelity": 0.920892494929006
+      },
+      {
+        "id": "sec_20",
+        "title": "7.3 Cross-lingual dataset",
+        "level": 2,
+        "parent_id": "sec_17",
+        "key": null,
+        "text": "Results on the cross-lingual dataset are similar to monolingual results (Table 5). Context-aware fea-tures outperform context-agnostic baselines - sim-ilarities boost the score by 3 and 6 points in the BiVec and BiCVM settings respectively. The con-textualized word representations, when used in-stead of the context-agnostic representations, give a boost of almost 3 points, allowing us to score 6 points and 10 points above the context-agnostic baseline in the BiVec and BiCVM cases, respec-tively. The strength of these results attest to the generalizable nature of our features, which helps capture correspondences beyond a single language.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_21",
+        "title": "8 Analysis",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "The experiments in Section 7 attest to the overall strength of our features. In this section, we aim to further test the assumptions underlying our proposed context representations.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_22",
+        "title": "8.1 Sensitivity to context",
+        "level": 2,
+        "parent_id": "sec_21",
+        "key": null,
+        "text": "How sensitive are our models to changes in contexts? To answer this, we focus on the subset of CONTEXT-WN that comprises of positive examples, and the equivalent number of negative examples from Step 3 of the dataset creation. These examples are created by permuting the contexts of the positive examples, and thus, can directly help in answering our question. We analyze the predictions made on this subset by our model using a metric we call 'Macro-F1', defined as the weighted F1 calculated over each (w,wr) word pair, and then averaged over all word pairs.\n\nModels using context-aware features do consistently better on Macro-F1 than those without (Table 4). Interestingly though, the model that uses [Cl,c2v; Cr,c2v] does the best on this metric, indicating that while directly using the Context2Vec representations might not be ideal, these representation do capture some useful contextual knowledge.",
+        "has_footnotes": false,
+        "coverage": 0.9676375404530745,
+        "fidelity": 0.973314606741573
+      },
+      {
+        "id": "sec_23",
+        "title": "8.2 Sensitivity to Entailment Direction",
+        "level": 2,
+        "parent_id": "sec_21",
+        "key": null,
+        "text": "To quantitatively evaluate our claim of our features learning to discriminate directionality, we report results on the subset of CONTEXT-WN that consists of all positive examples, and the equivalent number of flipped negative examples generated in Step 4. We measure directionality by looking at the number of example pairs ((wl, Wr, Cl, Cr), (Wr, WI, Cr, Cl)) where both examples are correctly labeled, i.e. the former is labeled as = and the latter as .\n\nContext agnostic baselines detect direction significantly above chance (Table 4). Adding our context features improves by ~3, with the overall best performing model again scoring highest on this metric. It is reassuring to observe that improved detection of context with our features does not come at the cost of detecting entailment direction. Unlike in the previous section, the model that uses [Ci,c2v; Cr,c2v] is consistently poor, scoring lower than the corresponding context-agnostic baseline.",
+        "has_footnotes": false,
+        "coverage": 0.6767810026385225,
+        "fidelity": 0.8955823293172691
+      },
+      {
+        "id": "sec_24",
+        "title": "8.3 Contextualized Masks",
+        "level": 2,
+        "parent_id": "sec_21",
+        "key": null,
+        "text": "We also hypothesized that masked contextual-ized representations based on the full volume of the context using min and max operations (Sec-tion 3.1) better capture salient context dimensions than the more usual vector averaging approach. We test this hypothesis empirically by replacing masked word-in-context representations Wl,mask and wr,mask by two other ways to capture con-text. In the first method, we use the mean of the contexts (Cl,mean, Cr,mean). In the second method, we use (Wl,mean, Wr,mean), i.e. the masked repre-sentations calculated by using only the mean. On both CONTEXT-PPDB and CONTEXT-WN, our preferred method outperforms the two alternatives by 2-3 F1 points. In fact, on CONTEXT-WN we can see that our method also captures directional-ity best.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_25",
+        "title": "9 Related Work",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "WordNet and lexical entailment The is-a hier-archy of WordNet (Fellbaum, 1998b) is a promi-nent source of information for unsupervised de-tection of hypernymy and entailment (Harabagiu\nand Moldovan, 1998; Shwartz et al., 2015), as well\nas a source of various datasets (Baroni and Lenci,\n2011; Baroni et al., 2012). The dataset we intro-duce in this work is inspired by the latter line of\nwork, but instead of just extracting word pairs we\nalso obtain exemplar contexts from WordNet.\n\nModeling word meaning in context Several\napproaches have been proposed to model the\nmeaning of a word in a given context to capture se-mantic equivalence in tasks such as lexical substi-tution, word sense disambiguation or paraphrase\nranking (but not entailment).\n\nOne line of work (Dinu and Lapata, 2010;\nReisinger and Mooney, 2010) treats each word as\na set of latent word senses. These models methods\nstart with token representations for individual oc-currences of a word and then choose a set of token\nvectors based on the current context. An alternate\nset of models (Erk and Padó, 2008; Thater et al.,\n2011; Dinu et al., 2012) avoids defining a fixed set\nof word senses, and instead contextualizes word\ntype vectors as we do in this paper. These models\nshare the idea of using an element-wise multipli-cation to apply a context mask to word type rep-resentations. The nature of the context represen-tation varies: Erk and Pado (2008) use inverse se-lectional preferences; Thater et al (2010) combine\na first order representation for the context with a\nsecond order representation for the target, Thater\net al. (2011) rely on syntactic dependencies to de-fine context. Apidianaki (2016) shows that bag-of-word context representation within a small context\nwindow works as well as syntactic definitions of\ncontext for ranking paraphrases in context.\n\nThe use of convolution is motivated by success\nof similar models on sentence classification tasks.\nTang et al (2014) uses convolution over embed-ding matrices for unigrams, bigrams, and trigrams,\nwhile Hovy (2015) uses just unigrams. However,\nall these works only use convolved representations\nto predict properties of the sentence (e.g., senti-ment). We use them, instead, to contextualize our\ntarget word representations.\n\nIn-context lexical semantic tasks Besides en-tailment, other lexical semantic tasks studied in\nthe presence of context include lexical substitution\n(McCarthy and Navigli, 2007), cross-lingual lexi-cal substitution (Mihalcea et al., 2010) and para-phrase ranking (Apidianaki, 2016). The last work\nis also notable because of their successful use of\nmodels of word-meaning in context from Thater\net al (2011), which is closely related to our meth-ods.",
+        "has_footnotes": false,
+        "coverage": 0.9561213434452871,
+        "fidelity": 0.9911380597014925
+      },
+      {
+        "id": "sec_26",
+        "title": "10 Conclusion",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We proposed to address lexical entailment in con-text, providing exemplar sentences to ground the meaning of words being considered for entail-ment. We show that contextualized word rep-resentations constructed by transforming context-agnostic representations, combined with word-context similarity features, lead to large improve-ments over context-agnostic model, not only in English, but also between English and French words on two novel datasets. We also improve the state-of-the-art on a related task of detecting se-mantic relations in context. Our features are sen-sitive to changes in entailment based on context, and also capture the directionality of entailment.\n\nIn future work, we aim to further improve per-formance on both monolingual and cross-lingual datasets. We anticipate that richer features, cap-turing second-order comparisons used to detect lexical contrast (Mohammad et al., 2013) and entailment out of context (Turney and Moham-mad, 2013), might be useful for this purpose, perhaps in combination with non-linear classi-fiers. Given the usefulness of similarities, we also plan to investigate asymmetric scoring func-tions(Kotlerman et al., 2010; Shwartz et al., 2017).",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_27",
+        "title": "References",
+        "level": 1,
+        "parent_id": null,
+        "key": "references",
+        "text": "Marianna Apidianaki. 2016. Vector-space models for PPDB paraphrase ranking in context. In Proceedings of EMNLP 2016. Austin, TX, USA, pages 2028-2034.\n\nSanjeev Arora, Yuanzhi Li, Yingyu Liang, Tengyu Ma, and Andrej Risteski. 2016. Linear Algebraic Structure of Word Meanings with Applications to Polysemy. arXiv pages 1-25. http://arxiv.org/pdf/1601.03764v1.pdf.\n\nMarco Baroni, Raffaella Bernardi, Ngoc-Quynh Do, and Chung-chieh Shan. 2012. Entailment above the word level in distributional semantics. In Proceedings of EACL 2012. pages 23-32. http://dl.acm.org/citation.cfm?id=2380822.\n\nMarco Baroni and Alessandro Lenci. 2011. How we BLESSed distributional semantic evaluation. In Proceedings of the GEMS 2011 Workshop on Geometrical Models of Natural Language Semantics. pages 1-10. http://dl.acm.org/citation.cfm?id=2140490.2140491.\n\nSamuel R. Bowman, Gabor Angeli, Christopher Potts, and Christopher D. Manning. 2015. A large annotated corpus for learning natural language inference. In Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for Computational Linguistics.\n\nIdo Dagan, Dan Roth, Mark Sammons, and Fabio Massimo Zanzotto. 2013. Recognizing Textual Entailment: Models and Applications.. Morgan & Claypool Publishers.\n\nGeorgiana Dinu and Mirella Lapata. 2010. Measuring Distributional Similarity in Context. In Proceedings of EMNLP 2010. Cambridge, MA, USA, pages 1162-1172. http://eprints.pascal-network.org/archive/00008156/.\n\nGeorgiana Dinu, Stefan Thater, and Sören Laue. 2012. A comparison of models of word meaning in context. In Proceedings of NAACL-HLT 2012. pages 611-615.\n\nKatrin Erk and Sebastian Padó. 2008. A structured vector space model for word meaning in context. In Proceedings of EMNLP 2010. Honolulu, HA, USA, October, pages 897-906. https://doi.org/10.3115/1613715.1613831.\n\nChristiane Fellbaum. 1998a. WordNet. Wiley Online Library.\n\nChristiane Fellbaum, editor. 1998b. WordNet: An Electronic Lexical Database. MIT Press.\n\nAdriano Ferraresi, Eros Zanchetta, Marco Baroni, and Silvia Bernardini. 2006. Introducing and evaluating ukWaC, a very large web-derived corpus of English. In Proceedings of the 4th Web as Corpus Workshop.\n\nJuri Ganitkevitch, Benjamin Van Durme, and Chris Callison-Burch. 2013. PPDB: The Paraphrase Database. Proceedings of NAACL-HLT 2013 (June):758--764. http://cs.jhu.edu/ ccb/publications/ppdb.pdf.\n\nSanda Harabagiu and Dan Moldovan. 1998. Knowledge processing on an extended wordnet. WordNet: An electronic lexical database 305:381-405.\n\nKarl Moritz Hermann and Phil Blunsom. 2014. Multilingual Models for Compositional Distributed Semantics. In Proceedings of ACL 2014. Baltimore, MD, USA, pages 58-68.\n\nDirk Hovy. 2015. Demographic Factors Improve Classification Performance. In Proceedings of ACL-IJCNLP 2015. Beijing, China, pages 752-762.\n\nLili Kotlerman, Ido Dagan, Idan Szpektor, and Maayan Zhitomirsky-Geffet. 2010. Directional Distributional Similarity for Lexical Inference. Natural Language Engineering 16(4):359–389. https://doi.org/10.1017/S1351324910000124.\n\nGerman Kruszewski and Marco Baroni. 2015. Deriving Boolean structures from distributional vectors. Transactions of ACL 3:375–388.\n\nOmer Levy, Steffen Remus, Chris Biemann, and Ido Dagan. 2015. Do Supervised Distributional Methods Really Learn Lexical Inference Relations? In NAACL HLT 2015. pages 970-976.\n\nMinh-Thang Luong, Hieu Pham, and Christopher D. Manning. 2015. Bilingual Word Representations with Monolingual Quality in Mind. In Proceedings Workshop on Vector Modeling for NLP, NAACL 2015. Denver, CO, USA, pages 151–159.\n\nDiana McCarthy and Roberto Navigli. 2007. SemEval-2007 Task 10: English Lexical Substitution Task. In Proceedings of SEMEVAL 2007. pages 48-53. https://doi.org/10.1007/s10579-009-9084-1.\n\nOren Melamud, Jacob Goldberger, and Ido Dagan. 2016. context2vec: Learning Generic Context Embedding with Bidirectional LSTM. In Proceedings of CoNLL 2016. Berlin, Germany, pages 51–61.\n\nRada Mihalcea, Ravi Sinha, and Diana McCarthy. 2010. SemEval-2010 Task 2: Cross-Lingual Lexical Substitution. In Proceedings of SemEval 2010 (ACL 2010). Uppsala, Sweden, July, pages 9–14.\n\nSaif M. Mohammad, Bonnie J. Dorr, Graeme Hirst, and Peter D. Turney. 2013. Computing Lexical Contrast. Computational Linguistics 39(3):555-590.\n\nEllie Pavlick, Johan Bos, Malvina Nissim, Charley Beller, and Benjamin Van Durme. 2015a. Adding Semantics to Data-Driven Paraphrasing. In Proceedings of ACL 2015. Beijing, China, pages 1512-1522.\n\nEllie Pavlick, Pushpendre Rastogi, Juri Ganitkevitch, Benjamin Van Durme, and Chris Callison-Burch. 2015b. PPDB 2.0: Better paraphrase ranking, fine-grained entailment relations, word embeddings, and style classification. Proceedings of ACL-IJCNLP 2015 pages 425-430.\n\nJeffrey Pennington, Richard Socher, and Christopher D Manning. 2014. GloVe: Global Vectors for Word Representation. In Proceedings of EMNLP 2014. Doha, Qatar, pages 1532-1543. https://doi.org/10.3115/v1/D14-1162.\n\nJoseph Reisinger and Raymond J Mooney. 2010. Multi-Prototype Vector-Space Models of Word Meaning. In Proceedings of NAACL 2010. Los Angeles, CA, June, pages 109–117.\n\nStephen Roller, Katrin Erk, and Gemma Boleda. 2014. Inclusive yet Selective: Supervised Distributional Hypernymy Detection. Proceedings of COLING 2014 pages 1025-1036.\n\nVered Shwartz and Ido Dagan. 2015. Adding Context to Semantic Data-Driven Paraphrasing. In Proceedings of *SEM 2016. Berlin, Germany, 2015, pages 108-113.\n\nVered Shwartz, Omer Levy, Ido Dagan, and Jacob Goldberger. 2015. Learning to Exploit Structured Resources for Lexical Inference. In Proceedings of CONLL 2015. Beijing, China, pages 175-184. http://www.aclweb.org/anthology/K15-1018.\n\nVered Shwartz, Enrico Santus, and Dominik Schlechtweg. 2017. Hypernyms under Siege: Linguistically-motivated Artillery for Hypernymy Detection. In Proceedings of EACL 2017. Valencia, Spain.\n\nDuyu Tang, Furu Wei, Nan Yang, Ming Zhou, Ting Liu, and Bing Qin. 2014. Learning Sentiment-Specific Word Embedding. In Proceedings of ACL 2014. Baltimore, MD, USA, pages 1555-1565. https://doi.org/10.3115/1220575.1220648.\n\nStefan Thater, Hagen Fuerstenau, and Manfred Pinkal. 2010. Contextualizing Semantic Representations Using Syntactically Enriched Vector Models. In Proceedings of ACL 2010. Uppsala, Sweden, July, pages 948-957. http://eprints.pascal-network.org/archive/00008090/.\n\nStefan Thater, Hagen Fürstenau, and Manfred Pinkal. 2011. Word Meaning in Context: A Simple and Effective Vector Model. In Proceedings of IJCNLP 2011. Chiang Mai, Thailand, pages 1134-1143.\n\nPeter Turney and Saif Mohammad. 2013. Experiments with three approaches to recognizing lexical entailment. Natural Language Engineering 1(1):1-42. https://doi.org/10.1017/S1351324913000387.\n\nShyam Upadhyay, Manaal Faruqui, Chris Dyer, and Dan Roth. 2016. Cross-lingual Models of Word Embeddings: An Empirical Comparison. In Proceedings of ACL. Berlin, Germany. http://arxiv.org/abs/1604.00425.\n\nYogarshi Vyas and Marine Carpuat. 2016. Sparse Bilingual Word Representations for Cross-lingual Lexical Entailment. Proceedings of NAACL-HLT 2016 pages 1187–1197.\n\nEkaterina Vylomova, Laura Rimell, Trevor Cohn, and Timothy Baldwin. 2016. Take and Took, Gaggle and Goose, Book and Read: Evaluating the Utility of Vector Differences for Lexical Relation Learning. In Proceedings of ACL 2016. Berlin, Germany, pages 1671-1682.\n\nMaayan Zhitomirsky-Geffet and Ido Dagan. 2009. Bootstrapping Distributional Feature Vector Quality. Computational Linguistics (November 2008).",
+        "has_footnotes": true,
+        "coverage": 0.9890377588306942,
+        "fidelity": 0.996140350877193
+      }
+    ],
+    "references": [
+      {
+        "id": "ref_1",
+        "raw": "Marianna Apidianaki. 2016. Vector-space models for PPDB paraphrase ranking in context. In Proceedings of EMNLP 2016. Austin, TX, USA, pages 2028-2034.",
+        "marker": null,
+        "authors": [
+          "Marianna Apidianaki"
+        ],
+        "title": "Vector-space models for PPDB paraphrase ranking in context",
+        "year": "2016",
+        "venue": "Proceedings of EMNLP 2016. Austin, TX, USA",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_2",
+        "raw": "Sanjeev Arora, Yuanzhi Li, Yingyu Liang, Tengyu Ma, and Andrej Risteski. 2016. Linear Algebraic Structure of Word Meanings with Applications to Polysemy. arXiv pages 1-25. http://arxiv.org/pdf/1601.03764v1.pdf.",
+        "marker": null,
+        "authors": [
+          "Sanjeev Arora",
+          "Yuanzhi Li",
+          "Yingyu Liang",
+          "Tengyu Ma",
+          "Andrej Risteski"
+        ],
+        "title": "Linear Algebraic Structure of Word Meanings with Applications to Polysemy",
+        "year": "2016",
+        "venue": "arXiv",
+        "doi": null,
+        "arxiv_id": "1601.03764v1"
+      },
+      {
+        "id": "ref_3",
+        "raw": "Marco Baroni, Raffaella Bernardi, Ngoc-Quynh Do, and Chung-chieh Shan. 2012. Entailment above the word level in distributional semantics. In Proceedings of EACL 2012. pages 23-32. http://dl.acm.org/citation.cfm?id=2380822.",
+        "marker": null,
+        "authors": [
+          "Marco Baroni",
+          "Raffaella Bernardi",
+          "Ngoc-Quynh Do",
+          "Chung-chieh Shan"
+        ],
+        "title": "Entailment above the word level in distributional semantics",
+        "year": "2012",
+        "venue": "Proceedings of EACL 2012",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_4",
+        "raw": "Marco Baroni and Alessandro Lenci. 2011. How we BLESSed distributional semantic evaluation. In Proceedings of the GEMS 2011 Workshop on Geometrical Models of Natural Language Semantics. pages 1-10. http://dl.acm.org/citation.cfm?id=2140490.2140491.",
+        "marker": null,
+        "authors": [
+          "Marco Baroni",
+          "Alessandro Lenci"
+        ],
+        "title": "How we BLESSed distributional semantic evaluation",
+        "year": "2011",
+        "venue": "Proceedings of the GEMS 2011 Workshop on Geometrical Models of Natural Language Semantics",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_5",
+        "raw": "Samuel R. Bowman, Gabor Angeli, Christopher Potts, and Christopher D. Manning. 2015. A large annotated corpus for learning natural language inference. In Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for Computational Linguistics.",
+        "marker": null,
+        "authors": [
+          "Samuel R. Bowman",
+          "Gabor Angeli",
+          "Christopher Potts",
+          "Christopher D. Manning"
+        ],
+        "title": "A large annotated corpus for learning natural language inference",
+        "year": "2015",
+        "venue": "Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for Computational Linguistics",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_6",
+        "raw": "Ido Dagan, Dan Roth, Mark Sammons, and Fabio Massimo Zanzotto. 2013. Recognizing Textual Entailment: Models and Applications.. Morgan & Claypool Publishers.",
+        "marker": null,
+        "authors": [
+          "Ido Dagan",
+          "Dan Roth",
+          "Mark Sammons",
+          "Fabio Massimo Zanzotto"
+        ],
+        "title": "Recognizing Textual Entailment: Models and Applications.",
+        "year": "2013",
+        "venue": "Morgan & Claypool Publishers",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_7",
+        "raw": "Georgiana Dinu and Mirella Lapata. 2010. Measuring Distributional Similarity in Context. In Proceedings of EMNLP 2010. Cambridge, MA, USA, pages 1162-1172. http://eprints.pascal-network.org/archive/00008156/.",
+        "marker": null,
+        "authors": [
+          "Georgiana Dinu",
+          "Mirella Lapata"
+        ],
+        "title": "Measuring Distributional Similarity in Context",
+        "year": "2010",
+        "venue": "Proceedings of EMNLP 2010. Cambridge, MA, USA",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_8",
+        "raw": "Georgiana Dinu, Stefan Thater, and Sören Laue. 2012. A comparison of models of word meaning in context. In Proceedings of NAACL-HLT 2012. pages 611-615.",
+        "marker": null,
+        "authors": [
+          "Georgiana Dinu",
+          "Stefan Thater",
+          "Sören Laue"
+        ],
+        "title": "A comparison of models of word meaning in context",
+        "year": "2012",
+        "venue": "Proceedings of NAACL-HLT 2012",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_9",
+        "raw": "Katrin Erk and Sebastian Padó. 2008. A structured vector space model for word meaning in context. In Proceedings of EMNLP 2010. Honolulu, HA, USA, October, pages 897-906. https://doi.org/10.3115/1613715.1613831.",
+        "marker": null,
+        "authors": [
+          "Katrin Erk",
+          "Sebastian Padó"
+        ],
+        "title": "A structured vector space model for word meaning in context",
+        "year": "2008",
+        "venue": "Proceedings of EMNLP 2010. Honolulu, HA, USA, October",
+        "doi": "10.3115/1613715.1613831",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_10",
+        "raw": "Christiane Fellbaum. 1998a. WordNet. Wiley Online Library.",
+        "marker": null,
+        "authors": [
+          "Christiane Fellbaum"
+        ],
+        "title": "WordNet",
+        "year": "1998a",
+        "venue": "Wiley Online Library",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_11",
+        "raw": "Christiane Fellbaum, editor. 1998b. WordNet: An Electronic Lexical Database. MIT Press.",
+        "marker": null,
+        "authors": [
+          "Christiane Fellbaum"
+        ],
+        "title": "WordNet: An Electronic Lexical Database",
+        "year": "1998b",
+        "venue": "MIT Press",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_12",
+        "raw": "Adriano Ferraresi, Eros Zanchetta, Marco Baroni, and Silvia Bernardini. 2006. Introducing and evaluating ukWaC, a very large web-derived corpus of English. In Proceedings of the 4th Web as Corpus Workshop.",
+        "marker": null,
+        "authors": [
+          "Adriano Ferraresi",
+          "Eros Zanchetta",
+          "Marco Baroni",
+          "Silvia Bernardini"
+        ],
+        "title": "Introducing and evaluating ukWaC, a very large web-derived corpus of English",
+        "year": "2006",
+        "venue": "Proceedings of the 4th Web as Corpus Workshop",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_13",
+        "raw": "Juri Ganitkevitch, Benjamin Van Durme, and Chris Callison-Burch. 2013. PPDB: The Paraphrase Database. Proceedings of NAACL-HLT 2013 (June):758--764. http://cs.jhu.edu/ ccb/publications/ppdb.pdf.",
+        "marker": null,
+        "authors": [
+          "Juri Ganitkevitch",
+          "Benjamin Van Durme",
+          "Chris Callison-Burch"
+        ],
+        "title": "PPDB: The Paraphrase Database",
+        "year": "2013",
+        "venue": "Proceedings of NAACL-HLT 2013",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_14",
+        "raw": "Sanda Harabagiu and Dan Moldovan. 1998. Knowledge processing on an extended wordnet. WordNet: An electronic lexical database 305:381-405.",
+        "marker": null,
+        "authors": [
+          "Sanda Harabagiu",
+          "Dan Moldovan"
+        ],
+        "title": "Knowledge processing on an extended wordnet",
+        "year": "1998",
+        "venue": "WordNet: An electronic lexical database",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_15",
+        "raw": "Karl Moritz Hermann and Phil Blunsom. 2014. Multilingual Models for Compositional Distributed Semantics. In Proceedings of ACL 2014. Baltimore, MD, USA, pages 58-68.",
+        "marker": null,
+        "authors": [
+          "Karl Moritz Hermann",
+          "Phil Blunsom"
+        ],
+        "title": "Multilingual Models for Compositional Distributed Semantics",
+        "year": "2014",
+        "venue": "Proceedings of ACL 2014. Baltimore, MD, USA",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_16",
+        "raw": "Dirk Hovy. 2015. Demographic Factors Improve Classification Performance. In Proceedings of ACL-IJCNLP 2015. Beijing, China, pages 752-762.",
+        "marker": null,
+        "authors": [
+          "Dirk Hovy"
+        ],
+        "title": "Demographic Factors Improve Classification Performance",
+        "year": "2015",
+        "venue": "Proceedings of ACL-IJCNLP 2015. Beijing, China",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_17",
+        "raw": "Lili Kotlerman, Ido Dagan, Idan Szpektor, and Maayan Zhitomirsky-Geffet. 2010. Directional Distributional Similarity for Lexical Inference. Natural Language Engineering 16(4):359–389. https://doi.org/10.1017/S1351324910000124.",
+        "marker": null,
+        "authors": [
+          "Lili Kotlerman",
+          "Ido Dagan",
+          "Idan Szpektor",
+          "Maayan Zhitomirsky-Geffet"
+        ],
+        "title": "Directional Distributional Similarity for Lexical Inference",
+        "year": "2010",
+        "venue": "Natural Language Engineering 16(4)",
+        "doi": "10.1017/S1351324910000124",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_18",
+        "raw": "German Kruszewski and Marco Baroni. 2015. Deriving Boolean structures from distributional vectors. Transactions of ACL 3:375–388.",
+        "marker": null,
+        "authors": [
+          "German Kruszewski",
+          "Marco Baroni"
+        ],
+        "title": "Deriving Boolean structures from distributional vectors",
+        "year": "2015",
+        "venue": "Transactions of ACL 3",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_19",
+        "raw": "Omer Levy, Steffen Remus, Chris Biemann, and Ido Dagan. 2015. Do Supervised Distributional Methods Really Learn Lexical Inference Relations? In NAACL HLT 2015. pages 970-976.",
+        "marker": null,
+        "authors": [
+          "Omer Levy",
+          "Steffen Remus",
+          "Chris Biemann",
+          "Ido Dagan"
+        ],
+        "title": "Do Supervised Distributional Methods Really Learn Lexical Inference Relations?",
+        "year": "2015",
+        "venue": "NAACL HLT 2015",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_20",
+        "raw": "Minh-Thang Luong, Hieu Pham, and Christopher D. Manning. 2015. Bilingual Word Representations with Monolingual Quality in Mind. In Proceedings Workshop on Vector Modeling for NLP, NAACL 2015. Denver, CO, USA, pages 151–159.",
+        "marker": null,
+        "authors": [
+          "Minh-Thang Luong",
+          "Hieu Pham",
+          "Christopher D. Manning"
+        ],
+        "title": "Bilingual Word Representations with Monolingual Quality in Mind",
+        "year": "2015",
+        "venue": "Proceedings Workshop on Vector Modeling for NLP, NAACL 2015. Denver, CO, USA",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_21",
+        "raw": "Diana McCarthy and Roberto Navigli. 2007. SemEval-2007 Task 10: English Lexical Substitution Task. In Proceedings of SEMEVAL 2007. pages 48-53. https://doi.org/10.1007/s10579-009-9084-1.",
+        "marker": null,
+        "authors": [
+          "Diana McCarthy",
+          "Roberto Navigli"
+        ],
+        "title": "SemEval-2007 Task 10: English Lexical Substitution Task",
+        "year": "2007",
+        "venue": "Proceedings of SEMEVAL 2007",
+        "doi": "10.1007/s10579-009-9084-1",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_22",
+        "raw": "Oren Melamud, Jacob Goldberger, and Ido Dagan. 2016. context2vec: Learning Generic Context Embedding with Bidirectional LSTM. In Proceedings of CoNLL 2016. Berlin, Germany, pages 51–61.",
+        "marker": null,
+        "authors": [
+          "Oren Melamud",
+          "Jacob Goldberger",
+          "Ido Dagan"
+        ],
+        "title": "context2vec: Learning Generic Context Embedding with Bidirectional LSTM",
+        "year": "2016",
+        "venue": "Proceedings of CoNLL 2016. Berlin, Germany",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_23",
+        "raw": "Rada Mihalcea, Ravi Sinha, and Diana McCarthy. 2010. SemEval-2010 Task 2: Cross-Lingual Lexical Substitution. In Proceedings of SemEval 2010 (ACL 2010). Uppsala, Sweden, July, pages 9–14.",
+        "marker": null,
+        "authors": [
+          "Rada Mihalcea",
+          "Ravi Sinha",
+          "Diana McCarthy"
+        ],
+        "title": "SemEval-2010 Task 2: Cross-Lingual Lexical Substitution",
+        "year": "2010",
+        "venue": "Proceedings of SemEval 2010 (ACL 2010). Uppsala, Sweden, July",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_24",
+        "raw": "Saif M. Mohammad, Bonnie J. Dorr, Graeme Hirst, and Peter D. Turney. 2013. Computing Lexical Contrast. Computational Linguistics 39(3):555-590.",
+        "marker": null,
+        "authors": [
+          "Saif M. Mohammad",
+          "Bonnie J. Dorr",
+          "Graeme Hirst",
+          "Peter D. Turney"
+        ],
+        "title": "Computing Lexical Contrast",
+        "year": "2013",
+        "venue": "Computational Linguistics 39(3)",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_25",
+        "raw": "Ellie Pavlick, Johan Bos, Malvina Nissim, Charley Beller, and Benjamin Van Durme. 2015a. Adding Semantics to Data-Driven Paraphrasing. In Proceedings of ACL 2015. Beijing, China, pages 1512-1522.",
+        "marker": null,
+        "authors": [
+          "Ellie Pavlick",
+          "Johan Bos",
+          "Malvina Nissim",
+          "Charley Beller",
+          "Benjamin Van Durme"
+        ],
+        "title": "Adding Semantics to Data-Driven Paraphrasing",
+        "year": "2015a",
+        "venue": "Proceedings of ACL 2015. Beijing, China",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_26",
+        "raw": "Ellie Pavlick, Pushpendre Rastogi, Juri Ganitkevitch, Benjamin Van Durme, and Chris Callison-Burch. 2015b. PPDB 2.0: Better paraphrase ranking, fine-grained entailment relations, word embeddings, and style classification. Proceedings of ACL-IJCNLP 2015 pages 425-430.",
+        "marker": null,
+        "authors": [
+          "Ellie Pavlick",
+          "Pushpendre Rastogi",
+          "Juri Ganitkevitch",
+          "Benjamin Van Durme",
+          "Chris Callison-Burch"
+        ],
+        "title": "PPDB 2.0: Better paraphrase ranking, fine-grained entailment relations, word embeddings, and style classification",
+        "year": "2015b",
+        "venue": "Proceedings of ACL-IJCNLP 2015",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_27",
+        "raw": "Jeffrey Pennington, Richard Socher, and Christopher D Manning. 2014. GloVe: Global Vectors for Word Representation. In Proceedings of EMNLP 2014. Doha, Qatar, pages 1532-1543. https://doi.org/10.3115/v1/D14-1162.",
+        "marker": null,
+        "authors": [
+          "Jeffrey Pennington",
+          "Richard Socher",
+          "Christopher D Manning"
+        ],
+        "title": "GloVe: Global Vectors for Word Representation",
+        "year": "2014",
+        "venue": "Proceedings of EMNLP 2014. Doha, Qatar",
+        "doi": "10.3115/v1/D14-1162",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_28",
+        "raw": "Joseph Reisinger and Raymond J Mooney. 2010. Multi-Prototype Vector-Space Models of Word Meaning. In Proceedings of NAACL 2010. Los Angeles, CA, June, pages 109–117.",
+        "marker": null,
+        "authors": [
+          "Joseph Reisinger",
+          "Raymond J Mooney"
+        ],
+        "title": "Multi-Prototype Vector-Space Models of Word Meaning",
+        "year": "2010",
+        "venue": "Proceedings of NAACL 2010. Los Angeles, CA, June",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_29",
+        "raw": "Stephen Roller, Katrin Erk, and Gemma Boleda. 2014. Inclusive yet Selective: Supervised Distributional Hypernymy Detection. Proceedings of COLING 2014 pages 1025-1036.",
+        "marker": null,
+        "authors": [
+          "Stephen Roller",
+          "Katrin Erk",
+          "Gemma Boleda"
+        ],
+        "title": "Inclusive yet Selective: Supervised Distributional Hypernymy Detection",
+        "year": "2014",
+        "venue": "Proceedings of COLING 2014",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_30",
+        "raw": "Vered Shwartz and Ido Dagan. 2015. Adding Context to Semantic Data-Driven Paraphrasing. In Proceedings of *SEM 2016. Berlin, Germany, 2015, pages 108-113.",
+        "marker": null,
+        "authors": [
+          "Vered Shwartz",
+          "Ido Dagan"
+        ],
+        "title": "Adding Context to Semantic Data-Driven Paraphrasing",
+        "year": "2015",
+        "venue": "Proceedings of *SEM 2016. Berlin, Germany",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_31",
+        "raw": "Vered Shwartz, Omer Levy, Ido Dagan, and Jacob Goldberger. 2015. Learning to Exploit Structured Resources for Lexical Inference. In Proceedings of CONLL 2015. Beijing, China, pages 175-184. http://www.aclweb.org/anthology/K15-1018.",
+        "marker": null,
+        "authors": [
+          "Vered Shwartz",
+          "Omer Levy",
+          "Ido Dagan",
+          "Jacob Goldberger"
+        ],
+        "title": "Learning to Exploit Structured Resources for Lexical Inference",
+        "year": "2015",
+        "venue": "Proceedings of CONLL 2015. Beijing, China",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_32",
+        "raw": "Vered Shwartz, Enrico Santus, and Dominik Schlechtweg. 2017. Hypernyms under Siege: Linguistically-motivated Artillery for Hypernymy Detection. In Proceedings of EACL 2017. Valencia, Spain.",
+        "marker": null,
+        "authors": [
+          "Vered Shwartz",
+          "Enrico Santus",
+          "Dominik Schlechtweg"
+        ],
+        "title": "Hypernyms under Siege: Linguistically-motivated Artillery for Hypernymy Detection",
+        "year": "2017",
+        "venue": "Proceedings of EACL 2017. Valencia, Spain",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_33",
+        "raw": "Duyu Tang, Furu Wei, Nan Yang, Ming Zhou, Ting Liu, and Bing Qin. 2014. Learning Sentiment-Specific Word Embedding. In Proceedings of ACL 2014. Baltimore, MD, USA, pages 1555-1565. https://doi.org/10.3115/1220575.1220648.",
+        "marker": null,
+        "authors": [
+          "Duyu Tang",
+          "Furu Wei",
+          "Nan Yang",
+          "Ming Zhou",
+          "Ting Liu",
+          "Bing Qin"
+        ],
+        "title": "Learning Sentiment-Specific Word Embedding",
+        "year": "2014",
+        "venue": "Proceedings of ACL 2014. Baltimore, MD, USA",
+        "doi": "10.3115/1220575.1220648",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_34",
+        "raw": "Stefan Thater, Hagen Fuerstenau, and Manfred Pinkal. 2010. Contextualizing Semantic Representations Using Syntactically Enriched Vector Models. In Proceedings of ACL 2010. Uppsala, Sweden, July, pages 948-957. http://eprints.pascal-network.org/archive/00008090/.",
+        "marker": null,
+        "authors": [
+          "Stefan Thater",
+          "Hagen Fuerstenau",
+          "Manfred Pinkal"
+        ],
+        "title": "Contextualizing Semantic Representations Using Syntactically Enriched Vector Models",
+        "year": "2010",
+        "venue": "Proceedings of ACL 2010. Uppsala, Sweden, July",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_35",
+        "raw": "Stefan Thater, Hagen Fürstenau, and Manfred Pinkal. 2011. Word Meaning in Context: A Simple and Effective Vector Model. In Proceedings of IJCNLP 2011. Chiang Mai, Thailand, pages 1134-1143.",
+        "marker": null,
+        "authors": [
+          "Stefan Thater",
+          "Hagen Fürstenau",
+          "Manfred Pinkal"
+        ],
+        "title": "Word Meaning in Context: A Simple and Effective Vector Model",
+        "year": "2011",
+        "venue": "Proceedings of IJCNLP 2011. Chiang Mai, Thailand",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_36",
+        "raw": "Peter Turney and Saif Mohammad. 2013. Experiments with three approaches to recognizing lexical entailment. Natural Language Engineering 1(1):1-42. https://doi.org/10.1017/S1351324913000387.",
+        "marker": null,
+        "authors": [
+          "Peter Turney",
+          "Saif Mohammad"
+        ],
+        "title": "Experiments with three approaches to recognizing lexical entailment",
+        "year": "2013",
+        "venue": "Natural Language Engineering 1(1)",
+        "doi": "10.1017/S1351324913000387",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_37",
+        "raw": "Shyam Upadhyay, Manaal Faruqui, Chris Dyer, and Dan Roth. 2016. Cross-lingual Models of Word Embeddings: An Empirical Comparison. In Proceedings of ACL. Berlin, Germany. http://arxiv.org/abs/1604.00425.",
+        "marker": null,
+        "authors": [
+          "Shyam Upadhyay",
+          "Manaal Faruqui",
+          "Chris Dyer",
+          "Dan Roth"
+        ],
+        "title": "Cross-lingual Models of Word Embeddings: An Empirical Comparison",
+        "year": "2016",
+        "venue": "Proceedings of ACL. Berlin, Germany",
+        "doi": null,
+        "arxiv_id": "1604.00425"
+      },
+      {
+        "id": "ref_38",
+        "raw": "Yogarshi Vyas and Marine Carpuat. 2016. Sparse Bilingual Word Representations for Cross-lingual Lexical Entailment. Proceedings of NAACL-HLT 2016 pages 1187–1197.",
+        "marker": null,
+        "authors": [
+          "Yogarshi Vyas",
+          "Marine Carpuat"
+        ],
+        "title": "Sparse Bilingual Word Representations for Cross-lingual Lexical Entailment",
+        "year": "2016",
+        "venue": "Proceedings of NAACL-HLT 2016",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_39",
+        "raw": "Ekaterina Vylomova, Laura Rimell, Trevor Cohn, and Timothy Baldwin. 2016. Take and Took, Gaggle and Goose, Book and Read: Evaluating the Utility of Vector Differences for Lexical Relation Learning. In Proceedings of ACL 2016. Berlin, Germany, pages 1671-1682.",
+        "marker": null,
+        "authors": [
+          "Ekaterina Vylomova",
+          "Laura Rimell",
+          "Trevor Cohn",
+          "Timothy Baldwin"
+        ],
+        "title": "Take and Took, Gaggle and Goose, Book and Read: Evaluating the Utility of Vector Differences for Lexical Relation Learning",
+        "year": "2016",
+        "venue": "Proceedings of ACL 2016. Berlin, Germany",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_40",
+        "raw": "Maayan Zhitomirsky-Geffet and Ido Dagan. 2009. Bootstrapping Distributional Feature Vector Quality. Computational Linguistics (November 2008).",
+        "marker": null,
+        "authors": [
+          "Maayan Zhitomirsky-Geffet",
+          "Ido Dagan"
+        ],
+        "title": "Bootstrapping Distributional Feature Vector Quality",
+        "year": "2009",
+        "venue": "Computational Linguistics",
+        "doi": null,
+        "arxiv_id": null
+      }
+    ],
+    "citations": [
+      {
+        "reference_id": "ref_30",
+        "marker": "Shwartz and Dagan, 2015",
+        "sentence": "We show that contextualized word representations constructed from existing word embeddings, and word-context simi- larity features lead to significant improve- ments over context-agnostic models on two novel entailment test sets, and also improve the state-of-the-art on the related task of detecting semantic relations in con- text (Shwartz and Dagan, 2015).",
+        "section_id": "sec_1",
+        "start": 661,
+        "end": 684
+      },
+      {
+        "reference_id": "ref_36",
+        "marker": "Turney and Mohammad, 2013",
+        "sentence": "While prior work has defined lexical entailment as a relation between word types (Turney and Mohammad, 2013), we argue entailment relations are better defined when illustrating word meaning with an example in context.",
+        "section_id": "sec_2",
+        "start": 409,
+        "end": 434
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Baroni et al., 2012",
+        "sentence": "Since distributional representations for word types have proved useful to detect lexical entailment out of context in supervised settings (Baroni et al., 2012; Roller et al., 2014; Turney and Mohammad, 2013), we propose to transform context-agnostic word type representations into contextualized representations that highlight salient properties of the context (Section 3), and use these contextualized representations with a range of semantic similarity features (Section 4) to successfully detect entailment.",
+        "section_id": "sec_2",
+        "start": 1199,
+        "end": 1218
+      },
+      {
+        "reference_id": "ref_29",
+        "marker": "Roller et al., 2014",
+        "sentence": "Since distributional representations for word types have proved useful to detect lexical entailment out of context in supervised settings (Baroni et al., 2012; Roller et al., 2014; Turney and Mohammad, 2013), we propose to transform context-agnostic word type representations into contextualized representations that highlight salient properties of the context (Section 3), and use these contextualized representations with a range of semantic similarity features (Section 4) to successfully detect entailment.",
+        "section_id": "sec_2",
+        "start": 1220,
+        "end": 1239
+      },
+      {
+        "reference_id": "ref_36",
+        "marker": "Turney and Mohammad, 2013",
+        "sentence": "Since distributional representations for word types have proved useful to detect lexical entailment out of context in supervised settings (Baroni et al., 2012; Roller et al., 2014; Turney and Mohammad, 2013), we propose to transform context-agnostic word type representations into contextualized representations that highlight salient properties of the context (Section 3), and use these contextualized representations with a range of semantic similarity features (Section 4) to successfully detect entailment.",
+        "section_id": "sec_2",
+        "start": 1241,
+        "end": 1266
+      },
+      {
+        "reference_id": "ref_30",
+        "marker": "Shwartz and Dagan, 2015",
+        "sentence": "Moreover, we establish a new state-of-the-art on an existing dataset that captures a broader range of semantic relations in context (Shwartz and Dagan, 2015), and show that the proposed features, induced solely from large amounts of raw text, yield systems that perform as well, or better than existing systems that require additional human annotation.",
+        "section_id": "sec_2",
+        "start": 2089,
+        "end": 2112
+      },
+      {
+        "reference_id": "ref_40",
+        "marker": "Zhitomirsky-Geffet and Dagan (2009)",
+        "sentence": "Zhitomirsky-Geffet and Dagan (2009) formalize lexical entailment as a substitutional relationship, which encompasses synonymy, hypernymy, some meronymy relations, and also cause-effect rela- tions.",
+        "section_id": "sec_3",
+        "start": 639,
+        "end": 674
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Dagan et al., 2013",
+        "sentence": "Recognizing textual entail- ment (Dagan et al., 2013) and natural language inference (Bowman et al., 2015) involves detect- ing entailment relations between sentences, while lexical entailment is a relation between words.",
+        "section_id": "sec_3",
+        "start": 1055,
+        "end": 1073
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Bowman et al., 2015",
+        "sentence": "Recognizing textual entail- ment (Dagan et al., 2013) and natural language inference (Bowman et al., 2015) involves detect- ing entailment relations between sentences, while lexical entailment is a relation between words.",
+        "section_id": "sec_3",
+        "start": 1107,
+        "end": 1126
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Baroni et al., 2012",
+        "sentence": "We start from existing representations for word types which have proven useful for detecting lexical entailment and other semantic relations out of context (Baroni et al., 2012; Kruszewski and Baroni, 2015; Vylomova et al., 2016; Turney and Mohammad, 2013).",
+        "section_id": "sec_4",
+        "start": 291,
+        "end": 310
+      },
+      {
+        "reference_id": "ref_18",
+        "marker": "Kruszewski and Baroni, 2015",
+        "sentence": "We start from existing representations for word types which have proven useful for detecting lexical entailment and other semantic relations out of context (Baroni et al., 2012; Kruszewski and Baroni, 2015; Vylomova et al., 2016; Turney and Mohammad, 2013).",
+        "section_id": "sec_4",
+        "start": 312,
+        "end": 339
+      },
+      {
+        "reference_id": "ref_39",
+        "marker": "Vylomova et al., 2016",
+        "sentence": "We start from existing representations for word types which have proven useful for detecting lexical entailment and other semantic relations out of context (Baroni et al., 2012; Kruszewski and Baroni, 2015; Vylomova et al., 2016; Turney and Mohammad, 2013).",
+        "section_id": "sec_4",
+        "start": 341,
+        "end": 362
+      },
+      {
+        "reference_id": "ref_36",
+        "marker": "Turney and Mohammad, 2013",
+        "sentence": "We start from existing representations for word types which have proven useful for detecting lexical entailment and other semantic relations out of context (Baroni et al., 2012; Kruszewski and Baroni, 2015; Vylomova et al., 2016; Turney and Mohammad, 2013).",
+        "section_id": "sec_4",
+        "start": 364,
+        "end": 389
+      },
+      {
+        "reference_id": "ref_35",
+        "marker": "Thater et al. (2011)",
+        "sentence": "Following Thater et al. (2011); Erk and Padó (2008), our first approach is to apply a filter to word type representations to highlight the salient dimensions of the exemplar context, emphasiz- ing relevant dimensions of and downplaying unim- portant ones.",
+        "section_id": "sec_5",
+        "start": 10,
+        "end": 30
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Erk and Padó (2008)",
+        "sentence": "Following Thater et al. (2011); Erk and Padó (2008), our first approach is to apply a filter to word type representations to highlight the salient dimensions of the exemplar context, emphasiz- ing relevant dimensions of and downplaying unim- portant ones.",
+        "section_id": "sec_5",
+        "start": 32,
+        "end": 51
+      },
+      {
+        "reference_id": "ref_33",
+        "marker": "Tang et al., 2014",
+        "sentence": "Specifically, we calculate the column-wise maximum, mini- mum and the mean over the matrices Ci and Cr, as done by (Tang et al., 2014) for super- vised sentiment classification.",
+        "section_id": "sec_5",
+        "start": 736,
+        "end": 753
+      },
+      {
+        "reference_id": "ref_16",
+        "marker": "Hovy, 2015",
+        "sentence": "Computing the maximum and minimum across all vector dimensions captures the exterior surface of the \"instance manifold\" (the volume in embedding space within which all words in the instance reside), while the mean sum- marizes the density per-dimension within the man- ifold (Hovy, 2015).",
+        "section_id": "sec_5",
+        "start": 1215,
+        "end": 1225
+      },
+      {
+        "reference_id": "ref_22",
+        "marker": "Melamud et al., 2016",
+        "sentence": "In a single language, this can be done us- ing Context2Vec (Melamud et al., 2016), a neu- ral model that, given a target word and its senten- tial context, embeds both the word and the con- text in the same low-dimensional space, with the objective of having the context predict the tar- get word via a log linear model.",
+        "section_id": "sec_6",
+        "start": 214,
+        "end": 234
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Baroni et al., 2012",
+        "sentence": "Prior work on lexical entailment out of context suggests that the entailment relationship between words is a learnable function of the concatenation of their individual representations (Baroni et al., 2012; Turney and Mohammad, 2013).",
+        "section_id": "sec_8",
+        "start": 186,
+        "end": 205
+      },
+      {
+        "reference_id": "ref_36",
+        "marker": "Turney and Mohammad, 2013",
+        "sentence": "Prior work on lexical entailment out of context suggests that the entailment relationship between words is a learnable function of the concatenation of their individual representations (Baroni et al., 2012; Turney and Mohammad, 2013).",
+        "section_id": "sec_8",
+        "start": 207,
+        "end": 232
+      },
+      {
+        "reference_id": "ref_29",
+        "marker": "Roller et al., 2014",
+        "sentence": "After con-catenation, they are used as features for a logistic regression (Roller et al., 2014) or an SVM clas-sifier (Baroni et al., 2012; Turney and Moham-mad, 2013).",
+        "section_id": "sec_8",
+        "start": 310,
+        "end": 329
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Baroni et al., 2012",
+        "sentence": "After con-catenation, they are used as features for a logistic regression (Roller et al., 2014) or an SVM clas-sifier (Baroni et al., 2012; Turney and Moham-mad, 2013).",
+        "section_id": "sec_8",
+        "start": 354,
+        "end": 373
+      },
+      {
+        "reference_id": "ref_36",
+        "marker": "Turney and Moham-mad, 2013",
+        "sentence": "After con-catenation, they are used as features for a logistic regression (Roller et al., 2014) or an SVM clas-sifier (Baroni et al., 2012; Turney and Moham-mad, 2013).",
+        "section_id": "sec_8",
+        "start": 375,
+        "end": 401
+      },
+      {
+        "reference_id": "ref_30",
+        "marker": "Shwartz and Dagan (2015)",
+        "sentence": "Finally, following Shwartz and Dagan (2015), we capture the simi- larity of the most relevant word to wl in cr, that to wr in cl, as well as between cl and cr.",
+        "section_id": "sec_9",
+        "start": 1080,
+        "end": 1104
+      },
+      {
+        "reference_id": "ref_30",
+        "marker": "Shwartz and Dagan (2015)",
+        "sentence": "Shwartz and Dagan (2015) augmented them with examples of word usage in context, and re-annotating word pairs given the extra contextual information.",
+        "section_id": "sec_11",
+        "start": 295,
+        "end": 319
+      },
+      {
+        "reference_id": "ref_13",
+        "marker": "Ganitkevitch et al., 2013",
+        "sentence": "The first dataset, CONTEXT-PPDB, is a fine-grained lexical inference dataset created using 375 word pairs from a subset of the English Paraphrase Database (Ganitkevitch et al., 2013; Pavlick et al., 2015b).",
+        "section_id": "sec_11",
+        "start": 156,
+        "end": 181
+      },
+      {
+        "reference_id": "ref_26",
+        "marker": "Pavlick et al., 2015b",
+        "sentence": "The first dataset, CONTEXT-PPDB, is a fine-grained lexical inference dataset created using 375 word pairs from a subset of the English Paraphrase Database (Ganitkevitch et al., 2013; Pavlick et al., 2015b).",
+        "section_id": "sec_11",
+        "start": 183,
+        "end": 204
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Fellbaum, 1998a",
+        "sentence": "Based on the above criteria, we introduce a large-scale dataset automatically extracted from WordNet (Fellbaum, 1998a).",
+        "section_id": "sec_12",
+        "start": 448,
+        "end": 463
+      },
+      {
+        "reference_id": "ref_19",
+        "marker": "Levy et al., 2015",
+        "sentence": "We also ensure that each set contains different word pairs, to avoid memorization and overfitting (Levy et al., 2015).",
+        "section_id": "sec_12",
+        "start": 2413,
+        "end": 2430
+      },
+      {
+        "reference_id": "ref_38",
+        "marker": "Vyas and Carpuat (2016)",
+        "sentence": "To create this dataset, we follow the same methodology that was used to create CONTEXT-PPDB, replacing word pairs from PPDB with a set of 100 English-French word pairs labeled as positive out-of-context in the cross-lingual lexical entailment dataset of Vyas and Carpuat (2016).",
+        "section_id": "sec_13",
+        "start": 333,
+        "end": 356
+      },
+      {
+        "reference_id": "ref_27",
+        "marker": "Pennington et al., 2014",
+        "sentence": "We use 50 dimensional off-the-shelf GloVe embeddings (Pennington et al., 2014) to create w̃l, w̃r, Cl, and Cr.",
+        "section_id": "sec_15",
+        "start": 145,
+        "end": 168
+      },
+      {
+        "reference_id": "ref_12",
+        "marker": "Ferraresi et al., 2006",
+        "sentence": "To obtain the Context2Vec representations Wl,c2v, Wr,c2v, Cl,c2v, and Cr,c2v, we use an existing model trained on the ukWaC corpus (Ferraresi et al., 2006) .",
+        "section_id": "sec_15",
+        "start": 334,
+        "end": 356
+      },
+      {
+        "reference_id": "ref_20",
+        "marker": "Luong et al., 2015",
+        "sentence": "To represent wι, wr, we experiment with two different pre-trained, 200-dimensional, bilingual embeddings - BiVec (Luong et al., 2015) and BiCVM (Hermann and Blunsom, 2014), both of which have been shown to be suitable for cross-lingual semantic tasks such as dictionary induction and document classification (Upadhyay et al., 2016).",
+        "section_id": "sec_16",
+        "start": 234,
+        "end": 252
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Hermann and Blunsom, 2014",
+        "sentence": "To represent wι, wr, we experiment with two different pre-trained, 200-dimensional, bilingual embeddings - BiVec (Luong et al., 2015) and BiCVM (Hermann and Blunsom, 2014), both of which have been shown to be suitable for cross-lingual semantic tasks such as dictionary induction and document classification (Upadhyay et al., 2016).",
+        "section_id": "sec_16",
+        "start": 265,
+        "end": 290
+      },
+      {
+        "reference_id": "ref_37",
+        "marker": "Upadhyay et al., 2016",
+        "sentence": "To represent wι, wr, we experiment with two different pre-trained, 200-dimensional, bilingual embeddings - BiVec (Luong et al., 2015) and BiCVM (Hermann and Blunsom, 2014), both of which have been shown to be suitable for cross-lingual semantic tasks such as dictionary induction and document classification (Upadhyay et al., 2016).",
+        "section_id": "sec_16",
+        "start": 429,
+        "end": 450
+      },
+      {
+        "reference_id": "ref_30",
+        "marker": "Shwartz and Dagan (2015)",
+        "sentence": "Shwartz and Dagan (2015) establish a strong baseline of 67 F1 using these features and the most salient word/context similarities described in Section 4.2.",
+        "section_id": "sec_18",
+        "start": 1041,
+        "end": 1065
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Baroni et al., 2012",
+        "sentence": "Representation-based features only A context-agnostic baseline (Baroni et al., 2012) based on the concatenation of the word type features for (ωι, wr) reaches F1 scores of 53.5 using Glove and 54 with Context2Vec (Table 4).",
+        "section_id": "sec_18",
+        "start": 64,
+        "end": 83
+      },
+      {
+        "reference_id": "ref_25",
+        "marker": "Pavlick et al., 2015a,b",
+        "sentence": "Adding PPDB-specific features CONTEXT-PPDB comes with rich information about word pairs drawn from PPDB (Pavlick et al., 2015a,b).",
+        "section_id": "sec_18",
+        "start": 828,
+        "end": 851
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Erk and Pado (2008)",
+        "sentence": "The nature of the context represen-tation varies: Erk and Pado (2008) use inverse se-lectional preferences; Thater et al (2010) combine",
+        "section_id": "sec_25",
+        "start": 1403,
+        "end": 1422
+      },
+      {
+        "reference_id": "ref_34",
+        "marker": "Thater et al (2010)",
+        "sentence": "The nature of the context represen-tation varies: Erk and Pado (2008) use inverse se-lectional preferences; Thater et al (2010) combine",
+        "section_id": "sec_25",
+        "start": 1461,
+        "end": 1480
+      },
+      {
+        "reference_id": "ref_35",
+        "marker": "Thater\net al. (2011)",
+        "sentence": "second order representation for the target, Thater et al. (2011) rely on syntactic dependencies to de-fine context.",
+        "section_id": "sec_25",
+        "start": 1585,
+        "end": 1605
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Apidianaki (2016)",
+        "sentence": "Apidianaki (2016) shows that bag-of-word context representation within a small context",
+        "section_id": "sec_25",
+        "start": 1657,
+        "end": 1674
+      },
+      {
+        "reference_id": "ref_33",
+        "marker": "Tang et al (2014)",
+        "sentence": "Tang et al (2014) uses convolution over embed-ding matrices for unigrams, bigrams, and trigrams,",
+        "section_id": "sec_25",
+        "start": 1937,
+        "end": 1954
+      },
+      {
+        "reference_id": "ref_16",
+        "marker": "Hovy (2015)",
+        "sentence": "while Hovy (2015) uses just unigrams.",
+        "section_id": "sec_25",
+        "start": 2040,
+        "end": 2051
+      },
+      {
+        "reference_id": "ref_35",
+        "marker": "Thater\net al (2011)",
+        "sentence": "models of word-meaning in context from Thater et al (2011), which is closely related to our meth-ods.",
+        "section_id": "sec_25",
+        "start": 2649,
+        "end": 2668
+      },
+      {
+        "reference_id": "ref_11",
+        "marker": "Fellbaum, 1998b",
+        "sentence": "WordNet and lexical entailment The is-a hier-archy of WordNet (Fellbaum, 1998b) is a promi-nent source of information for unsupervised de-tection of hypernymy and entailment (Harabagiu",
+        "section_id": "sec_25",
+        "start": 63,
+        "end": 78
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "Harabagiu\nand Moldovan, 1998",
+        "sentence": "WordNet and lexical entailment The is-a hier-archy of WordNet (Fellbaum, 1998b) is a promi-nent source of information for unsupervised de-tection of hypernymy and entailment (Harabagiu and Moldovan, 1998; Shwartz et al., 2015), as well",
+        "section_id": "sec_25",
+        "start": 175,
+        "end": 203
+      },
+      {
+        "reference_id": "ref_31",
+        "marker": "Shwartz et al., 2015",
+        "sentence": "and Moldovan, 1998; Shwartz et al., 2015), as well",
+        "section_id": "sec_25",
+        "start": 205,
+        "end": 225
+      },
+      {
+        "reference_id": "ref_4",
+        "marker": "Baroni and Lenci,\n2011",
+        "sentence": "as a source of various datasets (Baroni and Lenci, 2011; Baroni et al., 2012).",
+        "section_id": "sec_25",
+        "start": 269,
+        "end": 291
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Baroni et al., 2012",
+        "sentence": "2011; Baroni et al., 2012).",
+        "section_id": "sec_25",
+        "start": 293,
+        "end": 312
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Dinu and Lapata, 2010",
+        "sentence": "One line of work (Dinu and Lapata, 2010;",
+        "section_id": "sec_25",
+        "start": 767,
+        "end": 788
+      },
+      {
+        "reference_id": "ref_28",
+        "marker": "Reisinger and Mooney, 2010",
+        "sentence": "Reisinger and Mooney, 2010) treats each word as",
+        "section_id": "sec_25",
+        "start": 790,
+        "end": 816
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Erk and Padó, 2008",
+        "sentence": "set of models (Erk and Padó, 2008; Thater et al.,",
+        "section_id": "sec_25",
+        "start": 1056,
+        "end": 1074
+      },
+      {
+        "reference_id": "ref_35",
+        "marker": "Thater et al.,\n2011",
+        "sentence": "set of models (Erk and Padó, 2008; Thater et al., 2011; Dinu et al., 2012) avoids defining a fixed set",
+        "section_id": "sec_25",
+        "start": 1076,
+        "end": 1095
+      },
+      {
+        "reference_id": "ref_8",
+        "marker": "Dinu et al., 2012",
+        "sentence": "2011; Dinu et al., 2012) avoids defining a fixed set",
+        "section_id": "sec_25",
+        "start": 1097,
+        "end": 1114
+      },
+      {
+        "reference_id": "ref_21",
+        "marker": "McCarthy and Navigli, 2007",
+        "sentence": "(McCarthy and Navigli, 2007), cross-lingual lexi-cal substitution (Mihalcea et al., 2010) and para-phrase ranking (Apidianaki, 2016).",
+        "section_id": "sec_25",
+        "start": 2412,
+        "end": 2438
+      },
+      {
+        "reference_id": "ref_23",
+        "marker": "Mihalcea et al., 2010",
+        "sentence": "(McCarthy and Navigli, 2007), cross-lingual lexi-cal substitution (Mihalcea et al., 2010) and para-phrase ranking (Apidianaki, 2016).",
+        "section_id": "sec_25",
+        "start": 2478,
+        "end": 2499
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Apidianaki, 2016",
+        "sentence": "(McCarthy and Navigli, 2007), cross-lingual lexi-cal substitution (Mihalcea et al., 2010) and para-phrase ranking (Apidianaki, 2016).",
+        "section_id": "sec_25",
+        "start": 2526,
+        "end": 2542
+      },
+      {
+        "reference_id": "ref_24",
+        "marker": "Mohammad et al., 2013",
+        "sentence": "We anticipate that richer features, cap-turing second-order comparisons used to detect lexical contrast (Mohammad et al., 2013) and entailment out of context (Turney and Moham-mad, 2013), might be useful for this purpose, perhaps in combination with non-linear classi-fiers.",
+        "section_id": "sec_26",
+        "start": 883,
+        "end": 904
+      },
+      {
+        "reference_id": "ref_36",
+        "marker": "Turney and Moham-mad, 2013",
+        "sentence": "We anticipate that richer features, cap-turing second-order comparisons used to detect lexical contrast (Mohammad et al., 2013) and entailment out of context (Turney and Moham-mad, 2013), might be useful for this purpose, perhaps in combination with non-linear classi-fiers.",
+        "section_id": "sec_26",
+        "start": 937,
+        "end": 963
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Kotlerman et al., 2010",
+        "sentence": "Given the usefulness of similarities, we also plan to investigate asymmetric scoring func-tions(Kotlerman et al., 2010; Shwartz et al., 2017).",
+        "section_id": "sec_26",
+        "start": 1149,
+        "end": 1171
+      },
+      {
+        "reference_id": "ref_32",
+        "marker": "Shwartz et al., 2017",
+        "sentence": "Given the usefulness of similarities, we also plan to investigate asymmetric scoring func-tions(Kotlerman et al., 2010; Shwartz et al., 2017).",
+        "section_id": "sec_26",
+        "start": 1173,
+        "end": 1193
+      }
+    ],
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "table",
+        "label": "Table 1",
+        "number": "1",
+        "page": 2,
+        "caption": "Table 1: Examples of the context-aware lexical entailment task",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table provides examples of the context-aware lexical entailment task, showing pairs of words and their respective contexts, along with a judgment on whether entailment holds.",
+          "data_read": [
+            "The table has three columns: 'Words (ωι, ωr)', 'Exemplars (Cι,Cr)', and 'Does ωι ⇒ ωr?'.",
+            "Row 1: Words are 'staff, stick'. Exemplars are 'Cι = He walked with the help of a wooden staff.' and 'Cr = The kid had a candied apple on a stick.'. Entailment is 'Yes'.",
+            "Row 2: Words are 'staff, body'. Exemplars are 'Cι = The hospital has an excellent nursing staff.' and 'Cr = The whole body filed out of the auditorium.'. Entailment is 'Yes'.",
+            "Row 3: Words are 'staff, stick'. Exemplars are 'Cι = The hospital has an excellent nursing staff.' and 'Cr = The kid had a candied apple on a stick.'. Entailment is 'No'."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states \"Table 1 provides examples.\" The table indeed presents three distinct examples of word pairs with their contexts and the corresponding entailment judgment, which directly supports this claim.",
+          "issues": [],
+          "table_markdown": "| Words (ωι, ωr) | Exemplars (Cι,Cr) | Does ωι ⇒ ωr? |\n|---|---|---|\n| staff, stick | Cι = He walked with the help of a wooden staff. Cr = The kid had a candied apple on a stick. | Yes |\n| staff, body | Cι = The hospital has an excellent nursing staff. Cr = The whole body filed out of the auditorium. | Yes |\n| staff, stick | Cι = The hospital has an excellent nursing staff. Cr = The kid had a candied apple on a stick. | No |"
+        }
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "label": "Figure 1",
+        "number": "1",
+        "page": 2,
+        "caption": "Figure 1: Constructing word-in-context represen-tations for \"bank\", in the context \"the river bank\". indicates element-wise multiplication.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This diagram illustrates the process of constructing word-in-context representations for the word \"bank\" in the context \"the river bank\". It shows how individual word vectors for \"the\", \"river\", and \"bank\" are combined to form contextualized representations.",
+          "data_read": [
+            "The diagram shows three initial word vectors for \"the\", \"river\", and \"bank\", each represented as a 1x3 matrix of numerical values.",
+            "For \"the\": [0.3, 0.6, -0.1]",
+            "For \"river\": [1.5, -2.5, 0]",
+            "For \"bank\" (WI): [-1, 0.2, 1.8]",
+            "These are then processed to derive three contextualized representations for the context (Cl): Cl,mean, Cl,min, and Cl,max.",
+            "Cl,mean: [0.27, -0.57, 0.57]",
+            "Cl,min: [-1, -2.5, -0.1]",
+            "Cl,max: [1.5, 0.6, 1.8]",
+            "The diagram also shows three contextualized representations for the word \"bank\" (WI) in context: WI,mean, WI,min, and WI,max.",
+            "WI,mean: [-0.27, -1.14, 1.03]",
+            "WI,min: [1, -5.0, -0.18]",
+            "WI,max: [-1.5, 0.12, 3.24]",
+            "An element-wise multiplication operation (indicated by ⊙) is shown between Cl,min and the word vector for \"bank\" (WI), resulting in [-1, 0.2, 1.8].",
+            "Arrows indicate the flow of information from individual word vectors to contextualized representations."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure supports the claim that the proposed method uses richer representations that better capture salient geometrical properties of the exemplar context, which might be lost by averaging. It shows the derivation of mean, min, and max vectors for both the context and the target word, indicating a more detailed representation than a simple average. The element-wise multiplication further illustrates how context-agnostic word type representations are transformed using context vectors.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "label": "Table 2",
+        "number": "2",
+        "page": 3,
+        "caption": "Table 2: Semantic relations in CONTEXT-PPDB. Negation and alternation are conflated into a single relation while creating the dataset.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table lists the semantic relations used in the CONTEXT-PPDB dataset and their definitions.",
+          "data_read": [
+            "Equivalence: is the same as",
+            "Entailment: is more specific than",
+            "Negation: is the exact opposite of",
+            "Alternation: is mutually exclusive with",
+            "Other-related: is related in some other way to",
+            "Independent: is not related to"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states that the dataset consists of tuples with a corresponding label from Table 2, one of which is entailment. The table clearly lists 'Entailment' as one of the semantic relations with its definition.",
+          "issues": [],
+          "table_markdown": "| | |\n|:---|:---|\n| Equivalence | is the same as |\n| Entailment | is more specific than |\n| Negation | is the exact opposite of |\n| Alternation | is mutually exclusive with |\n| Other-related | is related in some other way to |\n| Independent | is not related to |"
+        }
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "label": "Figure 2",
+        "number": "2",
+        "page": 4,
+        "caption": "Figure 2: Sample dataset creation process based on two synsets of the word study. The green/solid lines indicate positive examples, while the red/dashed lines indicate negative examples",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This diagram illustrates the process of creating a sample dataset for lexical entailment, focusing on the word 'study'. It shows how positive and negative examples are generated from different synsets and their corresponding example sentences.",
+          "data_read": [
+            "The diagram starts with 'Word: Room' and 'Example: the rooms were small but comfortable', connected by a green/solid line to 'Word: Study' and 'Example: he knocked on the door of the study'. This indicates a positive example.",
+            "Another branch shows 'Word: Drawing' and 'Example: he did complicated pen-and-ink drawings', connected by a red/dashed line to 'Word: Study' and 'Example: he made several studies before the final painting'. This indicates a negative example.",
+            "Green/solid lines indicate positive examples.",
+            "Red/dashed lines indicate negative examples."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure clearly illustrates the 'entire process' of dataset creation, showing how different word synsets and their example sentences are used to generate both positive (green/solid lines) and negative (red/dashed lines) examples, as stated in the text: 'The entire process starts from a seed list of words W and proceeds as follows (see Figure 2 for an illustration)'.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "label": "Table 3",
+        "number": "3",
+        "page": 6,
+        "caption": "Table 3: Experimental results on CONTEXT-PPDB. The evaluation metric is weighted F score.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents experimental results on the CONTEXT-PPDB dataset, using weighted F-score as the evaluation metric. It compares different combinations of word type features, context-aware similarities, and representations.",
+          "data_read": [
+            "The table has columns: \"Word Type Features\", \"Context-aware Features\" (subdivided into \"Similarities\" and \"Representations\"), and \"Scores\" (subdivided into \"P\", \"R\", and \"F\").",
+            "The \"Word Type Features\" include: [w̃l ; w̃r], [w̃l,c2v ; w̃r,c2v], and PPDB(wl, wr).",
+            "The \"Similarities\" column indicates \"X\" (no similarities) or \"All\".",
+            "The \"Representations\" column indicates \"X\" (no representations), [Wl,mask ; Wr,mask], or [Cl,c2v; Cr,c2v].",
+            "For [w̃l ; w̃r] with \"X\" similarities and [Wl,mask ; Wr,mask] representations, P=0.674, R=0.694, F=0.677.",
+            "For [w̃l ; w̃r] with \"X\" similarities and \"X\" representations, P=0.531, R=0.539, F=0.535.",
+            "For [w̃l ; w̃r] with \"X\" similarities and [Wl,mask; Wr,mask] representations, P=0.512, R=0.521, F=0.516.",
+            "For [w̃l ; w̃r] with \"All\" similarities and \"X\" representations, P=0.642, R=0.642, F=0.642.",
+            "For [w̃l ; w̃r] with \"All\" similarities and [Wl,mask; Wr,mask] representations, P=0.638, R=0.637, F=0.637.",
+            "For [w̃l ; w̃r] with \"All\" similarities and [Cl,c2v; Cr,c2v] representations, P=0.605, R=0.604, F=0.603.",
+            "For [w̃l,c2v ; w̃r,c2v] with \"X\" similarities and \"X\" representations, P=0.533, R=0.569, F=0.540.",
+            "For [w̃l,c2v ; w̃r,c2v] with \"X\" similarities and [Wl,mask; Wr,mask] representations, P=0.518, R=0.545, F=0.526.",
+            "For [w̃l,c2v ; w̃r,c2v] with \"All\" similarities and \"X\" representations, P=0.655, R=0.674, F=0.659.",
+            "For [w̃l,c2v ; w̃r,c2v] with \"All\" similarities and [Wl,mask; Wr,mask] representations, P=0.652, R=0.670, F=0.656.",
+            "For [w̃l,c2v ; w̃r,c2v] with \"All\" similarities and [Cl,c2v; Cr,c2v] representations, P=0.601, R=0.601, F=0.600.",
+            "For PPDB(wl, wr) with \"Most salient only\" similarities and \"X\" representations, P=0.677, R=0.685, F=0.670.",
+            "For PPDB(wl, wr) with \"All\" similarities and \"X\" representations, P=0.695, R=0.701, F=0.692.",
+            "For PPDB(wl, wr) with \"All\" similarities and [Wl,mask; Wr,mask] representations, P=0.721, R=0.720, F=0.718."
+          ],
+          "supports_claims": null,
+          "support_rationale": "The article does not cite this figure, so no claims are made about it.",
+          "issues": [],
+          "table_markdown": "| Word Type Features | Context-aware Features | Scores |\n|---|---|---|---|\n| | Similarities | Representations | P | R | F |\n| [w̃l ; w̃r] | X | [Wl,mask ; Wr,mask] | 0.674 | 0.694 | 0.677 |\n| [w̃l ; w̃r] | X | X | 0.531 | 0.539 | 0.535 |\n| [w̃l ; w̃r] | X | [Wl,mask; Wr,mask] | 0.512 | 0.521 | 0.516 |\n| [w̃l ; w̃r] | All | X | 0.642 | 0.642 | 0.642 |\n| [w̃l ; w̃r] | All | [Wl,mask; Wr,mask] | 0.638 | 0.637 | 0.637 |\n| [w̃l ; w̃r] | All | [Cl,c2v; Cr,c2v] | 0.605 | 0.604 | 0.603 |\n| [w̃l,c2v ; w̃r,c2v] | X | X | 0.533 | 0.569 | 0.540 |\n| [w̃l,c2v ; w̃r,c2v] | X | [Wl,mask ; Wr,mask] | 0.518 | 0.545 | 0.526 |\n| [w̃l,c2v ; w̃r,c2v] | All | X | 0.655 | 0.674 | 0.659 |\n| [w̃l,c2v ; w̃r,c2v] | All | [Wl,mask; Wr,mask] | 0.652 | 0.670 | 0.656 |\n| [w̃l,c2v ; w̃r,c2v] | All | [Cl,c2v; Cr,c2v] | 0.601 | 0.601 | 0.600 |\n| PPDB(wl, wr) | Most salient only | X | 0.677 | 0.685 | 0.670 |\n| PPDB(wl, wr) | All | X | 0.695 | 0.701 | 0.692 |\n| PPDB(wl, wr) | All | [Wl,mask; Wr,mask] | 0.721 | 0.720 | 0.718 |"
+        }
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "label": "Table 4",
+        "number": "4",
+        "page": 7,
+        "caption": "Table 4: Results on CONTEXT-WN. Macro-F1 and Pairwise accuracy, are intended to capture context-awareness and directionality-discrimination abilities of our features, repsectively.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the results of different feature combinations on the CONTEXT-WN dataset, evaluating their performance in terms of Precision (P), Recall (R), F1-score, Macro F1, and Pairwise Accuracy. It compares various word type features, context-aware similarities, and representations.",
+          "data_read": [
+            "The table has columns for 'Word Type Feat.s', 'Context-aware Features' (subdivided into 'Similarities' and 'Representations'), and 'Scores' (subdivided into 'P', 'R', 'F', 'Macro F1', and 'Pairwise Acc.').",
+            "The 'Random' baseline shows scores of P=0.5, R=0.5, F=0.5, Macro F1=0.5, and Pairwise Acc.=0.25.",
+            "For '[ῶι ; ὦr]' with 'X' similarities and 'X' representations, the scores are P=0.653, R=0.615, F=0.625, Macro F1=0.594, Pairwise Acc.=0.582.",
+            "For '[ῶι ; ὦr]' with 'All' similarities and 'X' representations, the scores are P=0.700, R=0.663, F=0.672, Macro F1=0.651, Pairwise Acc.=0.597.",
+            "For '[ῶι ; ὦr]' with 'All' similarities and '[Wl,mask ; Wr,mask]' representations, the scores are P=0.704, R=0.666, F=0.675, Macro F1=0.673, Pairwise Acc.=0.617.",
+            "For '[W1,c2v ; Wr,c2v]' with 'All' similarities and 'X' representations, the scores are P=0.728, R=0.689, F=0.697, Macro F1=0.704, Pairwise Acc.=0.700.",
+            "The highest Macro F1 score is 0.708 for '[W1,c2v ; Wr,c2v]' with 'All' similarities and '[Cl,c2v ; Cr,c2v]' representations.",
+            "The highest Pairwise Accuracy is 0.700 for '[W1,c2v ; Wr,c2v]' with 'All' similarities and 'X' representations."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table supports the claim that 'Context agnostic baselines detect direction significantly above chance' as the 'Random' baseline for Pairwise Acc. is 0.25, and all other models show significantly higher Pairwise Acc. scores (e.g., 0.582, 0.597, 0.617, 0.700). It also supports the claim that 'Models using context-aware features do consistently better on Macro-F1 than those without' because models with 'All' similarities or '[Wl,mask ; Wr,mask]' representations generally show higher Macro-F1 scores compared to those with 'X' (context-agnostic) features.",
+          "issues": [],
+          "table_markdown": "| Word Type Feat.s | Context-aware Features | Scores |\n|---|---|---|---|---|---|\n| | Similarities | Representations | P | R | F | Macro F1 | Pairwise Acc. |\n| Random | | | 0.5 | 0.5 | 0.5 | 0.5 | 0.25 |\n| X | All | [Wl,mask ; Wr,mask] | 0.700 | 0.661 | 0.670 | 0.677 | 0.623 |\n| [ῶι ; ὦr] | X | X | 0.653 | 0.615 | 0.625 | 0.594 | 0.582 |\n| [ῶι ; ὦr] | X | [Wl,mask ; Wr,mask] | 0.656 | 0.618 | 0.628 | 0.608 | 0.592 |\n| [ῶι ; ὦr] | All | X | 0.700 | 0.663 | 0.672 | 0.651 | 0.597 |\n| [ῶι ; ὦr] | All | [Wl,mask ; Wr,mask] | 0.704 | 0.666 | 0.675 | 0.673 | 0.617 |\n| [ῶι ; ὦr] | All | [Cl,c2v ; Cr,c2v] | 0.692 | 0.658 | 0.667 | 0.682 | 0.592 |\n| [W1,c2v ; Wr,c2v] | X | X | 0.695 | 0.655 | 0.664 | 0.663 | 0.667 |\n| [W1,c2v ; Wr,c2v] | X | [Wl,mask ; Wr,mask] | 0.694 | 0.655 | 0.665 | 0.668 | 0.660 |\n| [W1,c2v ; Wr,c2v] | All | X | 0.728 | 0.689 | 0.697 | 0.704 | 0.700 |\n| [W1,c2v ; Wr,c2v] | All | [Wl,mask ; Wr,mask] | 0.724 | 0.685 | 0.694 | 0.704 | 0.691 |\n| [W1,c2v ; Wr,c2v] | All | [Cl,c2v ; Cr,c2v] | 0.713 | 0.678 | 0.687 | 0.708 | 0.638 |"
+        }
+      },
+      {
+        "id": "fig_7",
+        "kind": "table",
+        "label": "Table 5",
+        "number": "5",
+        "page": 7,
+        "caption": "Table 5: Results on cross-lingual dataset with training on CONTEXT-PPDB using bilingual embeddings.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the experimental results on a cross-lingual dataset, specifically with training on CONTEXT-PPDB using bilingual embeddings. It evaluates different configurations of word type features and context-aware features based on their Precision (P), Recall (R), and F-score (F).",
+          "data_read": [
+            "The table has columns for 'Word Type Feat.s', 'Context-aware Features' (subdivided into 'Similarities' and 'Representations'), and 'Scores' (subdivided into 'P', 'R', and 'F').",
+            "The 'Random' baseline shows scores of P=0.570, R=0.481, F=0.501.",
+            "For '[Wl,bivec ; Wr,bivec]' with 'Similarities' as 'X' and 'Representations' as 'X', the scores are P=0.618, R=0.537, F=0.560.",
+            "For '[Wl,bivec ; Wr,bivec]' with 'Similarities' as 'X' and 'Representations' as '[Wl,mask; Wr,mask]', the scores are P=0.618, R=0.537, F=0.560.",
+            "For '[Wl,bivec ; Wr,bivec]' with 'Similarities' as 'All' and 'Representations' as 'X', the scores are P=0.632, R=0.576, F=0.595.",
+            "For '[Wl,bivec ; Wr,bivec]' with 'Similarities' as 'All' and 'Representations' as '[Wl,mask; Wr,mask]', the scores are P=0.620, R=0.554, F=0.575.",
+            "For 'X' with 'Similarities' as 'All' and 'Representations' as '[Wl,mask ; Wr,mask]', the scores are P=0.650, R=0.607, F=0.622.",
+            "For '[Wl,bicvm; Wr,bicvm]' with 'Similarities' as 'X' and 'Representations' as 'X', the scores are P=0.651, R=0.517, F=0.530.",
+            "For '[Wl,bicvm; Wr,bicvm]' with 'Similarities' as 'X' and 'Representations' as '[Wl,mask ; Wr,mask]', the scores are P=0.655, R=0.528, F=0.543.",
+            "For '[Wl,bicvm; Wr,bicvm]' with 'Similarities' as 'All' and 'Representations' as 'X', the scores are P=0.681, R=0.574, F=0.590.",
+            "For '[Wl,bicvm; Wr,bicvm]' with 'Similarities' as 'All' and 'Representations' as '[Wl,mask ; Wr,mask]', the scores are P=0.682, R=0.566, F=0.581.",
+            "For 'X' with 'Similarities' as 'All' and 'Representations' as '[Wl,mask; Wr,mask]', the scores are P=0.676, R=0.614, F=0.629."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states: 'Results on the cross-lingual dataset are similar to monolingual results (Table 5). Context-aware features outperform context-agnostic baselines - similarities boost the score by 3 and 6 points in the BiVec and BiCVM settings respectively.' Looking at Table 5, the 'Random' baseline has an F-score of 0.501. The models using 'All' similarities and '[Wl,mask; Wr,mask]' representations (context-aware features) show F-scores of 0.622 (BiVec) and 0.629 (BiCVM), which are indeed 12.1 and 12.8 points higher than the baseline, supporting the claim of significant improvement.",
+          "issues": [],
+          "table_markdown": "| Word Type Feat.s | Context-aware Features | Scores |||\n|---|---|---|---|---|\n|| Similarities | Representations | P | R | F |\n| Random | | | 0.570 | 0.481 | 0.501 |\n| [Wl,bivec ; Wr,bivec] | X | X | 0.618 | 0.537 | 0.560 |\n| [Wl,bivec ; Wr,bivec] | X | [Wl,mask; Wr,mask] | 0.618 | 0.537 | 0.560 |\n| [Wl,bivec ; Wr,bivec] | All | X | 0.632 | 0.576 | 0.595 |\n| [Wl,bivec ; Wr,bivec] | All | [Wl,mask; Wr,mask] | 0.620 | 0.554 | 0.575 |\n| X | All | [Wl,mask ; Wr,mask] | 0.650 | 0.607 | 0.622 |\n| [Wl,bicvm; Wr,bicvm] | X | X | 0.651 | 0.517 | 0.530 |\n| [Wl,bicvm; Wr,bicvm] | X | [Wl,mask ; Wr,mask] | 0.655 | 0.528 | 0.543 |\n| [Wl,bicvm; Wr,bicvm] | All | X | 0.681 | 0.574 | 0.590 |\n| [Wl,bicvm; Wr,bicvm] | All | [Wl,mask ; Wr,mask] | 0.682 | 0.566 | 0.581 |\n| X | All | [Wl,mask; Wr,mask] | 0.676 | 0.614 | 0.629 |"
+        }
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "label": "Table 6",
+        "number": "6",
+        "page": 8,
+        "caption": "Table 6: Impact of masks on CONTEXT-PPDB and CONTEXT-WN.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the experimental results on the CONTEXT-PPDB and CONTEXT-WN datasets, evaluating the impact of different context-aware features (similarities and representations) on the performance metrics P (Precision), R (Recall), F (F-score), Macro F1, and Pairwise Accuracy.",
+          "data_read": [
+            "The table has columns: 'Dataset', 'Context aware features' (with sub-columns 'Similarities' and 'Representations'), and 'Scores' (with sub-columns 'P', 'R', 'F', 'Macro F1', and 'Pairwise Acc.').",
+            "For CONTEXT-PPDB, using 'All' similarities and '[Wl,mean; Wr,mean]' representations yields P=0.646, R=0.672, F=0.643.",
+            "For CONTEXT-PPDB, using 'All' similarities and '[Cl,mean; Cr,mean]' representations yields P=0.655, R=0.678, F=0.652. Macro F1 and Pairwise Acc. are 'NA'.",
+            "For CONTEXT-PPDB, using 'All' similarities and '[Wl,mask; Wr,mask]' representations yields P=0.674, R=0.694, F=0.677.",
+            "For CONTEXT-WN, using 'All' similarities and '[Wl,mean ; Wr,mean]' representations yields P=0.674, R=0.635, F=0.645, Macro F1=0.641, Pairwise Acc.=0.577.",
+            "For CONTEXT-WN, using 'All' similarities and '[Cl,mean; Cr,mean]' representations yields P=0.688, R=0.648, F=0.657, Macro F1=0.665, Pairwise Acc.=0.608.",
+            "For CONTEXT-WN, using 'All' similarities and '[Wl,mask ; Wr,mask]' representations yields P=0.700, R=0.661, F=0.670, Macro F1=0.677, Pairwise Acc.=0.623."
+          ],
+          "supports_claims": null,
+          "support_rationale": "The article does not make specific claims about this table in the provided text snippets.",
+          "issues": [],
+          "table_markdown": "| Dataset | Context aware features | Scores |\n|---|---|---|---|\n| | Similarities | Representations | P | R | F | Macro F1 | Pairwise Acc. |\n| | All | [Wl,mean; Wr,mean] | 0.646 | 0.672 | 0.643 | | |\n| CONTEXT-PPDB | All | [Cl,mean; Cr,mean] | 0.655 | 0.678 | 0.652 | NA | NA |\n| | All | [Wl,mask; Wr,mask] | 0.674 | 0.694 | 0.677 | | |\n| | All | [Wl,mean ; Wr,mean] | 0.674 | 0.635 | 0.645 | 0.641 | 0.577 |\n| CONTEXT-WN | All | [Cl,mean; Cr,mean] | 0.688 | 0.648 | 0.657 | 0.665 | 0.608 |\n| | All | [Wl,mask ; Wr,mask] | 0.700 | 0.661 | 0.670 | 0.677 | 0.623 |"
+        }
+      }
+    ],
+    "figure_mentions": [
+      {
+        "figure_id": "fig_1",
+        "marker": "Table 1",
+        "sentence": "Table 1 provides examples.",
+        "section_id": "sec_3",
+        "start": 365,
+        "end": 372
+      },
+      {
+        "figure_id": "fig_2",
+        "marker": "Figure 1",
+        "sentence": "However, while prior work repre- sents context by averaging word vectors, we pro- pose richer representations that better capture the salient geometrical properties of the exemplar con- text that might get lost by averaging (Figure 1).",
+        "section_id": "sec_5",
+        "start": 481,
+        "end": 489
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 2",
+        "sentence": "The final dataset consists of 3750 words/contexts tuples with a corresponding label from Table 2, one of which is entailment.",
+        "section_id": "sec_11",
+        "start": 533,
+        "end": 540
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Figure 2",
+        "sentence": "The entire process starts from a seed list of words W and proceeds as follows (see Figure 2 for an illustration) :",
+        "section_id": "sec_12",
+        "start": 900,
+        "end": 908
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 4",
+        "sentence": "Representation-based features only A context-agnostic baseline (Baroni et al., 2012) based on the concatenation of the word type features for (ωι, wr) reaches F1 scores of 53.5 using Glove and 54 with Context2Vec (Table 4).",
+        "section_id": "sec_18",
+        "start": 214,
+        "end": 221
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 4",
+        "sentence": "We repeat all experiments on CONTEXT-WN (Table 4), except for those that require PPDB-specific features.",
+        "section_id": "sec_19",
+        "start": 41,
+        "end": 48
+      },
+      {
+        "figure_id": "fig_7",
+        "marker": "Table 5",
+        "sentence": "Results on the cross-lingual dataset are similar to monolingual results (Table 5).",
+        "section_id": "sec_20",
+        "start": 73,
+        "end": 80
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 4",
+        "sentence": "Models using context-aware features do consistently better on Macro-F1 than those without (Table 4).",
+        "section_id": "sec_22",
+        "start": 653,
+        "end": 660
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 4",
+        "sentence": "Context agnostic baselines detect direction significantly above chance (Table 4).",
+        "section_id": "sec_23",
+        "start": 529,
+        "end": 536
+      }
+    ],
+    "hidden_text_findings": [
+      {
+        "page": 2,
+        "text": "0.3",
+        "reasons": [
+          "under_image"
+        ],
+        "bbox": [
+          345.66708,
+          205.21154462000004,
+          356.2225176,
+          212.80538462000004
+        ]
+      },
+      {
+        "page": 2,
+        "text": "0.6-0.1",
+        "reasons": [
+          "under_image"
+        ],
+        "bbox": [
+          365.2845,
+          205.21154462000004,
+          395.87670632000004,
+          212.80538462000004
+        ]
+      },
+      {
+        "page": 2,
+        "text": "1.5",
+        "reasons": [
+          "under_image"
+        ],
+        "bbox": [
+          345.66708,
+          224.40708461999998,
+          356.2225176,
+          232.00092461999998
+        ]
+      },
+      {
+        "page": 2,
+        "text": "-2.5",
+        "reasons": [
+          "under_image"
+        ],
+        "bbox": [
+          364.01886,
+          224.40708461999998,
+          377.10304632000003,
+          232.00092461999998
+        ]
+      },
+      {
+        "page": 2,
+        "text": "0",
+        "reasons": [
+          "under_image"
+        ],
+        "bbox": [
+          387.22226,
+          224.40708461999998,
+          391.44443504000003,
+          232.00092461999998
+        ]
+      },
+      {
+        "page": 2,
+        "text": "-1",
+        "reasons": [
+          "color",
+          "under_image"
+        ],
+        "bbox": [
+          347.77648,
+          243.60262462000003,
+          354.52740376,
+          251.19646462000003
+        ]
+      },
+      {
+        "page": 2,
+        "text": "0.2",
+        "reasons": [
+          "color",
+          "under_image"
+        ],
+        "bbox": [
+          365.2845,
+          243.60262462000003,
+          375.8399376,
+          251.19646462000003
+        ]
+      },
+      {
+        "page": 2,
+        "text": "1.8",
+        "reasons": [
+          "color",
+          "under_image"
+        ],
+        "bbox": [
+          384.05816,
+          243.60262462000003,
+          394.6135976,
+          251.19646462000003
+        ]
+      },
+      {
+        "page": 4,
+        "text": "Word : Study",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          327.88428,
+          113.8401859600001,
+          372.77918020640004,
+          121.01214596000011
+        ]
+      },
+      {
+        "page": 4,
+        "text": "Example : he made several studies before the ﬁnal",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          327.88428,
+          122.27778596000007,
+          493.58009690399996,
+          129.4497459600001
+        ]
+      },
+      {
+        "page": 4,
+        "text": "painting",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          327.88428,
+          130.71538596000005,
+          353.78939951999996,
+          137.88734596000006
+        ]
+      }
+    ]
+  }
+}

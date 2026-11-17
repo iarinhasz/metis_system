@@ -1,0 +1,589 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T14351",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "TOWARDS A NEURAL STATISTICIAN",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "page": 2,
+        "label": "Figure 1",
+        "caption": "Figure 1: Left: basic hierarchical model, where the plate encodes the fact that the context variable c is shared across each item in a given dataset. Center: full neural statistician model with three latent layers z1, z2, z3. Each collection of incoming edges to a node is implemented as a neural network, the input of which is the concatenation of the edges' sources, the output of which is a parameterization of a distribution over the random variable represented by that node. Right: The statistic network, which combines the data via an exchangeable statistic layer."
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "page": 6,
+        "label": "Figure 2",
+        "caption": "Figure 2: Three different views of the same data. Each point is the mean of the approximate posterior over the context q(c|D; φ) where c∈ R³. Each point is a summary statistic for a single dataset with 200 samples. Top plot shows points colored by distribution family, left plot colored by the mean and right plot colored by the variance. The plots have been rotated to illustrative angles."
+      },
+      {
+        "id": "fig_3",
+        "kind": "figure",
+        "page": 6,
+        "label": "Figure 3",
+        "caption": "Figure 3: An image from MNIST on the left, transformed to a set of 50 (x, y) coordinates, shown as a scatter plot on the right."
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "page": 7,
+        "label": "Figure 4",
+        "caption": "Figure 4: Conditioned samples from spatial MNIST data. Blue and red digits are the input sets, black digits above correspond to samples given the input. Red points correspond to a 6-sample summary of the dataset"
+      },
+      {
+        "id": "fig_5",
+        "kind": "figure",
+        "page": 7,
+        "label": "Figure 5",
+        "caption": "Figure 5: Few-shot learning Left: Few-shot learning from OMNIGLOT to MNIST. Left rows are input sets, right rows are samples given the inputs. Right: Few-shot learning from with OMNIGLOT data to unseen classes. Left rows are input sets, right rows are samples given the inputs. Black-white inversion is applied for ease of viewing."
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 1",
+        "caption": "Table 1: The table shows the classification accuracies of various few-shot learning tasks. Models are trained on OMNIGLOT data and tested on either unseen OMNIGLOT classes or MNIST with vary- ing numbers of samples per class (K-shot) with varying numbers of classes (K-way). Comparisons are to Vinyals et al. (2016b) (Matching), Santoro et al. (2016) (MANN) and Koch (2015) (Siamese). 5-shot MNIST results are included for completeness."
+      },
+      {
+        "id": "fig_7",
+        "kind": "figure",
+        "page": 8,
+        "label": "Figure 6",
+        "caption": "Figure 6: Few-shot learning for face data. Samples are from model trained on Youtube Faces Database. Left: Each row shows an input set of size 5. Center: Each row shows 5 samples from the model corresponding to the input set on the left. Right: Imagined new faces generated by sampling contexts from the prior. Each row consists of 5 samples from the model given a particular sampled context."
+      }
+    ],
+    "abstract": "An efficient learner is one who reuses what they already know to tackle a new problem. For a machine learner, this means understanding the similarities amongst datasets. In order to do this, one must take seriously the idea of working with datasets, rather than datapoints, as the key objects to model. Towards this goal, we demonstrate an extension of a variational autoencoder that can learn a method for computing representations, or statistics, of datasets in an unsupervised fashion. The network is trained to produce statistics that encapsulate a generative model for each dataset. Hence the network enables efficient learning from new datasets for both unsupervised and supervised tasks. We show that we are able to learn statistics that can be used for: clustering datasets, transferring generative models to new datasets, selecting representative samples of datasets and classifying previously unseen classes. We refer to our model as a neural statistician, and by this we mean a neural network that can learn to compute summary statistics of datasets without supervision.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 INTRODUCTION",
+        "first_sentence": "The machine learning community is well-practised at learning representations of data-points and se- quences."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "other"
+        ],
+        "title": "2 PROBLEM STATEMENT",
+        "first_sentence": "We are given datasets D¿ for $i \\in I$."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "3 NEURAL STATISTICIAN",
+        "first_sentence": "In order to exploit the assumption of a hierarchical generative process over datasets we will use a 'parameter-transfer approach' (see Pan & Yang, 2010) to extend the variational autoencoder model of Kingma & Welling (2013)."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "method"
+        ],
+        "title": "3.1 VARIATIONAL AUTOENCODER",
+        "first_sentence": "The variational autoencoder is a latent variable model $p(x|z; \\theta)$ (often called the decoder) with parameters $\\theta$."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2 BASIC MODEL",
+        "first_sentence": "We extend the variational autoencoder to the model depicted on the left in Figure 1."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "method"
+        ],
+        "title": "3.3 FULL MODEL",
+        "first_sentence": "The basic model works well for modelling simple datasets, but struggles when the datasets have complex internal structure."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "method"
+        ],
+        "title": "3.4 STATISTIC NETWORK",
+        "first_sentence": "In addition to the standard inference networks we require a statistic network $q(c|D; \\phi)$ to give an approximate posterior over the context $c$ given a dataset $D = \\{x_1,...,x_k\\}$."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "related_work"
+        ],
+        "title": "4 RELATED WORK",
+        "first_sentence": "Due to the general nature of the problem considered, our work touches on many different topics which we now attempt to summarize."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "related_work"
+        ],
+        "title": "Topic models and graphical models",
+        "first_sentence": "Topic models and graphical models The form of the graphical model in Figure 1 on the left is equivalent to that of a standard topic model."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "related_work"
+        ],
+        "title": "Transfer learning",
+        "first_sentence": "Transfer learning There is a considerable literature on transfer learning, for a survey see Pan & Yang (2010)."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "related_work"
+        ],
+        "title": "One-shot Learning",
+        "first_sentence": "One-shot Learning Learning quickly from small amounts of data is a topic of great interest."
+      },
+      {
+        "id": "sec_13",
+        "roles": [
+          "related_work"
+        ],
+        "title": "Multiple-Instance Learning",
+        "first_sentence": "Multiple-Instance Learning There is previous work on classifying sets in multiple-instance learning, for a useful survey see Cheplygina et al."
+      },
+      {
+        "id": "sec_14",
+        "roles": [
+          "related_work"
+        ],
+        "title": "Set2Seq",
+        "first_sentence": "Set2Seq In very related work, Vinyals et al."
+      },
+      {
+        "id": "sec_15",
+        "roles": [
+          "related_work"
+        ],
+        "title": "ABC",
+        "first_sentence": "ABC There has also been work on learning summary statistics for Approximate Bayesian Com- putation by either learning to predict the parameters generating a sample as a supervised problem, or by using kernel embeddings as infinite dimensional summary statistics."
+      },
+      {
+        "id": "sec_16",
+        "roles": [
+          "results"
+        ],
+        "title": "5 EXPERIMENTAL RESULTS",
+        "first_sentence": "Given an input set $x_1,..."
+      },
+      {
+        "id": "sec_17",
+        "roles": [
+          "method"
+        ],
+        "title": "5.1 SIMPLE 1-D DISTRIBUTIONS",
+        "first_sentence": "In our first experiment we wanted to know if the neural statistician will learn to cluster synthetic 1-D datasets by distribution family."
+      },
+      {
+        "id": "sec_18",
+        "roles": [
+          "method"
+        ],
+        "title": "5.2 SPATIAL MNIST",
+        "first_sentence": "Building on the previous experiments we investigate 2-D datasets that have complex structure, but the datapoints contain little in-formation by themselves, making it a good test of the statistic network."
+      },
+      {
+        "id": "sec_19",
+        "roles": [
+          "method"
+        ],
+        "title": "5.3 OMNIGLOT",
+        "first_sentence": "Next we work with the OMNIGLOT data (Lake et al., 2015)."
+      },
+      {
+        "id": "sec_20",
+        "roles": [
+          "method"
+        ],
+        "title": "5.4 YOUTUBE FACES",
+        "first_sentence": "Finally, we provide a proof of concept for generating faces of a particular person."
+      },
+      {
+        "id": "sec_21",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "6 CONCLUSION",
+        "first_sentence": "We have demonstrated a highly flexible model on a variety of tasks."
+      },
+      {
+        "id": "sec_22",
+        "roles": [
+          "other"
+        ],
+        "title": "ACKNOWLEDGMENTS",
+        "first_sentence": "This work was supported in part by the EPSRC Centre for Doctoral Training in Data Science, funded by the UK Engineering and Physical Sciences Research Council (grant EP/L016427/1) and the Uni- versity of Edinburgh."
+      },
+      {
+        "id": "sec_24",
+        "roles": [
+          "method"
+        ],
+        "title": "A APPENDIX A: PSEUDOCODE",
+        "first_sentence": "A APPENDIX A: PSEUDOCODE\n\nAlgorithm 1 Sampling a dataset of size k\nsample c ~ p(c)\nfor i = 1 to k do\nsample $z_{i,L} \\sim p(z_L|c; \\theta)$\nfor j = L - 1 to 1 do\nsample $z_{i,j} \\sim p(z_j|z_{i,j+1}, c; \\theta)$\nend for\nsample $x_i \\sim p(x|z_{i,1}, \\ldots, z_{i,L}, c; \\theta)$\nend for\n\nAlgorithm 2 Sampling a dataset of size k conditioned on a dataset of size m\n$\\mu_c, \\sigma_c^2 \\leftarrow q(c|x_1, \\ldots, x_m; \\phi)$ {Calculate approximate posterior over c using statistic network.}\n$c \\leftarrow \\mu_c$ {Set c to be the mean of the approximate posterior.}\nfor i = 1 to k do\nsample $z_{i,L} \\sim p(z_L|c; \\theta)$\nfor j = L - 1 to 1 do\nsample $z_{i,j} \\sim p(z_j|z_{i,j+1}, c; \\theta)$\nend for\nsample $x_i \\sim p(x|z_{i,1}, \\ldots, z_{i,L}, c; \\theta)$\nend for\n\nAlgorithm 3 Selecting a representative sample of size k\n$S \\leftarrow \\{x_1, \\ldots, x_m\\}$\n$I \\leftarrow \\{1, \\ldots, m\\}$\n$S_I = \\{x_i \\in S : i \\in I\\}$\n$N_{S_I} = q(c|S_I; \\phi)$ {Calculate approximate posterior over c using statistic network.}\nfor i = 1 to k do\n$t \\leftarrow \\operatorname{argmin}_{j \\in I} D_{KL} (N_S||N_{S_{I-j}})$\n$I \\leftarrow I - t$\nend for"
+      },
+      {
+        "id": "sec_25",
+        "roles": [
+          "method"
+        ],
+        "title": "B APPENDIX B: FURTHER EXPERIMENTAL DETAILS",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_26",
+        "roles": [
+          "method"
+        ],
+        "title": "B.1 OMNIGLOT",
+        "first_sentence": "Shared encoder $x \\rightarrow h$\n2$\\times$ { conv2d 64 feature maps with 3 $\\times$ 3 kernels and ELU activations }\nconv2d 64 feature maps with 3 $\\times$ 3 kernels, stride 2 and ELU activations\n2$\\times$ {conv2d 128 feature maps with 3 $\\times$ 3 kernels and ELU activations }\nconv2d 128 feature maps with 3 $\\times$ 3 kernels, stride 2 and ELU activations\n2$\\times$ { conv2d 256 feature maps with 3 $\\times$ 3 kernels and ELU activations }\nconv2d 256 feature maps with 3 $\\times$ 3 kernels, stride 2 and ELU activations\n\nStatistic network $q(c|D; \\phi) : h_1, \\ldots, h_k \\rightarrow \\mu_c, \\sigma_c^2$\nfully-connected layer with 256 units and ELU activations\nsample-dropout and concatenation with number of samples\naverage pooling within each dataset\n2$\\times$ {fully-connected layer with 256 units and ELU activations }\nfully-connected linear layers to $\\mu_c$ and log $\\sigma_c^2$\n\nInference network $q(z|x, c; \\phi) : h, c \\rightarrow \\mu_z, \\sigma_z^2$\nconcatenate c and h\n3$\\times$ {fully-connected layer with 256 units and ELU activations }\nfully-connected linear layers to $\\mu_z$ and log $\\sigma_z^2$\n\nLatent decoder network $p(z|c; \\theta) : c \\rightarrow \\mu_z, \\sigma_z^2$\n3$\\times$ {fully-connected layer with 256 units and ELU activations }\nfully-connected linear layers to $\\mu_z$ and log $\\sigma_z^2$\n\nObservation decoder network $p(x|c, z; \\theta) : c, z \\rightarrow \\mu_x$\nconcatenate z and c\nfully-connected linear layers with 4$\\cdot$4$\\cdot$256 units\n2$\\times$ { conv2d 256 feature maps with 3 $\\times$ 3 kernels and ELU activations }\ndeconv2d 256 feature maps with 2 $\\times$ 2 kernels, stride 2, ELU activations\n2$\\times$ { conv2d 128 feature maps with 3 $\\times$ 3 kernels and ELU activations }\ndeconv2d 128 feature maps with 2 $\\times$ 2 kernels, stride 2, ELU activations\n2$\\times$ { conv2d 64 feature maps with 3 $\\times$ 3 kernels and ELU activations }\ndeconv2d 64 feature maps with 2 $\\times$ 2 kernels, stride 2, ELU activations\nconv2d 1 feature map with 1 $\\times$ 1 kernels, sigmoid activations"
+      },
+      {
+        "id": "sec_27",
+        "roles": [
+          "method"
+        ],
+        "title": "B.2 YOUTUBE FACES",
+        "first_sentence": "B.2 YOUTUBE FACES\n\nShared encoder x → h\n2× { conv2d 32 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 32 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n2× {conv2d 64 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 64 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n2× { conv2d 128 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 128 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n2× { conv2d 256 feature maps with 3 × 3 kernels and ELU activations }\nconv2d 256 feature maps with 3 × 3 kernels, stride 2 and ELU activations\n\nStatistic network $q(c|D, \\phi) : h_1, ..., h_k \\rightarrow \\mu_c, \\sigma_c^2$\nfully-connected layer with 1000 units and ELU activations\naverage pooling within each dataset\nfully-connected linear layers to $\\mu_c$ and log $\\sigma_c^2$\n\nInference network $q(z|x, c, \\phi) : h, c \\rightarrow \\mu_z, \\sigma_z^2$\nconcatenate c and h\nfully-connected layer with 1000 units and ELU activations\nfully-connected linear layers to $\\mu_z$ and log $\\sigma_z^2$\n\nLatent decoder network $p(z|c, ; \\theta) : c \\rightarrow \\mu_z, \\sigma_z^2$\nfully-connected layer with 1000 units and ELU activations\nfully-connected linear layers to $\\mu_z$ and log $\\sigma_z^2$\n\nObservation decoder network $p(x|c, z; \\theta) : c, z \\rightarrow \\mu_x$\nconcatenate z and c\nfully-connected layer with 1000 units and ELU activations\nfully-connected linear layer with 8.8.256 units\n2× { conv2d 256 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 256 feature maps with 2 × 2 kernels, stride 2, ELU activations\n2x { conv2d 128 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 128 feature maps with 2 × 2 kernels, stride 2, ELU activations\n2× { conv2d 64 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 64 feature maps with 2 × 2 kernels, stride 2, ELU activations\n2× { conv2d 32 feature maps with 3 × 3 kernels and ELU activations }\ndeconv2d 32 feature maps with 2 × 2 kernels, stride 2, ELU activations\nconv2d 3 feature maps with 1 × 1 kernels, sigmoid activations"
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "neural statistician",
+      "variational autoencoder",
+      "machine learning",
+      "datasets",
+      "generative model",
+      "unsupervised learning",
+      "clustering"
+    ],
+    "language": "en",
+    "confidence": 0.98,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "other"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_13"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_14"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_15"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_16"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_17"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_18"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_19"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_20"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_21"
+    },
+    {
+      "roles": [
+        "other"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_22"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_24"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_25"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_26"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_27"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "neural statistician",
+      "variational autoencoder",
+      "machine learning",
+      "datasets",
+      "generative model",
+      "unsupervised learning",
+      "clustering"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T14351",
+        "name": "Statistical and Computational Modeling",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.95,
+    "paper_type": "empirical",
+    "secondary_areas": [
+      {
+        "code": "https://openalex.org/fields/26",
+        "name": "Mathematics",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/fields/18",
+        "name": "Decision Sciences",
+        "level": "field"
+      }
+    ],
+    "field_confidence": 0.98,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.95
+  }
+}

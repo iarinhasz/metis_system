@@ -1,0 +1,502 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T11512",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "A BASELINE FOR DETECTING MISCLASSIFIED AND OUT-OF-DISTRIBUTION EXAMPLES IN NEURAL NETWORKS",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "table",
+        "page": 4,
+        "label": "Table 1",
+        "caption": "Table 1: The softmax predicted class probability allows for discrimination between correctly and incorrectly classified test set examples. “Pred. Prob Wrong(mean)\" is the mean softmax probability for wrongly classified examples, showcasing its shortcoming as a direct measure of confidence. Succ/Err Base values are the AUROCs or AUPRs achieved by random classifiers. All entries are percentages."
+      },
+      {
+        "id": "fig_2",
+        "kind": "table",
+        "page": 4,
+        "label": "Table 2",
+        "caption": "Table 2: Distinguishing in- and out-of-distribution test set data for image classification. CIFAR-10/All is the same as CIFAR-10/(SUN, Gaussian). All values are percentages."
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "page": 5,
+        "label": "Table 3",
+        "caption": "Table 3: Detecting correct and incorrect classifications for binary sentiment classification."
+      },
+      {
+        "id": "fig_4",
+        "kind": "table",
+        "page": 5,
+        "label": "Table 4",
+        "caption": "Table 4: Distinguishing in- and out-of-distribution test set data for binary sentiment classification. IMDB/All is the same as IMDB/(Customer Reviews, Movie Reviews). All values are percentages."
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "page": 5,
+        "label": "Table 5",
+        "caption": "Table 5: Detecting correct and incorrect classifications for text categorization."
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "page": 6,
+        "label": "Table 6",
+        "caption": "Table 6: Distinguishing in- and out-of-distribution test set data for text categorization."
+      },
+      {
+        "id": "fig_7",
+        "kind": "table",
+        "page": 6,
+        "label": "Table 7",
+        "caption": "Table 7: Detecting correct and incorrect classifications for part-of-speech tagging."
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "page": 6,
+        "label": "Table 8",
+        "caption": "Table 8: Detecting out-of-distribution tweets and blog articles for part-of-speech tagging. All values are percentages. *These examples are atypically close to the training distribution."
+      },
+      {
+        "id": "fig_9",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 9",
+        "caption": "Table 9: Detecting out-of-distribution distorted speech. All values are percentages."
+      },
+      {
+        "id": "fig_10",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 10",
+        "caption": "Table 10: Abnormality modules can generalize to novel distortions and detect out-of-distribution examples even when they do not severely degrade accuracy. All values are percentages."
+      },
+      {
+        "id": "fig_11",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 11",
+        "caption": "Table 11: Improved detection using the abnormality module. All values are percentages."
+      },
+      {
+        "id": "fig_12",
+        "kind": "figure",
+        "page": 12,
+        "label": "Figure 1",
+        "caption": "Figure 1: A neural network classifying a diamond image with an auxiliary decoder and an abnormality module. Circles are neurons, either having a GELU or sigmoid activation. The blurred diamond reconstruction precedes subtraction and elementwise squaring. The probability vector is the softmax probability vector. Blue layers train on in-distribution data, and red layers train on both in- and out-of-distribution examples."
+      },
+      {
+        "id": "fig_13",
+        "kind": "table",
+        "page": 13,
+        "label": "Table 12",
+        "caption": "Table 12: Confidence Model Baseline Results. All values are percentages."
+      }
+    ],
+    "abstract": "We consider the two related problems of detecting if an example is misclassified or out-of-distribution. We present a simple baseline that utilizes probabilities from softmax distributions. Correctly classified examples tend to have greater maxi- mum softmax probabilities than erroneously classified and out-of-distribution ex- amples, allowing for their detection. We assess performance by defining sev- eral tasks in computer vision, natural language processing, and automatic speech recognition, showing the effectiveness of this baseline across all. We then show the baseline can sometimes be surpassed, demonstrating the room for future re- search on these underexplored detection tasks.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 INTRODUCTION",
+        "first_sentence": "When machine learning classifiers are employed in real-world tasks, they tend to fail when the training and test distributions differ."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "method"
+        ],
+        "title": "2 PROBLEM FORMULATION AND EVALUATION",
+        "first_sentence": "In this paper, we are interested in two related problems."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "3 SOFTMAX PREDICTION PROBABILITY AS A BASELINE",
+        "first_sentence": "In what follows we retrieve the maximum/predicted class probability from a softmax distribution and thereby detect whether an example is erroneously classified or out-of-distribution."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "method"
+        ],
+        "title": "3.1 COMPUTER VISION",
+        "first_sentence": "In the following computer vision tasks, we use three datasets: MNIST, CIFAR-10, and CIFAR-100 (Krizhevsky, 2009)."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2 NATURAL LANGUAGE PROCESSING",
+        "first_sentence": "Let us turn to a variety of tasks and architectures used in natural language processing."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2.1 SENTIMENT CLASSIFICATION",
+        "first_sentence": "The first NLP task is binary sentiment classification using the IMDB dataset (Maas et al., 2011), a dataset of polarized movie reviews with 25000 training and 25000 test reviews."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2.2 TEXT CATEGORIZATION",
+        "first_sentence": "We turn to text categorization tasks to determine whether softmax distributions are useful for de- tecting similar but out-of-distribution examples."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2.3 PART-OF-SPEECH TAGGING",
+        "first_sentence": "Part-of-speech (POS) tagging of newswire and social media text is our next challenge."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "method"
+        ],
+        "title": "3.3 AUTOMATIC SPEECH RECOGNITION",
+        "first_sentence": "Now we consider a task which uses softmax values to construct entire sequences rather than deter-mine an input's class."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "method"
+        ],
+        "title": "4 ABNORMALITY DETECTION WITH AUXILIARY DECODERS",
+        "first_sentence": "Having seen that softmax prediction probabilities enable abnormality detection, we now show there is other information sometimes more useful for detection."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "method"
+        ],
+        "title": "4.1 TIMIT",
+        "first_sentence": "We test the abnormality module by revisiting the TIMIT task with a different architecture and show how these auxiliary components can greatly improve detection."
+      },
+      {
+        "id": "sec_13",
+        "roles": [
+          "method",
+          "results"
+        ],
+        "title": "4.2 MNIST",
+        "first_sentence": "Finally, much like in a previous experiment, we train an MNIST classifier with three layers of width 256."
+      },
+      {
+        "id": "sec_14",
+        "roles": [
+          "discussion"
+        ],
+        "title": "5 DISCUSSION AND FUTURE WORK",
+        "first_sentence": "The abnormality module demonstrates that in some cases the baseline can be beaten by exploiting the representations of a network, suggesting myriad research directions."
+      },
+      {
+        "id": "sec_15",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "6 CONCLUSION",
+        "first_sentence": "We demonstrated a softmax prediction probability baseline for error and out-of-distribution detec- tion across several architectures and numerous datasets."
+      },
+      {
+        "id": "sec_16",
+        "roles": [
+          "other"
+        ],
+        "title": "ACKNOWLEDGMENTS",
+        "first_sentence": "We would like to thank John Wieting, Hao Tang, Karen Livescu, Greg Shakhnarovich, and our reviewers for their suggestions."
+      },
+      {
+        "id": "sec_18",
+        "roles": [
+          "method"
+        ],
+        "title": "A ABNORMALITY MODULE EXAMPLE",
+        "first_sentence": "Figure 1: A neural network classifying a diamond image with an auxiliary decoder and an abnormal-ity module."
+      },
+      {
+        "id": "sec_19",
+        "roles": [
+          "method"
+        ],
+        "title": "B METRICS FOR MEANINGFUL CONFIDENCE VALUES",
+        "first_sentence": "Throughout this work, we show that the softmax probability of a predicted class is consistently high and thus is a poor proxy for estimating the “confidence” in a classification."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "neural networks",
+      "misclassification detection",
+      "out-of-distribution detection",
+      "softmax",
+      "computer vision",
+      "natural language processing",
+      "automatic speech recognition"
+    ],
+    "language": "en",
+    "confidence": 0.95,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    },
+    {
+      "roles": [
+        "method",
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_13"
+    },
+    {
+      "roles": [
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_14"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_15"
+    },
+    {
+      "roles": [
+        "other"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_16"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_18"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_19"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "neural networks",
+      "misclassification detection",
+      "out-of-distribution detection",
+      "softmax",
+      "computer vision",
+      "natural language processing",
+      "automatic speech recognition"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T11512",
+        "name": "Anomaly Detection Techniques and Applications",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.9,
+    "paper_type": "empirical",
+    "secondary_areas": [],
+    "field_confidence": 0.95,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.9
+  }
+}

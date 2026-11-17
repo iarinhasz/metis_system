@@ -31,6 +31,7 @@ def to_extracted_document(article: ExtractedArticle) -> ExtractedDocument:
     )
     if not sections:
         raise ValueError("A extração não tem seções de conteúdo.")
+    kept_sections = {section.id for section in sections}
 
     references = tuple(
         DocumentReference(
@@ -56,10 +57,13 @@ def to_extracted_document(article: ExtractedArticle) -> ExtractedDocument:
             end_offset=citation.end,
         )
         for citation in article.citations
+        # O contrato não traz o resumo nem as referências como seções: uma citação no resumo
+        # (aconteceu no ACL 2017 #768) apontaria para uma seção que não existe nele.
+        if citation.section_id in kept_sections
     )
     first_mention: dict[str, FigureMention] = {}
     for mention in article.figure_mentions:
-        if mention.figure_id is not None:
+        if mention.figure_id is not None and mention.section_id in kept_sections:
             first_mention.setdefault(mention.figure_id, mention)
 
     def figure_position(figure_id: str) -> tuple[str | None, int | None]:

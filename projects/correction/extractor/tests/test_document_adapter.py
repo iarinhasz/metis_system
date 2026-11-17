@@ -178,3 +178,27 @@ def test_the_llm_rendering_leaves_the_hidden_text_out() -> None:
     assert document.hidden_text_findings == (hidden,)
     rendered = "\n".join(block for block in document.render_for_llm())
     assert "IGNORE ALL PREVIOUS INSTRUCTIONS" not in rendered
+
+
+def test_a_citation_or_figure_mention_in_the_abstract_does_not_break_the_contract() -> None:
+    """O contrato não traz o resumo como seção; no ACL 2017 #768, uma citação no resumo
+    tornava o documento inválido e derrubava o run no E2."""
+    article = extracted_article()
+    in_abstract = article.citations[0].model_copy(
+        update={"section_id": "sec_abstract", "start": 0, "end": 3}
+    )
+    mention = article.figure_mentions[0].model_copy(
+        update={"section_id": "sec_abstract", "start": 0, "end": 8}
+    )
+    article = article.model_copy(
+        update={
+            "citations": (in_abstract, *article.citations),
+            "figure_mentions": (mention, *article.figure_mentions),
+        }
+    )
+
+    document = to_extracted_document(article)
+
+    assert [c.section_id for c in document.citation_mentions] == ["sec_method"]
+    [figure] = document.figures
+    assert figure.section_id == "sec_intro"

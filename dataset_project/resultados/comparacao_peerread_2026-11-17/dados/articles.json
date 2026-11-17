@@ -1,0 +1,9 @@
+[{"label":"410","venue":"iclr_2017","split":"train","pid":"410","venue_label":"ICLR 2017","human_scale":"1–10"},
+ {"label":"457","venue":"iclr_2017","split":"test","pid":"457","venue_label":"ICLR 2017","human_scale":"1–10"},
+ {"label":"358","venue":"iclr_2017","split":"test","pid":"358","venue_label":"ICLR 2017","human_scale":"1–10"},
+ {"label":"554","venue":"iclr_2017","split":"test","pid":"554","venue_label":"ICLR 2017","human_scale":"1–10"},
+ {"label":"518","venue":"iclr_2017","split":"test","pid":"518","venue_label":"ICLR 2017","human_scale":"1–10"},
+ {"label":"611","venue":"iclr_2017","split":"test","pid":"611","venue_label":"ICLR 2017","human_scale":"1–10"},
+ {"label":"768","venue":"acl_2017","split":"test","pid":"768","venue_label":"ACL 2017","human_scale":"1–5"},
+ {"label":"355","venue":"acl_2017","split":"test","pid":"355","venue_label":"ACL 2017","human_scale":"1–5"},
+ {"label":"435","venue":"acl_2017","split":"test","pid":"435","venue_label":"ACL 2017","human_scale":"1–5"}]
