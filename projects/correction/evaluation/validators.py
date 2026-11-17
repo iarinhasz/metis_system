@@ -8,6 +8,7 @@ from typing import Literal, Protocol
 
 from pydantic import ValidationError
 
+from projects.correction.agents.schemas.criteria import Criterion
 from projects.correction.agents.schemas.evaluation import (
     EvaluationMode,
     EvaluatorSlot,
@@ -80,19 +81,27 @@ class _GradeValidator:
         )
 
 
+def missing_criteria(state: ReviewState, context: EvaluationContext) -> tuple[str, ...]:
+    """Os critérios ativos do tipo de artigo que a rodada ainda não sintetizou."""
+    present = {item.criterion_key for item in state.criteria}
+    return tuple(sorted(item.value for item in _active_criteria(context) - present))
+
+
+def _active_criteria(context: EvaluationContext) -> set[Criterion]:
+    paper = next(
+        item
+        for item in context.evaluation_config.paper_types
+        if item.paper_type is context.profile.paper_type
+    )
+    return set(paper.active)
+
+
 class _CriteriaCompletenessValidator:
     def validate(self, state: ReviewState, context: EvaluationContext) -> tuple[_Finding, ...]:
-        paper = next(
-            item
-            for item in context.evaluation_config.paper_types
-            if item.paper_type is context.profile.paper_type
-        )
-        active = set(paper.active)
-        present = {item.criterion_key for item in state.criteria}
-        missing = active - present
-        if missing:
-            names = ", ".join(sorted(item.value for item in missing))
+        if missing := missing_criteria(state, context):
+            names = ", ".join(missing)
             raise InvalidEvaluationOutput(f"Faltam sínteses para os critérios ativos: {names}.")
+        active = _active_criteria(context)
         return tuple(
             _finding(
                 ItemType.CRITERION,

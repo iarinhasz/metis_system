@@ -99,16 +99,22 @@ def _synthesis_data(context: EvaluationContext) -> dict[str, list[dict[str, obje
     }
 
 
-def _remove_criterion(data: dict[str, list[dict[str, object]]]) -> None:
-    data["criteria"].pop()
-
-
 def _replace_observation_id(data: dict[str, list[dict[str, object]]]) -> None:
     data["criteria"][0]["observation_ids"] = ["missing-observation"]
 
 
 def _add_direct_evidence(data: dict[str, list[dict[str, object]]]) -> None:
     data["criteria"][0]["evidence"] = [{"quote": "Trecho", "section_id": "sec_method"}]
+
+
+def _cite_unrelated_check(data: dict[str, list[dict[str, object]]]) -> None:
+    target = next(item for item in data["criteria"] if item["criterion_key"] != "soundness")
+    target["check_ids"] = ["check-soundness"]
+
+
+def _repeat_and_extra(data: dict[str, list[dict[str, object]]]) -> None:
+    """O mesmo critério duas vezes (fica o primeiro)."""
+    data["criteria"].append({**data["criteria"][0], "grade": 1})
 
 
 def _step(
@@ -157,38 +163,59 @@ def test_synthesizes_all_pending_criteria_once_and_is_idempotent() -> None:
     assert factory.calls[0].payload.prompt == "Sintetize os itens e critérios fornecidos."
 
 
+def test_asks_again_only_for_the_missing_criteria() -> None:
+    context = _context()
+    first = _synthesis_data(context)
+    missing = first["criteria"].pop()
+    factory = FakeAgentFactory(scripts={"synthesizer": [first, {"criteria": [missing]}]})
+    step, factory, checkpoints = _step(factory=factory, context=context)
+
+    state = step.execute()
+
+    assert len(factory.calls) == 2
+    retry = json.loads(factory.calls[1].payload.article or "{}")
+    assert [item["key"] for item in retry["criteria"]] == [missing["criterion_key"]]
+    assert str(missing["criterion_key"]) in factory.calls[1].payload.prompt
+    assert {item.criterion_key.value for item in state.criteria} == {
+        item["criterion_key"] for item in _synthesis_data(context)["criteria"]
+    }
+    assert checkpoints.writes == 1
+
+
+def test_fails_when_a_criterion_is_still_missing_after_the_retry() -> None:
+    context = _context()
+    output = _synthesis_data(context)
+    missing = output["criteria"].pop()["criterion_key"]
+    factory = FakeAgentFactory(scripts={"synthesizer": [output, {"criteria": []}]})
+    step, _, checkpoints = _step(factory=factory, context=context)
+
+    with pytest.raises(InvalidEvaluationOutput, match=f"não trouxe os critérios: {missing}"):
+        step.execute()
+    assert checkpoints.writes == 0
+
+
 @pytest.mark.parametrize(
     "mutate",
-    [
-        _remove_criterion,
-        _replace_observation_id,
-        _add_direct_evidence,
-    ],
+    [_replace_observation_id, _add_direct_evidence, _cite_unrelated_check, _repeat_and_extra],
 )
-def test_rejects_incomplete_or_unfounded_synthesis(
+def test_cleans_what_real_models_get_slightly_wrong(
     mutate: Callable[[dict[str, list[dict[str, object]]]], None],
 ) -> None:
     context = _context()
     output = _synthesis_data(context)
     mutate(output)
     factory = FakeAgentFactory(scripts={"synthesizer": [output]})
-    step, _, _ = _step(factory=factory, context=context)
+    step, factory, _ = _step(factory=factory, context=context)
 
-    with pytest.raises(InvalidEvaluationOutput):
-        step.execute()
+    state = step.execute()
 
-
-def test_rejects_check_reference_for_an_unrelated_criterion() -> None:
-    context = _context()
-    output = _synthesis_data(context)
-    original = output["criteria"]
-    target = next(item for item in original if item["criterion_key"] != "soundness")
-    target["check_ids"] = ["check-soundness"]
-    factory = FakeAgentFactory(scripts={"synthesizer": [output]})
-    step, _, _ = _step(factory=factory, context=context)
-
-    with pytest.raises(InvalidEvaluationOutput):
-        step.execute()
+    assert len(factory.calls) == 1
+    assert len(state.criteria) == len(_synthesis_data(context)["criteria"])
+    for item in state.criteria:
+        assert item.evidence == ()
+        assert set(item.observation_ids) <= {"obs-supported"}
+        assert item.check_ids in ((), ("check-soundness",))
+        assert not item.check_ids or item.criterion_key is Criterion.SOUNDNESS
 
 
 def test_refresh_replaces_only_requested_criterion_and_marks_it_changed() -> None:

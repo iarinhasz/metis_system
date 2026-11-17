@@ -264,17 +264,26 @@ class CrossCheckStep:
             ).run(AgentPayload(prompt, article=json.dumps(data, ensure_ascii=False)))
             if not response.valid or not isinstance(response.content, CrossCheckResult):
                 raise InvalidEvaluationOutput("A checagem entre seções retornou saída inválida.")
+            # O tipo o código já sabe; critério fora do pedido e evidência de seção que não foi
+            # enviada saem (com modelos reais, qualquer desvio desses derrubava o avaliador).
+            # Sem nenhum critério do pedido, a checagem não vale e é descartada.
             result = response.content
-            if (
-                result.kind != check_input.kind
-                or not set(result.criteria) <= set(criteria)
-                or any(item.section_id not in check_input.section_ids for item in result.evidence)
-            ):
-                raise InvalidEvaluationOutput(
-                    "A checagem retornou tipo, critério ou seção fora do pedido."
-                )
+            kept = tuple(dict.fromkeys(c for c in result.criteria if c in criteria))
+            if not kept:
+                return _CheckExecution(None)
             return _CheckExecution(
-                result.model_copy(update={"id": f"{check_input.kind}:{result.id}"})
+                result.model_copy(
+                    update={
+                        "id": f"{check_input.kind}:{result.id}",
+                        "kind": check_input.kind,
+                        "criteria": kept,
+                        "evidence": tuple(
+                            item
+                            for item in result.evidence
+                            if item.section_id in check_input.section_ids
+                        ),
+                    }
+                )
             )
         except Exception as exc:
             return _CheckExecution(None, exc)

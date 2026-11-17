@@ -5,6 +5,7 @@ import json
 import pytest
 
 from projects.correction.agents.fakes import FakeAgentFactory
+from projects.correction.agents.schemas.criteria import Criterion
 from projects.correction.agents.schemas.evaluation import (
     CrossCheckResult,
     EvaluatorSlot,
@@ -22,7 +23,6 @@ from projects.correction.evaluation.cross_checks import (
 )
 from projects.correction.evaluation.tests.test_context import _context_run
 from projects.correction.extractor.contract import DocumentFigure, DocumentSection
-from projects.correction.pipeline.errors import InvalidEvaluationOutput
 from projects.correction.queries.attempts.run import RunConflict
 from projects.correction.questions.document_map import MapSection
 
@@ -251,18 +251,34 @@ def test_cross_check_without_both_sides_is_skipped() -> None:
     assert factory.calls == [] and checkpoints.writes == 0
 
 
-def test_cross_check_rejects_result_for_wrong_kind_or_unrequested_section() -> None:
+def test_cross_check_keeps_only_what_was_asked_and_drops_a_check_without_criteria() -> None:
+    wrong_kind = _result("claims_vs_results", section_id="sec_results", item_id="claims")
+    wrong_kind["kind"] = "figure_vs_text"
+    wrong_kind["criteria"] = ["soundness", "originality"]
+    wrong_kind["evidence"] = [
+        {"quote": "Trecho citado no artigo.", "section_id": "sec_results"},
+        {"quote": "Trecho de outra seção.", "section_id": "sec_other"},
+    ]
+    only_foreign = _result("method_vs_question", section_id="sec_method", item_id="method")
+    only_foreign["criteria"] = ["clarity"]
     factory = FakeAgentFactory(
         scripts={
             "cross_checker": [
-                _result("claims_vs_results", section_id="sec_other", item_id="wrong-section")
+                wrong_kind,
+                only_foreign,
+                _result("figure_vs_text", section_id="sec_results", item_id="figure"),
             ]
         }
     )
     step, _, _ = _step(factory=factory)
 
-    with pytest.raises(InvalidEvaluationOutput, match="seção fora do pedido"):
-        step.execute()
+    state = step.execute()
+
+    claims, figure = state.cross_checks
+    assert (claims.id, claims.kind) == ("claims_vs_results:claims", "claims_vs_results")
+    assert claims.criteria == (Criterion.SOUNDNESS,)
+    assert [item.section_id for item in claims.evidence] == ["sec_results"]
+    assert figure.id == "figure_vs_text:figure"
 
 
 @pytest.mark.django_db

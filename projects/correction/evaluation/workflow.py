@@ -51,7 +51,11 @@ from projects.correction.evaluation.revision import (
 )
 from projects.correction.evaluation.section_pass import RunReviewCheckpoints, SectionPassStep
 from projects.correction.evaluation.synthesis import RunSynthesisCheckpoints, SynthesisStep
-from projects.correction.evaluation.validators import RunValidationCheckpoints, ValidateStep
+from projects.correction.evaluation.validators import (
+    RunValidationCheckpoints,
+    ValidateStep,
+    missing_criteria,
+)
 from projects.correction.evaluation.whole_document import (
     RunWholeDocumentCheckpoints,
     WholeDocumentStep,
@@ -172,8 +176,21 @@ class EvaluationExecutor:
         result: object
         latest = self.deps.latest_round(self.slot)
         if self.action in {"section_pass", "cross_checks", "synthesis", "whole_document"}:
-            if latest is not None and (latest.ready or latest.verdicts.exists()):
+            # A rodada 1 já foi julgada se existe uma de revisão: os passos dela leem a rodada 1
+            # e recusariam retomar ("rodada já julgada"), travando o retry do estágio.
+            if latest is not None and (
+                latest.round_number > 1 or latest.ready or latest.verdicts.exists()
+            ):
                 return StepOutput(content=latest.state)
+        if self.action == "judge" and self.round_number == 1 and latest is not None:
+            # Um passo que falhou num Parallel não para o workflow: sem esta guarda, o juiz
+            # julgava a rodada sem as sínteses, e os vereditos a travavam para sempre.
+            if latest.round_number == 1 and (missing := missing_criteria(latest.state, context)):
+                raise InvalidEvaluationOutput(
+                    "O juiz não julga uma rodada incompleta; faltam sínteses para: "
+                    + ", ".join(missing)
+                    + "."
+                )
         if self.action in {"validate", "judge"} and self.round_number == 1:
             if latest is not None and latest.round_number == 1 and latest.ready:
                 return StepOutput(content=latest.state)
@@ -267,7 +284,13 @@ class EvaluationExecutor:
             return row
 
         checkpoints = self.deps.revision_checkpoints(self.slot, round_number)
-        RevisionStep(self.deps.context, self.slot, self.deps.factory, checkpoints).execute()
+        started = ReviewRound.objects.filter(
+            run_id=self.deps.run_id, evaluator_slot=self.slot, round_number=round_number
+        ).first()
+        # Rodada que já começou a ser validada ou julgada já foi reescrita: o retry segue para a
+        # validação e o juiz, que só tratam o que falta. Regravá-la travava ("revisão julgada").
+        if started is None or not started.verdicts.exists():
+            RevisionStep(self.deps.context, self.slot, self.deps.factory, checkpoints).execute()
         ValidateStep(
             self.deps.context,
             RunValidationCheckpoints(

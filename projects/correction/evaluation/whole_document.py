@@ -1,8 +1,9 @@
 """Avaliação do artigo inteiro em uma única chamada por slot."""
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Final, Protocol
 
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.runner import AgentPayload
@@ -23,6 +24,33 @@ from projects.correction.evaluation.models import ReviewRound
 from projects.correction.pipeline.errors import InvalidEvaluationOutput
 from projects.correction.queries.attempts.run import RunConflict
 from projects.correction.questions.criteria import CriterionConfig, PaperCriteria
+
+SYNTHESIS_ATTEMPTS: Final = 2
+
+
+def _cleaned(
+    items: Sequence[CriterionSynthesis],
+    pending: tuple[Criterion, ...],
+    config: dict[Criterion, CriterionConfig],
+    section_ids: set[str],
+) -> list[CriterionSynthesis]:
+    """As sínteses aproveitáveis, uma por critério pedido.
+
+    Sai o critério não pedido ou repetido e a nota fora da escala. Das que ficam, saem os ids
+    de itens (este modo cita o texto direto) e as evidências de seções que não existem; a que
+    fica sem nenhuma evidência não vale, e o critério volta a faltar.
+    """
+    kept: dict[Criterion, CriterionSynthesis] = {}
+    for item in items:
+        key = item.criterion_key
+        if key not in pending or key in kept or item.grade not in config[key].grades:
+            continue
+        evidence = tuple(e for e in item.evidence if e.section_id in section_ids)
+        if evidence:
+            kept[key] = item.model_copy(
+                update={"observation_ids": (), "check_ids": (), "evidence": evidence}
+            )
+    return list(kept.values())
 
 
 class WholeDocumentCheckpoints(Protocol):
@@ -66,39 +94,54 @@ class WholeDocumentStep:
         if not pending:
             return state
 
-        criteria_payload = [
-            {
-                "key": key.value,
-                "label": config[key].label,
-                "question": config[key].question,
-                "allowed_grades": config[key].grades,
-                "rubric_text": (
-                    rubric_fields[key.value].rubric_text if key.value in rubric_fields else None
-                ),
+        # Como na síntese por seção: limpa o que dá e pede de novo só o que faltou, uma vez.
+        section_ids = {section.id for section in self.context.article.sections}
+        additions: dict[Criterion, CriterionSynthesis] = {}
+        missing = pending
+        for _ in range(SYNTHESIS_ATTEMPTS):
+            prompt_data: dict[str, object] = {
+                "slot": self.slot.value,
+                "paper_type": self.context.profile.paper_type.value,
+                "criteria": [
+                    {
+                        "key": key.value,
+                        "label": config[key].label,
+                        "question": config[key].question,
+                        "allowed_grades": config[key].grades,
+                        "rubric_text": (
+                            rubric_fields[key.value].rubric_text
+                            if key.value in rubric_fields
+                            else None
+                        ),
+                    }
+                    for key in missing
+                ],
             }
-            for key in pending
-        ]
-        prompt_data = {
-            "slot": self.slot.value,
-            "paper_type": self.context.profile.paper_type.value,
-            "criteria": criteria_payload,
-        }
-        self.checkpoints.assert_owned()
-        response = self.factory.whole_document_reviewer(
-            self.slot.value,
-            output_schema=CriteriaSynthesis,
-            spec=self.context.evaluator(self.slot).model,
-        ).run(
-            AgentPayload(
-                json.dumps(prompt_data, ensure_ascii=False),
-                article=self.context.article.model_dump_json(),
+            if missing != pending:
+                prompt_data["missing_in_previous_answer"] = [key.value for key in missing]
+            self.checkpoints.assert_owned()
+            response = self.factory.whole_document_reviewer(
+                self.slot.value,
+                output_schema=CriteriaSynthesis,
+                spec=self.context.evaluator(self.slot).model,
+            ).run(
+                AgentPayload(
+                    json.dumps(prompt_data, ensure_ascii=False),
+                    article=self.context.article.model_dump_json(),
+                )
             )
+            if response.valid and isinstance(response.content, CriteriaSynthesis):
+                for item in _cleaned(response.content.criteria, missing, config, section_ids):
+                    additions.setdefault(item.criterion_key, item)
+            missing = tuple(key for key in pending if key not in additions)
+            if not missing:
+                break
+        if missing:
+            names = ", ".join(key.value for key in missing)
+            raise InvalidEvaluationOutput(f"A avaliação whole_document não trouxe: {names}.")
+        updated = self._merge(
+            state, tuple(additions[key] for key in pending), replace_existing=bool(refresh)
         )
-        if not response.valid or not isinstance(response.content, CriteriaSynthesis):
-            raise InvalidEvaluationOutput("A avaliação whole_document retornou saída inválida.")
-        additions = response.content.criteria
-        self._validate(additions, pending, config)
-        updated = self._merge(state, additions, replace_existing=bool(refresh))
         if mark_changed:
             changed = {(item.item_type, item.item_key): item for item in updated.changed_items}
             changed.update(
@@ -126,32 +169,6 @@ class WholeDocumentStep:
         if paper is None:
             raise InvalidEvaluationOutput("O método não cobre o tipo de artigo do Run.")
         return paper
-
-    def _validate(
-        self,
-        additions: tuple[CriterionSynthesis, ...],
-        pending: tuple[Criterion, ...],
-        config: dict[Criterion, CriterionConfig],
-    ) -> None:
-        keys = tuple(item.criterion_key for item in additions)
-        if len(keys) != len(set(keys)) or set(keys) != set(pending):
-            raise InvalidEvaluationOutput(
-                "A avaliação whole_document não retornou exatamente os critérios solicitados."
-            )
-        section_ids = {section.id for section in self.context.article.sections}
-        for item in additions:
-            if item.grade not in config[item.criterion_key].grades:
-                raise InvalidEvaluationOutput("A síntese usou nota fora da escala do critério.")
-            if item.observation_ids or item.check_ids:
-                raise InvalidEvaluationOutput(
-                    "O modo whole_document deve citar evidências diretas, não ids de itens."
-                )
-            if not item.evidence or any(
-                evidence.section_id not in section_ids for evidence in item.evidence
-            ):
-                raise InvalidEvaluationOutput(
-                    "A síntese precisa citar evidências em seções existentes do artigo."
-                )
 
     @staticmethod
     def _merge(

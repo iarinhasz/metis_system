@@ -79,22 +79,30 @@ class JudgeStep:
             article=self.context.article.model_dump_json(),
         )
         self.checkpoints.assert_owned()
-        report = self._run(payload)
-        invalid_excerpts = _invalid_excerpts(report, pending, items)
-        if invalid_excerpts:
+        verdicts = _normalized(self._run(payload), pending)
+        invalid_excerpts = _invalid_excerpts(verdicts, items)
+        missing = [key for key in _expected_keys(pending) if key not in verdicts]
+        if invalid_excerpts or missing:
             correction = {
                 "original_request": request,
                 "excerpt_errors": invalid_excerpts,
+                "missing_items": [
+                    {"item_type": item_type.value, "item_key": item_key}
+                    for item_type, item_key in sorted(missing)
+                ],
             }
             self.checkpoints.assert_owned()
-            report = self._run(
-                AgentPayload(
-                    json.dumps(correction, ensure_ascii=False),
-                    article=self.context.article.model_dump_json(),
-                )
+            verdicts |= _normalized(
+                self._run(
+                    AgentPayload(
+                        json.dumps(correction, ensure_ascii=False),
+                        article=self.context.article.model_dump_json(),
+                    )
+                ),
+                pending,
             )
 
-        cleaned = _discard_invalid_excerpts(report, pending, items)
+        cleaned = _discard_invalid_excerpts(verdicts, pending, items)
         for item in cleaned:
             self.checkpoints.record(item, judge_spec)
         return cleaned
@@ -106,7 +114,6 @@ class JudgeStep:
         ).run(payload)
         if not result.valid or not isinstance(result.content, JudgeReport):
             raise InvalidEvaluationOutput("O juiz retornou uma saída inválida.")
-        _validate_report(result.content)
         return result.content
 
 
@@ -147,58 +154,62 @@ def _state_items(state: ReviewState) -> dict[tuple[ItemType, str], str]:
     return items
 
 
-def _validate_report(report: JudgeReport) -> None:
-    keys = tuple((item.item_type, item.item_key) for item in report.items)
-    if len(set(keys)) != len(keys):
-        raise InvalidEvaluationOutput("O juiz repetiu itens na resposta.")
+type Verdicts = dict[tuple[ItemType, str], ItemVerdict]
+
+
+def _normalized(report: JudgeReport, pending: tuple[ItemRef, ...]) -> Verdicts:
+    """Os vereditos aproveitáveis, um por item pedido.
+
+    Com modelos reais, o juiz repete ou inventa itens, aponta problemas num item que diz válido
+    ou recusa sem dizer por quê; antes, qualquer desses casos derrubava o E4. Fica o primeiro
+    veredito de cada item pedido, e o válido perde os apontamentos. A recusa sem justificativa
+    vira válida em `_discard_invalid_excerpts`: sem o motivo, o avaliador não tem o que corrigir.
+    """
+    expected = _expected_keys(pending)
+    verdicts: Verdicts = {}
     for item in report.items:
-        if item.verdict is Verdict.INVALID and not item.issues:
-            raise InvalidEvaluationOutput("Um item inválido do juiz precisa ter justificativa.")
-        if item.verdict is Verdict.VALID and item.issues:
-            raise InvalidEvaluationOutput("Um item válido do juiz não pode conter apontamentos.")
+        key = (item.item_type, item.item_key)
+        if key in expected and key not in verdicts:
+            verdicts[key] = (
+                item.model_copy(update={"issues": ()}) if item.verdict is Verdict.VALID else item
+            )
+    return verdicts
 
 
 def _expected_keys(pending: tuple[ItemRef, ...]) -> set[tuple[ItemType, str]]:
     return {(item.item_type, item.item_key) for item in pending}
 
 
-def _ensure_exact_items(report: JudgeReport, pending: tuple[ItemRef, ...]) -> None:
-    actual = {(item.item_type, item.item_key) for item in report.items}
-    if actual != _expected_keys(pending):
-        raise InvalidEvaluationOutput("O juiz não retornou exatamente os itens solicitados.")
-
-
 def _invalid_excerpts(
-    report: JudgeReport,
-    pending: tuple[ItemRef, ...],
+    verdicts: Verdicts,
     item_texts: dict[tuple[ItemType, str], str],
 ) -> tuple[dict[str, str], ...]:
-    _ensure_exact_items(report, pending)
     return tuple(
         {
             "item_type": item.item_type.value,
             "item_key": item.item_key,
             "excerpt": issue.excerpt,
         }
-        for item in report.items
+        for key, item in verdicts.items()
         for issue in item.issues
-        if issue.excerpt not in item_texts[(item.item_type, item.item_key)]
+        if issue.excerpt not in item_texts[key]
     )
 
 
 def _discard_invalid_excerpts(
-    report: JudgeReport,
+    verdicts: Verdicts,
     pending: tuple[ItemRef, ...],
     item_texts: dict[tuple[ItemType, str], str],
 ) -> tuple[ItemVerdict, ...]:
-    _ensure_exact_items(report, pending)
+    """Um veredito por item pedido: o item que o juiz não devolveu, ou que recusou sem um
+    apontamento conferido no texto do item, fica válido."""
     cleaned: list[ItemVerdict] = []
-    for item in report.items:
-        valid_issues = tuple(
-            issue
-            for issue in item.issues
-            if issue.excerpt in item_texts[(item.item_type, item.item_key)]
+    for ref in pending:
+        key = (ref.item_type, ref.item_key)
+        item = verdicts.get(key) or ItemVerdict(
+            item_type=ref.item_type, item_key=ref.item_key, verdict=Verdict.VALID
         )
+        valid_issues = tuple(issue for issue in item.issues if issue.excerpt in item_texts[key])
         cleaned.append(
             item.model_copy(
                 update={

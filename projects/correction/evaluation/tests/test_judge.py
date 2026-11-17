@@ -29,7 +29,6 @@ from projects.correction.evaluation.context import EvaluationContext, Evaluation
 from projects.correction.evaluation.judge import JudgeStep, RunJudgeCheckpoints
 from projects.correction.evaluation.models import JudgeVerdict, ReviewRound
 from projects.correction.evaluation.tests.test_context import _context_run
-from projects.correction.pipeline.errors import InvalidEvaluationOutput
 
 
 def _context() -> EvaluationContext:
@@ -252,11 +251,39 @@ def test_slot_c_judge_family_is_crossed_from_its_configured_model() -> None:
     )
 
 
-def test_judge_rejects_missing_or_unrequested_items() -> None:
-    step, _, _, _ = _step(scripts=[{"items": [_report()["items"][0]]}])
+def test_missing_item_is_asked_again_and_counts_as_valid_if_still_missing() -> None:
+    observation_only = {"items": [_report()["items"][0]]}
+    step, _, factory, _ = _step(scripts=[observation_only, observation_only])
 
-    with pytest.raises(InvalidEvaluationOutput, match="exatamente os itens solicitados"):
-        step.execute()
+    judged = step.execute()
+
+    correction = json.loads(factory.calls[1].payload.prompt)
+    assert correction["missing_items"] == [
+        {"item_type": "criterion", "item_key": Criterion.SOUNDNESS.value}
+    ]
+    assert {(item.item_key, item.verdict) for item in judged} == {
+        ("obs-1", Verdict.VALID),
+        (Criterion.SOUNDNESS.value, Verdict.VALID),
+    }
+
+
+def test_near_miss_verdicts_from_real_models_are_cleaned_not_fatal() -> None:
+    report = _report(observation_verdict=Verdict.INVALID)
+    observation, criterion = report["items"]
+    unjustified = {**observation, "issues": []}
+    flagged_valid = {**criterion, "issues": observation["issues"]}
+    unrequested = {**criterion, "item_key": "outro"}
+    step, _, factory, _ = _step(
+        scripts=[{"items": [unjustified, flagged_valid, unrequested, unjustified]}]
+    )
+
+    judged = step.execute()
+
+    assert len(factory.calls) == 1
+    assert [(item.item_key, item.verdict, item.issues) for item in judged] == [
+        ("obs-1", Verdict.VALID, ()),
+        (Criterion.SOUNDNESS.value, Verdict.VALID, ()),
+    ]
 
 
 @pytest.mark.django_db

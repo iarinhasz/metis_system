@@ -64,7 +64,7 @@ A [verificação manual do M0](../../2026-10_october/1_desenho_inicial/05_testes
 
 ### I3 — Avaliação real
 
-**Situação (16/11/2026):** em aberto. Com a 3.10, o ICLR 410 passa pelo E1, E2 e E3 (risco baixo) e termina no E4 em `error_llm`: as respostas dos modelos reais não passam em algumas validações do E4 (síntese, checagem entre seções e retomada; ver a 3.10).
+**Situação (16/11/2026):** em aberto. Com a 3.10, o ICLR 410 passa pelo E1, E2 e E3 (risco baixo) e termina no E4 em `error_llm`: as respostas dos modelos reais não passavam em algumas validações do E4. Com as correções (ver a 3.10), o 410 chegou a `done` em 16/11, com o `FinalReport` (`major`, nota 2,88). Fica aberto medir a qualidade: muitos votos são excluídos por evidência não validada.
 
 1. Enviar um PDF real com o E3 ainda *pass-through*.
 2. Acompanhar até `done`: o run tem `profile`, `question`, 3 `ReviewRound` na rodada 1, os `JudgeVerdict` e o `FinalReport`.
