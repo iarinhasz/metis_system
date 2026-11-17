@@ -56,6 +56,7 @@ from projects.correction.evaluation.whole_document import (
     RunWholeDocumentCheckpoints,
     WholeDocumentStep,
 )
+from projects.correction.integrity.summary import integrity_summary
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import InvalidEvaluationOutput, SetupRequired
 from projects.correction.questions.criteria import EvaluationConfig, get_method
@@ -122,12 +123,18 @@ def _round_is_judged(row: ReviewRound) -> bool:
 
 
 def _failed_step_names(outputs: Sequence[StepOutput | list[StepOutput]]) -> list[str]:
+    """Os passos que falharam, com o erro dos passos internos (um `parallel` guarda os passos
+    dele em `steps`): sem o erro, a falha de um avaliador só aparecia como "passos incompletos"."""
     failed: list[str] = []
     for output in outputs:
         if isinstance(output, list):
             failed.extend(_failed_step_names(output))
-        elif not output.success:
-            failed.append(output.step_name or "unknown")
+            continue
+        inner = _failed_step_names(output.steps or [])
+        if not output.success or inner:
+            name = output.step_name or "unknown"
+            failed.append(f"{name}: {output.error[:300]}" if output.error and not inner else name)
+        failed.extend(inner)
     return failed
 
 
@@ -585,6 +592,7 @@ class BuildFinalReportStep:
                 policy=AggregationPolicy.model_validate(snapshot["consolidation"]["policy"]),
             ),
             warnings=tuple(run.consolidation["meta"]["warnings"]),
+            integrity=integrity_summary(run.pk),
         )
         row = FinalReport.store(run.pk, self.deps.task_id, content)
         stored = ReportContent.model_validate(row.content)

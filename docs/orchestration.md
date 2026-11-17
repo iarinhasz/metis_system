@@ -2,9 +2,9 @@
 
 Como o pipeline anda, falha e se recupera. Os estados citados aqui estão definidos em [Modelos de dados](data_models.md#estados-do-run).
 
-**Estado de 16/11/2026:** E1, E2, E4 e E5 reais; E3 stub. A máquina de
-estados/gate está implementada, mas E3 ainda não detecta risco. E5 sem rodadas
-completas para em `waiting_setup`. [Evidências](status_and_metrics.md).
+**Estado de 16/11/2026:** E1, E2, E4 e E5 reais; E3 enxuto (texto oculto, regras
+de risco e gate humano). Risco alto leva o run a `waiting_human_review`. E5 sem
+rodadas completas para em `waiting_setup`. [Evidências](status_and_metrics.md).
 
 ## Princípios
 

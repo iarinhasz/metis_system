@@ -13,6 +13,7 @@ from django.urls import URLPattern, path, reverse
 from projects.correction.attempts.costs import cost_panel
 from projects.correction.attempts.models import Article, Attempt, LLMCall, Run, RunEvent
 from projects.correction.attempts.status import RECOVERABLE, HumanDecision, RunStatus
+from projects.correction.integrity.models import IntegrityReport
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.services import decide_run, recover_run
 from projects.correction.queries.attempts.run import RunConflict
@@ -22,6 +23,8 @@ RUN_ACTIONS = {
     "close": "Encerrar",
     "recover": "Reprocessar",
 }
+GATE_ACTIONS = {"continue": HumanDecision.CONTINUE, "close": HumanDecision.CLOSE}
+NOTE_CHARS = 2000
 
 
 class ReadOnlyModelAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
@@ -73,25 +76,30 @@ class RunAdmin(ReadOnlyModelAdmin):
         return [action, *super().get_urls()]
 
     def can_act(self, request: HttpRequest) -> bool:
-        """As ações exigem a permissão de alterar o Run, não só a de ver."""
+        """Reprocessar exige a permissão de alterar o Run, não só a de ver."""
         return admin.ModelAdmin.has_change_permission(self, request)
+
+    def can_decide(self, request: HttpRequest) -> bool:
+        """O gate também é do grupo "revisores", que só tem `decide_run`."""
+        return request.user.has_perm("attempts.decide_run") or self.can_act(request)
 
     def action_panel(self, request: HttpRequest, run: Run | None) -> dict[str, Any] | None:
         """O bloco de ações do topo da página, quando o run está num estado que tem ação."""
-        if run is None or not self.can_act(request):
+        if run is None:
             return None
         status = RunStatus(run.status)
-        if status == RunStatus.WAITING_HUMAN_REVIEW:
+        if status == RunStatus.WAITING_HUMAN_REVIEW and self.can_decide(request):
             return {
                 "title": "Revisão humana",
-                "help": "O E3 apontou risco alto. Continuar retoma a avaliação a partir do E4; "
-                "encerrar fecha o run sem avaliar.",
+                "help": "O E3 apontou risco alto (os achados estão abaixo). Continuar retoma a "
+                "avaliação a partir do E4; encerrar fecha o run sem avaliar.",
+                "note": True,
                 "actions": [
                     ("continue", RUN_ACTIONS["continue"], "default"),
                     ("close", RUN_ACTIONS["close"], ""),
                 ],
             }
-        if status in RECOVERABLE:
+        if status in RECOVERABLE and self.can_act(request):
             return {
                 "title": "Reprocessamento",
                 "help": f"O estágio {run.stage} parou em {run.status}. Reprocessar roda esse "
@@ -110,6 +118,13 @@ class RunAdmin(ReadOnlyModelAdmin):
         obj: Run | None = None,
     ) -> HttpResponse:
         context["run_panel"] = self.action_panel(request, obj)
+        if obj is not None and (report := IntegrityReport.for_run(obj.pk)) is not None:
+            context["integrity_panel"] = {
+                "risk": report.risk,
+                "rules_version": report.rules_version,
+                "coverage": report.coverage,
+                "findings": IntegrityReport.findings_for(obj.pk),
+            }
         if obj is not None and request.user.has_perm("attempts.view_llmcall"):
             context["cost_panel"] = cost_panel(
                 LLMCall.cost_report(run_id=obj.pk), settings.llm_run_budget_usd, single_run=True
@@ -119,21 +134,21 @@ class RunAdmin(ReadOnlyModelAdmin):
     def run_action_view(self, request: HttpRequest, object_id: str) -> HttpResponse:
         if request.method != "POST":
             return HttpResponseNotAllowed(["POST"])
-        if not self.can_act(request):
+        action = request.POST.get("action", "")
+        allowed = self.can_decide(request) if action in GATE_ACTIONS else self.can_act(request)
+        if not allowed:
             raise PermissionDenied
         try:
             run_id = UUID(object_id)
         except ValueError as exc:
             raise Http404("Run não encontrado.") from exc
 
-        action = request.POST.get("action", "")
         actor = f"admin:{request.user.get_username()}"
         change_url = reverse("admin:attempts_run_change", args=[object_id])
         try:
-            if action == "continue":
-                run = decide_run(run_id, HumanDecision.CONTINUE, actor=actor)
-            elif action == "close":
-                run = decide_run(run_id, HumanDecision.CLOSE, actor=actor)
+            if action in GATE_ACTIONS:
+                note = request.POST.get("note", "").strip()[:NOTE_CHARS]
+                run = decide_run(run_id, GATE_ACTIONS[action], actor=actor, note=note)
             elif action == "recover":
                 run = recover_run(run_id, actor=actor)
             else:

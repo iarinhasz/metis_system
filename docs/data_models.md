@@ -142,8 +142,14 @@ As figuras e as descrições ficam dentro do `content` da `Extraction` (1.6 e 1.
 
 ## `integrity`
 
-**Planejado para M4/M5.** Não existem models/migrations dessas entidades na base
-atual. E3 não grava relatório; `FinalReport.integrity` é um resumo JSON com
+**Implementado em 15/11/2026, enxuto** (ver [Checagem de integridade](integrity_check.md#o-que-roda-hoje)): `IntegrityReport` e `IntegrityFinding` com os campos abaixo. `SourceDocument` e `SourceChunk` são do plágio, que ficou fora do escopo.
+
+| Model | Campos |
+|---|---|
+| `IntegrityReport` | `run` (1:1), `risk` (`low`, `medium`, `high`), `rules_version`, `coverage` (o que foi conferido) |
+| `IntegrityFinding` | `report`, `position`, `kind`, `severity`, `message` (sem texto do manuscrito), `evidence` (o trecho e, quando há, a fonte) |
+
+Desenho completo, de antes do recorte (fica como referência); o texto antigo dizia: E3 não grava relatório; `FinalReport.integrity` é um resumo JSON com
 `not_checked`, sem FK para uma tabela de integridade.
 
 | Model | Campos principais |

@@ -36,22 +36,10 @@ class ModelPrice:
 
 
 def standard_prices(on: date) -> dict[tuple[Provider, str], ModelPrice]:
-    """Tarifas conferidas em 12/11/2026; a promoção do Gemini termina em 31/12/2026."""
-    google_flash = (
-        ModelPrice(Decimal("0.75"), Decimal("3.75"), Decimal("0.075"))
-        if on < date(2027, 1, 1)
-        else ModelPrice(Decimal("1.50"), Decimal("7.50"), Decimal("0.15"))
-    )
+    """Tarifas dos três modelos do projeto, conferidas em 15/11/2026. A data fica para
+    quando uma tarifa mudar com o tempo; nenhuma das atuais muda."""
+    del on
     return {
-        (Provider.OPENAI, "gpt-5.6-terra"): ModelPrice(
-            Decimal("2"),
-            Decimal("12"),
-            Decimal("0.2"),
-            cache_write_multiplier=Decimal("1.25"),
-            long_context_threshold=272_000,
-            long_input_multiplier=Decimal(2),
-            long_output_multiplier=Decimal("1.5"),
-        ),
         (Provider.OPENAI, "gpt-5.6-luna"): ModelPrice(
             Decimal("0.2"),
             Decimal("1.2"),
@@ -61,12 +49,10 @@ def standard_prices(on: date) -> dict[tuple[Provider, str], ModelPrice]:
             long_input_multiplier=Decimal(2),
             long_output_multiplier=Decimal("1.5"),
         ),
-        (Provider.GOOGLE, "gemini-3.8-flash"): google_flash,
-        (Provider.GOOGLE, "gemini-3.6-flash"): google_flash,
-        (Provider.GOOGLE, "gemini-3.5-flash-lite"): ModelPrice(
-            Decimal("0.3"), Decimal("2.5"), Decimal("0.03")
+        # Entrada máxima de 272.000 tokens: não há faixa de contexto longo.
+        (Provider.OPENAI, "gpt-5.4-nano"): ModelPrice(
+            Decimal("0.2"), Decimal("1.25"), Decimal("0.02")
         ),
-        # Compatibilidade com registros históricos que guardam esse model_id.
         (Provider.GOOGLE, "gemini-2.5-flash"): ModelPrice(
             Decimal("0.3"), Decimal("2.5"), Decimal("0.03")
         ),

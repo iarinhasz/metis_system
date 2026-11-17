@@ -56,6 +56,9 @@ PDF ─▶ chamada 1: mapa das seções ─▶ gate: tem abstract e referências
        uma descrição por figura e tabela, em paralelo, conferida pelo começo da legenda
           │
           ▼
+       texto escondido no PDF: em branco, minúsculo ou fora da página (código)
+          │
+          ▼
        ExtractedArticle ─▶ Extraction (banco) ─▶ Run.extraction
 ```
 
@@ -78,12 +81,13 @@ PDF ─▶ chamada 1: mapa das seções ─▶ gate: tem abstract e referências
    - sem entrada correspondente, ou com mais de uma, a citação fica com `reference_id` nulo (a 5.3 usa: citação sem entrada na lista). "Palavra (2020)" sem entrada é descartada, porque pode não ser citação; "(Silva, 2020)" e "Silva et al. (2020)" ficam.
 9. **Figuras e tabelas** (`figures.py`, `prompts/scan_figures.md`). Uma chamada com o PDF lista cada figura e tabela: rótulo ("Figure 3", "Tabela 2"), tipo (`figure` ou `table`), página e legenda literal, sem algoritmos, quadros de código e equações. O código confere contra o texto do PDF: legenda que não está nele é descartada (fidelidade), e as linhas que começam como legenda ("Figure 3:", "Table 2.") mostram quais rótulos existem; o que faltar volta como dica numa nova tentativa. Os ids (`fig_1`, `fig_2`…) seguem a ordem das páginas. Uma resposta inválida aqui não derruba a extração: a lista fica vazia.
 10. **Chamadas às figuras** (`figure_mentions.py`, só código): "Fig. 3", "Figure 3a", "Figura 2", "Figures 2 and 3", "Figs. 2–4", "Table 1", "Tabela A.1", ligadas pelo tipo e pelo número do rótulo; rótulo fora da lista fica com `figure_id` nulo.
-11. **Descrição de cada figura e tabela** (`figure_descriptions.py`, `prompts/describe_figure.md`). Uma chamada por figura, em paralelo, com o PDF, o rótulo, a página, a legenda e até 5 frases do artigo que citam a figura (do passo 10). O modelo devolve a classe (gráfico de linhas, diagrama, tabela…), o que a figura mostra, o que dá para ler nela (eixos, valores, tendências), se ela sustenta o que as frases afirmam (nulo quando elas não afirmam nada), o porquê, os problemas que vê (eixo sem unidade, legenda que não bate com o desenho) e, para tabela, o conteúdo em markdown. Duas conferências no código, cada uma com nova tentativa e dica:
+11. **Descrição de cada figura e tabela** (`figure_descriptions.py`, `prompts/describe_figure.md`). Uma chamada por figura, em paralelo, com o PDF, o rótulo, a página, a legenda e até 5 frases do artigo que citam a figura (do passo 10). O modelo devolve a classe (gráfico de linhas, diagrama, tabela…), o que a figura mostra, o que dá para ler nela (eixos, valores, tendências), se ela sustenta o que as frases afirmam (nulo quando elas não afirmam nada), o porquê, os problemas que vê (eixo sem unidade, legenda que não bate com o desenho) e, para tabela, o conteúdo em markdown. A descrição sai no idioma do artigo, e rótulos, eixos e valores ficam como estão na figura, sem tradução: o texto das seções é cópia literal, e a descrição não pode trazer outra língua para o documento. Duas conferências no código, cada uma com nova tentativa e dica:
     - **a figura certa:** o modelo devolve também o começo da legenda da figura que descreveu; se não bate com a legenda pedida (comparando sem o rótulo, acento, caixa e pontuação), ele olhou outra figura. Aconteceu no ICLR 304: a "Figure 1" saiu com o conteúdo da "Table 1". Se continuar trocada, a figura fica sem descrição;
     - **tabela com as linhas:** markdown só com o cabeçalho é refeito. Aconteceu no ICLR 410, na Table 5. Se continuar assim, a descrição fica e o markdown sai.
 
     Uma figura cuja resposta continua inválida fica sem descrição e o resto segue. O modelo fora do ar sobe, como nos outros passos, e o retry do estágio refaz só as figuras que faltaram (ver [Retomada](#retomada)). Com `describe_figures` desligado na config, o passo não roda.
-12. **Resultado.** Seção obrigatória vazia é resposta inválida (`InvalidModelAnswer`, o estágio tenta de novo), e também uma lista de referências sem nenhuma entrada conferida. O resto vira um `ExtractedArticle`, guardado como `Extraction` e ligado ao run.
+12. **Texto oculto** (`hidden_text.py`, `scan_hidden_text`, só código, com o `pdfplumber`). Roda antes das chamadas ao modelo e marca, por linha, o trecho que o leitor não vê: branco ou da cor do retângulo de fundo (`color`), fonte abaixo de 2 pt (`size`), fora da página (`outside_page`) ou atrás de uma imagem (`under_image`). Se a linha tem cara de instrução a um revisor de IA ("ignore all previous instructions", "AI reviewer… accept", "ignore as instruções"), o trecho ganha também `instruction`. Cada achado guarda a página, o texto, os motivos e a caixa (`bbox`).
+13. **Resultado.** Seção obrigatória vazia é resposta inválida (`InvalidModelAnswer`, o estágio tenta de novo), e também uma lista de referências sem nenhuma entrada conferida. O resto vira um `ExtractedArticle`, guardado como `Extraction` e ligado ao run.
 
 ## A config (`DocumentConfig`)
 
@@ -92,7 +96,7 @@ Tipagem congelada em `config.py`; a do artigo científico é a `ARTICLE_CONFIG` 
 | Campo | Para quê | Artigo |
 |---|---|---|
 | `strategy` | `pdf`: o PDF vai ao modelo; `text`: só o texto lido pelo pypdf | `pdf` (artigo em duas colunas, com tabelas, se perde no texto puro) |
-| `provider`, `model` | Quem atende as chamadas | `google`, `gemini-3.6-flash` |
+| `provider`, `model` | Quem atende as chamadas | `google`, `gemini-2.5-flash` |
 | `scan_prompt`, `extraction_prompt` | Prompts das chamadas 1 e 2 (o 2 com os marcadores `<<title>>`, `<<end>>`, `<<footnotes>>`) | arquivos em `prompts/` |
 | `required_sections`, `optional_sections` | Seções procuradas pelo nome (`SectionDefinition(key, labels)`); sem uma obrigatória, o artigo é rejeitado | `abstract` e `references`, com grafias em PT e EN |
 | `ignore_footnotes` | `true`: o texto das notas e as marcas de chamada ficam fora, e cada seção só diz se tinha nota; `false`: as notas vêm no fim da seção que as chama | `true` |
@@ -103,6 +107,7 @@ Tipagem congelada em `config.py`; a do artigo científico é a `ARTICLE_CONFIG` 
 | `figures_prompt` | Prompt da chamada que lista as figuras e as tabelas | `prompts/scan_figures.md` |
 | `describe_figure_prompt` | Prompt da chamada que descreve uma figura (marcadores `<<label>>`, `<<page>>`, `<<caption>>`, `<<mentions>>`) | `prompts/describe_figure.md` |
 | `describe_figures` | Descrever cada figura e tabela (uma chamada por figura) | `true` |
+| `scan_hidden_text` | Procurar texto escondido no PDF (só código) | `true` |
 
 Os papéis das seções (introdução, método, resultados…) não ficam aqui: são do E2.
 
@@ -113,6 +118,8 @@ Os papéis das seções (introdução, método, resultados…) não ficam aqui: 
 Desde a 1.10, também `references[]` (cada `Reference` com `id`, `raw`, `marker`, `authors`, `title`, `year`, `venue`, `doi`, `arxiv_id`) e `citations[]` (cada `Citation` com `reference_id` ou nulo, `marker`, `sentence`, `section_id` e `start`/`end`, offsets do `marker` no texto da seção). As extrações anteriores continuam válidas, com as duas listas vazias.
 
 Desde a 1.6, também `figures[]` (cada `Figure` com `id`, `kind`, `label`, `number`, `page`, `caption` e `fidelity` da legenda) e `figure_mentions[]` (cada `FigureMention` com `figure_id` ou nulo, `marker`, `sentence`, `section_id` e `start`/`end`).
+
+Desde a 1.7, também `hidden_text_findings[]` (cada `HiddenTextFinding` do contrato, com `page`, `text`, `reasons` — `color`, `size`, `outside_page`, `under_image`, `instruction` — e `bbox`). As extrações anteriores vêm com a lista vazia.
 
 Desde a 1.8, cada `Figure` traz `description`, nula quando a chamada falhou: um `FigureDescription` com `figure_class`, `description`, `data_read[]`, `supports_claims` (sim, não ou nulo), `support_rationale`, `issues[]` e `table_markdown` (nulo para figura).
 
@@ -163,7 +170,7 @@ PeerRead exigidas pela etapa 1.1.
 - **`Extraction`** (`models.py`): o `ExtractedArticle` em JSON, único por (sha256 do PDF, versão). A versão é o hash da config inteira e de todos os prompts: mudar o modelo, um limite ou um prompt força uma extração nova. Um run novo do mesmo PDF reaproveita a guardada, sem chamar o modelo.
 - **`Run.extraction`**: o E1 liga a extração ao run pelo `RunManagement.attach_extraction`, só se o estágio ainda é da task (posse).
 - **Passos guardados:** enquanto a extração não termina, cada resposta do modelo fica no banco (`ExtractionStep`), para o retry do estágio retomar delas (ver [Retomada](#retomada)).
-- **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções, as seções abaixo dos limites (`below_check`) o número de referências, de citações e de citações sem ligação, o número de figuras e tabelas e quantas foram descritas (`figures_described`). Nunca texto do manuscrito.
+- **Evento do E1:** o `RunEvent` de `extracted` traz `extraction_id`, `reused`, `model`, o número de seções, as seções abaixo dos limites (`below_check`) o número de referências, de citações e de citações sem ligação, o número de figuras e tabelas e quantas foram descritas (`figures_described`), quantos trechos escondidos achou (`hidden_passages`) e quantos têm cara de instrução (`hidden_instructions`). Nunca texto do manuscrito.
 
 ## Retomada
 
@@ -194,6 +201,7 @@ O Agno não refaz chamadas (`retries=0`): quem tenta de novo, com backoff, é o 
 
 - O PDF vai ao Google em cada chamada. A política de retenção do provedor precisa ser conferida, porque os manuscritos são inéditos.
 - O Agno registra em warning a resposta que não bateu com o schema, com texto do manuscrito. Um filtro no logger `agno` deixa passar só os erros.
+- **Prompt injection:** uma instrução escondida no PDF também chega às nossas chamadas ao modelo. Todos os prompts dizem que o conteúdo do artigo é dado, não instrução, e o texto oculto achado vai para o E3, que decide o risco.
 
 ## Limitações conhecidas
 
@@ -208,13 +216,16 @@ precisa medir o limite de páginas e fazer a verificação de carga.
 - **Citações:** chamada em número sobrescrito ("…doença¹⁻³", comum na área da saúde) não é reconhecida; num artigo numérico, um intervalo como "[1, 2]" no meio de uma fórmula vira citação; no autor-ano, "Silva (2020)" com duas entradas de Silva 2020 que nem o segundo autor nem o "et al." desempatam fica sem ligação.
 - **Tabela cortada no meio:** a conferência só pega a tabela que vem só com o cabeçalho. A Table 11 do ICLR 410 veio com 67 números numa rodada e 181 na seguinte. Os números que vêm estão no PDF (100% nas 16 tabelas conferidas), mas pode faltar linha.
 - **Julgamento brando:** nas 19 figuras e tabelas da calibração, o modelo disse sempre que a figura sustenta as frases e não apontou nenhum problema. Serve de ponto de partida para o E2, não de veredito.
-- **Ainda não feito:** o recorte da imagem (adiado) e a integração dos achados de texto oculto (1.7, Integridade) ao `ExtractedDocument` (1.11). O contrato PeerRead ainda aguarda a geração de fixtures reais quando o corpus estiver disponível.
+- **Texto oculto:** o modo de renderização invisível (o das camadas de OCR dos PDFs escaneados) não é procurado. Texto branco numa caixa escura de uma figura conta como escondido.
+- **Texto oculto no contrato:** o `ExtractedDocument` traz `hidden_text_findings[]`, mas o `render_for_llm()` não inclui esse texto: ele vai para a integridade, não para os avaliadores.
+- **Ainda não feito:** o recorte da imagem (adiado). As 12 fixtures reais do PeerRead estão em `extractor/tests/fixtures/peerread/`.
 
 ## Como testar
 
-- `extractor/tests/`: a config, o mapa, a conferência, a nova tentativa, as referências (`test_references.py`), as citações (`test_citations.py`), as figuras (`test_figures.py`, `test_figure_mentions.py`, `test_figure_descriptions.py`), a retomada (`test_resumable_session.py` e o retry no meio em `test_attempt_extraction.py`), a medição (`test_citation_bench.py`) e o caso de uso, com uma sessão falsa e PDFs gerados no teste; a sessão do Agno contra um servidor HTTP local no lugar do Google; o E1 por attempt com banco real e PDF no storage.
+- `extractor/tests/`: a config, o mapa, a conferência, a nova tentativa, as referências (`test_references.py`), as citações (`test_citations.py`), as figuras (`test_figures.py`, `test_figure_mentions.py`, `test_figure_descriptions.py`), o texto oculto (`test_hidden_text.py`, com PDFs gerados no teste: branco em cinza, RGB e CMYK, 1 pt, fora da página, instrução em inglês e em português, linhas seguidas, letras soltas de figura), a retomada (`test_resumable_session.py` e o retry no meio em `test_attempt_extraction.py`), a medição (`test_citation_bench.py`) e o caso de uso, com uma sessão falsa e PDFs gerados no teste; a sessão do Agno contra um servidor HTTP local no lugar do Google; o E1 por attempt com banco real e PDF no storage.
 - `pytest -m llm`: divide um artigo inventado com o Gemini de verdade (usa a `GEMINI_KEY` do `.env`; fica fora do `pytest` padrão e do CI).
 - Calibração (11/11): dois artigos do ICLR 2017 (PeerRead) divididos de ponta a ponta. No 410 (13 páginas), 18 de 19 seções passaram nas duas medidas, com 21 chamadas em 30 s; no 304 (20 páginas), as 3 reprovadas eram de pseudocódigo, com 39 chamadas em 68 s.
 - **Medição da ligação citação ↔ referência (12/11)**, com `python manage.py bench_citation_links --execute` (em dry-run só lista os artigos; `--rescore <pasta>` recalcula a partir dos artigos salvos, sem o modelo): 10 artigos do PeerRead (ICLR 2017, ACL 2017, CoNLL 2016), comparados com o gabarito do science-parse. Contra o gabarito bruto, recall de 80% e precisão de 71%. O gabarito erra muito: 134 das 406 chamadas dele não batem com o próprio texto (o sobrenome e o ano da chamada não são os da referência ligada) ou têm os offsets fora do lugar; sem elas, **recall de 93% (244 de 263) e precisão de 92% (244 de 264)**, com 98% das referências casadas pelo título. Na conferência manual, as 20 citações contadas como erradas estavam certas (o gabarito não as tinha naquela frase); das 19 chamadas não achadas, 7 estão em tabelas, legendas ou notas (fora do texto por desenho), 3 em frases que o modelo pulou na cópia e o resto é desacordo de recorte do gabarito. Os relatórios ficam em `dataset_project/processed/bench_citation_links/`.
 - **Figuras (12/11):** no ICLR 410, 12 tabelas e 1 figura, todas com a legenda idêntica à do PDF e as 17 chamadas no texto ligadas; no ICLR 304, 2 figuras e 4 tabelas (os algoritmos ficam de fora).
 - **Descrições (12/11):** as 19 figuras e tabelas do ICLR 304 e do 410 descritas, cerca de 80 s por artigo. As 16 tabelas vieram em markdown, com todos os números presentes no texto do PDF. Os dois casos que viraram conferência (figura trocada no 304, tabela só com o cabeçalho no 410) saíram certos na rodada seguinte.
+- **Texto oculto (15/11):** os 12 PDFs do PeerRead já usados na calibração não têm achado. Com uma instrução em branco e outra em 0,8 pt plantadas na página 1 do ICLR 410, o achado sai com `color`, `size` e `instruction`. Antes da regra da palavra de 3 letras, o ACL 37 tinha 3 falsos achados: rótulos de eixo reduzidos numa figura.

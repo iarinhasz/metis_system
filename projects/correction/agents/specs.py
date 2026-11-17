@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 from math import isfinite
-from typing import Self
+from typing import Final, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
@@ -147,18 +147,26 @@ def validate_catalog(specs: dict[Role, ModelSpec]) -> dict[Role, ModelSpec]:
     return specs
 
 
+# Decidido pela equipe em 15/11/2026: o projeto usa só estes três modelos.
+GOOGLE_MODEL: Final = "gemini-2.5-flash"
+OPENAI_MODEL: Final = "gpt-5.6-luna"
+OPENAI_SMALL_MODEL: Final = "gpt-5.4-nano"
+
+
 def development_spec(role: Role) -> ModelSpec:
-    """Padrões de desenvolvimento substituíveis no ambiente; não representam calibração."""
-    if role in {Role.EVALUATOR_B, Role.JUDGE_GOOGLE, Role.ADJUDICATOR}:
-        return ModelSpec(
-            provider=Provider.GOOGLE, family=Family.GEMINI, model_id="gemini-3.8-flash"
-        )
-    if role in {Role.FAST, Role.VISION}:
-        return ModelSpec(
-            provider=Provider.GOOGLE, family=Family.GEMINI, model_id="gemini-3.5-flash-lite"
-        )
+    """O modelo de cada papel, substituível no ambiente. Todo papel do Google usa o
+    gemini-2.5-flash; o avaliador C, que precisa ser outro tamanho ou geração, usa o
+    gpt-5.4-nano, e os outros papéis da OpenAI usam o gpt-5.6-luna."""
+    if role in {
+        Role.EVALUATOR_B,
+        Role.JUDGE_GOOGLE,
+        Role.ADJUDICATOR,
+        Role.FAST,
+        Role.VISION,
+    }:
+        return ModelSpec(provider=Provider.GOOGLE, family=Family.GEMINI, model_id=GOOGLE_MODEL)
     return ModelSpec(
         provider=Provider.OPENAI,
         family=Family.GPT,
-        model_id="gpt-5.6-luna" if role is Role.EVALUATOR_C else "gpt-5.6-terra",
+        model_id=OPENAI_SMALL_MODEL if role is Role.EVALUATOR_C else OPENAI_MODEL,
     )

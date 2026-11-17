@@ -1,6 +1,8 @@
 """Orquestração do E4 com agentes falsos e checkpoints duráveis."""
 
+from dataclasses import dataclass
 from time import monotonic
+from typing import Any, cast
 
 import pytest
 
@@ -16,7 +18,11 @@ from projects.correction.attempts.status import Stage
 from projects.correction.evaluation.context import EvaluationContextBuilder
 from projects.correction.evaluation.models import ReviewRound
 from projects.correction.evaluation.tests.test_context import _advance_to_evaluation, _prepare_run
-from projects.correction.evaluation.workflow import build_evaluation_workflow, run_evaluation
+from projects.correction.evaluation.workflow import (
+    _failed_step_names,
+    build_evaluation_workflow,
+    run_evaluation,
+)
 from projects.correction.metis.config import settings
 
 
@@ -323,3 +329,22 @@ def test_builder_uses_three_slots_and_snapshot_mode() -> None:
     assert workflow.name == "evaluation"
     assert len(context.evaluators) == 3
     assert context.evaluation_mode is EvaluationMode.WHOLE_DOCUMENT
+
+
+@dataclass
+class _Step:
+    """O que `_failed_step_names` lê de um `StepOutput` do Agno (que só o workflow.py importa)."""
+
+    step_name: str
+    success: bool = True
+    error: str | None = None
+    steps: list[_Step] | None = None
+
+
+def test_failed_steps_show_the_error_of_the_inner_steps() -> None:
+    inner = _Step("evaluator_a", success=False, error="Saída incompatível.")
+    outer = _Step("evaluators", steps=[inner, _Step("evaluator_b")])
+
+    failed = _failed_step_names(cast(Any, [outer]))
+
+    assert failed == ["evaluators", "evaluator_a: Saída incompatível."]

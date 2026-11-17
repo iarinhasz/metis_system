@@ -93,9 +93,21 @@ def fake_evaluation(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
+def fake_integrity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A máquina de estados isola o E3 (risco baixo); o E3 real tem integração própria."""
+    from projects.correction.pipeline.stages import IntegrityStage, StageContext, StageOutcome
+
+    def check(self: IntegrityStage, ctx: StageContext) -> StageOutcome:
+        return StageOutcome(payload={"risk": "low"})
+
+    monkeypatch.setattr(IntegrityStage, "execute", check)
+
+
+@pytest.fixture
 def eager_celery(
     fake_extraction: None,
     fake_profiling: None,
+    fake_integrity: None,
     fake_evaluation: None,
     fake_consolidation: None,
     eager_mode: None,

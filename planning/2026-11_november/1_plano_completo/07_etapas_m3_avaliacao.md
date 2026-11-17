@@ -25,6 +25,8 @@ Caminhos relativos a `projects/correction/`.
 
 ## Etapa 3.2 — Schemas e models das rodadas
 
+**Situação (13/11/2026):** implementada pela trilha de Agentes, junto da 3.11, porque o E5 precisava dela: os schemas em `agents/schemas/evaluation.py`, os models `ReviewRound` e `JudgeVerdict` e o `evaluation/tests/test_models.py`.
+
 **O que fazer**
 - `agents/schemas/evaluation.py`: `Observation`, `SectionObservations`, `CrossCheckResult`, `CriterionSynthesis`, `CriteriaSynthesis`, `RevisionResponse`, `JudgeReport` (com `ItemVerdict` e `Issue`), com os campos de [Avaliadores e juiz](../../../docs/evaluators_and_judge.md#os-avaliadores).
 - Models `ReviewRound` (único por run, slot e rodada) e `JudgeVerdict` (único por rodada, tipo e item; com `source` = `validator` ou `judge`).
@@ -207,9 +209,15 @@ Ruff e formatação passaram (263 arquivos); mypy passou nos quatro módulos alt
 Os testes medem o fluxo com agentes falsos e comparam sua duração ao soft limit de
 25 minutos; não medem tempo de provedor real nem qualidade das avaliações.
 
+**Run real (16/11/2026, ICLR 410 no Docker):** No Docker, com modelos reais (ICLR 410, 16/11), o E4 ainda não chega a `done`: as respostas dos modelos não passam em validações feitas para as respostas dos fakes. Já corrigidos: o schema da revisão recusado pela OpenAI, a nota 1–5 recusada pelo Gemini, o passe por seção (seção, papel e critério agora fixados pelo código) e a revisão fora das regras (o item segue para `unresolved`). Faltam: a síntese (critérios exatos; citações no lugar dos ids), a checagem entre seções (tipo, critério ou seção fora do pedido) e a retomada de uma rodada julgada pela metade depois de uma falha. A mensagem de erro do
+estágio agora traz o erro de cada passo interno do workflow (antes, só "passos incompletos").
+Custo dos três runs de teste: cerca de US$ 1,96.
+
 ---
 
 ## Etapa 3.11 — Consolidação e relatório final
+
+**Situação (16/11/2026):** implementada em 13/11. O E4 (3.10) já está ligado ao estágio, mas com modelos reais ainda não fecha as rodadas (ver a 3.10), e por isso um PDF real ainda não chega ao relatório.
 
 **O que fazer**
 - `evaluation/aggregation.py`: mediana das notas válidas (com 2, a média), dispersão, total ponderado, faixa → recomendação; itens `unresolved` fora da agregação.
@@ -243,6 +251,8 @@ de desenvolvimento, executar `uv run python manage.py migrate`.
 ---
 
 ## Etapa 3.12 — Rubric check
+
+**Situação (13/11/2026):** implementada. Os relatórios lado a lado esperam o E4 (3.10).
 
 **O que fazer**
 - Ação no admin da Question: "Rodar rubric check" com N attempts de amostra → cria Runs com `purpose=rubric_check` e a Question rascunho no `config_snapshot` (D18).

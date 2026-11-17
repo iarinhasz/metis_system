@@ -1,0 +1,1117 @@
+{
+  "contract_version": "1.0",
+  "title": "Combining distributional and referential information for naming objects through cross-modal mapping and direct word prediction",
+  "authors": [],
+  "language": "en",
+  "abstract": "We compare three recent models of referential word meaning that link visual object representations to lexical representations in a distributional vector space, either directly through cross-modal mapping or indirectly through visual predictors for individual words. We use these models to predict object names as they could be used in naturalistic referring expressions. We find that cross-modal mapping generally produces semantically appropriate and mutually highly similar object names in its topn list, but sometimes fails to make desired distinctions. Visual word predictors, on the other hand, can react to more subtle visual distinctions and select specific terms, but sometimes stray taxonomically very far from the correct one. Combination of the approaches improves over the individual predictions in a standard naming task. All approaches can be extended to the zero-shot naming case, where the correct name is one for which no instances were seen during training; again they show complementary strengths and weaknesses, depending on the setup and the lexical relation of the unattested object name to known ones.",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "Seção 1",
+      "level": 1,
+      "parent_id": null,
+      "key": "secao_1",
+      "text": "1 000 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 074 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096 097 098 099",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_2",
+      "title": "1 Introduction",
+      "level": 1,
+      "parent_id": null,
+      "key": "1_introduction",
+      "text": "Expressions referring to objects in visual scenes typically include a word naming the type of the object: E.g., “house” in Figure 1 (a), or, as a very general type, “thingy” in Figure 1 (d). Determining such a name is is a crucial step for referring expression generation (REG) systems, as many other decisions, concerning e.g. the selection of attributes, follow from it (Dale and Reiter, 1995; Krahmer and Van Deemter, 2012). For a long time, however, research on REG mostly assumed the availability of symbolic representations of referent and scene, and sidestepped questions about how speakers actually choose these names, due to the lack of models capable of capturing what a word like house refers to in the real world. Recent advances in image processing promise to fill this gap, with state-of-the-art computer vision systems being able to classify images into thousands of different categories (eg. Szegedy et al. (2015)). However, classification is not naming (Ordonez et al., 2016). Classification schemes are typically designed to be “flat”, with labels being on the same ontological level and, ideally, having disjunct extensions. In contrast, humans seem to be more flexible as to the chosen level of generality. Depending on the prototypicality of the object to name, and possibly other visual properties, a general name might be more or less appropriate. For instance, a robin can be named “bird”, but a penguin is better referred to as “penguin” (Rosch, 1978); along the same lines, the rather unusual building in Figure 1 that is not easy to otherwise 2 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 categorise was named “structure”. Other work at the intersection of image and language processing has investigated models that learn to directly associate visual objects with a representation of word meaning, for example through cross-modal transfer into distributional vector spaces. Under the assumption that such semantic spaces represent, in some form at least, taxonomic knowledge, this makes labels on different levels of specificity available for a given object. Moreover, if the mapping is sufficiently general, it should be able to map objects to an appropriate label, even if during training of the mapping this label has not been seen (zero-shot learning). While indeed performing with some promise on this task (Lazaridou et al., 2014), this approach does not generally outperform standard object classification with known categories (Frome et al., 2013; Norouzi et al., 2013). This paper pursues the hypothesis that an accurate model of referential word meaning does not need to fully integrate visual and lexical knowledge (e.g. as expressed in a distributional vector space), but at the same time, has to go beyond treating words as independent labels. We extend upon work on learning models of referential word use from corpora of images paired with referring expressions (Schlangen et al., 2016; Anonymous, in press) that treats words as individual predictors capturing referential appropriateness. We explore different ways of linking these predictors to distributional knowledge, during application and during training. We find that these improve over direct cross-modal mapping and direct visual classification in a standard and a zero-shot setup of an object naming task, as they allow for a more flexible combination of lexical and visual information when modeling referential meaning.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_3",
+      "title": "2 Related Work",
+      "level": 1,
+      "parent_id": null,
+      "key": "2_related_work",
+      "text": "Grounding and Reference An early example for work in REG that goes beyond Dale and Reiter (1995)’s dominant symbolic paradigm is Deb Roy’s work from the early 2000s (Roy et al., 2002; Roy, 2002, 2005). More recently, research on REG, which has traditionally been done on small toy data sets, is being scaled up to realworld images (Kazemzadeh et al., 2014; Gkatzia et al., 2015; Zarrieß and Schlangen, 2016; Mao et al., 2015). In this paper, we focus on a particular problem posed by REG on real-world images, namely generating the appropriate head noun for a given object. Similarly, Ordonez et al. (2016) have studied the problem of deriving appropriate object names, or so-called entry-level categories, from the output of an object recognizer. Their approach focusses links abstract object categories in ImageNet to actual words via various translation procedures. We are interested in learning referential appropriateness and extensional word meanings directly from actual human referring expressions (REs) paired with objects in images, using an existing object recognizer for feature extraction. Multi-modal and cross-modal distributional semantics Distributional semantic models are a well-known method for capturing lexical word meaning in a variety of tasks (Turney and Pantel, 2010; Mikolov et al., 2013; Erk, 2016). Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation. More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space. When tested on standard object recognition tasks, transfer, however, comes at a price. Frome et al. (2013) and Norouzi et al. (2013) both find that it slightly degrades performance as compared to a plain object classification using standard accuracy metrics (called flat “hit @k metric” in their paper). Interestingly though, Frome et al. (2013) report better performance using “hierarchical precision”, which essentially means that transfer predicts words that are ontologically closer to the gold label and makes “semantically more reasonable errors”. To the best of our knowledge, this pattern has not been systematically investigated any further. Another known problem with cross-modal transfer is that it seems to generalize less well than expected, i.e. tends to reproduce word vectors observed during training (Lazaridou et al., 2015a). In this work, we present a model that exploits distributional knowledge for learning referential word meaning as well, but explore and compare different ways of combining visual and lexical aspects of referential word meaning. 3 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_4",
+      "title": "3 Task and Data",
+      "level": 1,
+      "parent_id": null,
+      "key": "3_task_and_data",
+      "text": "We define object naming as follows: Given an object x in an image, the task is to predict a word w that could be used as the head noun of a realistic referring expression. (Cf. discussion above: “bird” when naming a robin, but “penguin” when naming a penguin.) To get at this, we develop our approach using a corpus of referring expressions produced by human users under natural, interactive conditions (Kazemzadeh et al., 2014), and train and test on the corresponding head nouns in these REs. This is similar to picture naming setups used in psycholinguistic research (cf. Levelt et al. (1991)) and based on the simplifying assumption that the name used for referring to an object can be determined successfully without looking at other objects in the image. We now summarise the details of our setup: Corpus We train and test on the REFERIT corpus (Kazemzadeh et al., 2014), which is based on the SAIAPR image collection (Grubinger et al., 2006) (99.5k image regions;120K REs). We follow (Schlangen et al., 2016) and select words with a minimum frequency of 40 in these two data sets, which gives us a vocabulary of 793 words. Names For most of our experiments, we only use a subset of this vocabulary, namely the set of object names. As the REs contain nouns that cannot be considered to be names (background, bottom, etc.), we extract from the semantically annotated portion of the REFERIT corpus a list of names which correspond to ‘entry-level’ nouns in terms of (Kazemzadeh et al., 2014). This gives us a list of 159 names. Thus, our experiments are on a smaller scale as compared to (Ordonez et al., 2016). Nevertheless, the data is challenging, as the corpus contains references to objects that fall outside of the object labeling scheme that available object recognition systems are typically optimized for, cf. Hu et al. (2015)’s discussion on “stuff” entities such “sky” or “grass” in the REFERIT data. For testing, we remove relational REs (containing a relational preposition such as ‘left of X’), because here we cannot be sure that the head noun of the target is fully informative; we also remove REs with more than one head noun from our list (i.e. these are mostly relational expressions as well such as ‘girl laughing at boy’). We pair each image region from the test set with its corresponding names from the remaining REs. Image and Word Embeddings Following Schlangen et al. (2016), we derive representations of our visual inputs with a convolutional neural network, ‘GoogleNet’ (Szegedy et al., 2015), which was trained on the ImageNet corpus (Deng et al., 2009), and extract the final fully-connected layer before the classification layer, to give us a 1024 dimensional representation of the region. We add 7 features that encode information about the region relative to the image, thus representing each object as a vector of 1031 features. As distributional word vectors, we use the word2vec representations provided by Baroni et al. (2014) (trained with CBOW, 5-word context window, 10 negative samples, 400 dimensions).",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_5",
+      "title": "4 Three Models of Interfacing Visual and",
+      "level": 1,
+      "parent_id": null,
+      "key": "4_three_models_of_interfacing_visual_and",
+      "text": "Distributional Information",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_6",
+      "title": "4.1 Direct Cross-Modal Mapping",
+      "level": 2,
+      "parent_id": "sec_5",
+      "key": "4_1_direct_cross_modal_mapping",
+      "text": "Following e.g. Lazaridou et al. (2014), referential meaning can be represented as a translation function that projects visual representations of objects to linguistic representations of words in a distributional vector space. Thus, in contrast to standard object recognition systems or the other models we will use here, cross-modal mapping does not treat words as individual labels or classifiers, but learns to directly predict continuous representations of words in a vector space, such as the space defined by the word2vec embeddings that we use in this work. This model will be called TRANSFER below. During training, we pair each object with the distributional embedding of its name, and use standard Ridge regression for learning the transformation. Lazaridou et al. (2014) and Lazaridou et al. (2015a) test a range of technical tweaks and different algorithms for cross-modal mapping. For ease of comparison with other models, we stick with simple Ridge Regression in this work. For decoding, we map an object into the distributional space, and retrieve the nearest neighbors of the predicted vector using cosine similarity. In theory, the model should generalize easily to words that it has not observed in a pair with an object during training as it can map an object anywhere in the distributional space.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_7",
+      "title": "4.2 Lexical Mapping Through Individual Word Classifiers",
+      "level": 2,
+      "parent_id": "sec_5",
+      "key": "4_2_lexical_mapping_through_individual_word_classifiers",
+      "text": "Another approach is to keep visual and distributional information separate, by training a separate visual classifier for each word w in the vocabu- 4 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 lary. Predictions can then be mapped into distributional space during application time via the vectors of the predicted words. Here, we use Schlangen et al. (2016)’s WAC model, building the training set for each word w as follows: all visual objects in a corpus that have been referred to as w are used as positive instances, the remaining objects as negative instances. Thus, the classifiers learn to predict referential appropriateness for individual words based on the visual features of the objects they refer to, in isolation of other words. During decoding, we apply all word classifiers from the model’s vocabulary to the given object, and take the argmax over the individual word probabilities. The model can be used to predict names directly, without links into a distributional space. In order to extend the model’s vocabulary for zero-shot learning, we follow Norouzi et al. (2013) and associate the top n words with their corresponding distributional vector and compute the convex combination of these vectors. Then, in parallel to cross-modal mapping, we retrieve the nearest neighbors of the combined embedding from the distributional space. Thus, with this model, we use two different modes of decoding: one that projects into distributional space, one that only applies the available word classifiers.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_8",
+      "title": "4.3 Word Prediction via Cross-Modal Similarity Mapping",
+      "level": 2,
+      "parent_id": "sec_5",
+      "key": "4_3_word_prediction_via_cross_modal_similarity_mapping",
+      "text": "Finally, we implement an approach that combines ideas from cross-modal mapping with the WAC model: we train individual predictors for each word in the vocabulary, but, during training, we exploit lexical similarity relations encoded in a distributional space. Instead of treating a word as a binary classifier, we annotate its training instances with a fine-grained similarity signal according to their object names. When building the training set for such a word predictor w, instead of simply dividing objects into w and ¬w instances, we label each object with a real-valued similarity obtained from cosine similarity between w and v in a distributional vector space, where v is the word that was used to refer to the object. Thus, we task the model with jointly learning similarities and referential appropriateness, by training it with Ridge regression on a continuous output space. Object instances where v = w (i.e., the positive instances in the binary setup) have maximal similarity; the remaining instances have a lower value which is more or less close to maximal similarity. This is the SIM-WAP model, recently proposed in (Anonymous). Importantly, and going beyond (Anonymous), this model allows for an innovative treatment of words that only exist in a distributional space (without being paired with visual referents in the image corpus): as the predictors are trained on a continuous output space, no genuine positive instances of a word’s referent are needed. When training a predictor for such a word w, we use all available objects from our corpus and annotate them with the expected lexical similarity between w and the actual object names v, which for all objects will be below the maximal value that marks genuine positive instances. During decoding, this model does not need to project its predictions into a distributional space, but it simply applies all available predictors to the object, and takes the argmax over the predicted referential appropriateness scores.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_9",
+      "title": "5 Experiment 1: Naming Objects",
+      "level": 1,
+      "parent_id": null,
+      "key": "5_experiment_1_naming_objects",
+      "text": "This Section reports on experiments in a standard setup of the object naming task where all object names are paired with visual instances of their referents during training. In a comparable task, i.e. object recognition with known object categories, cross-modal projection or transfer approaches have been reported to perform worse than standard object classification methods (Frome et al., 2013; Norouzi et al., 2013). This seems to suggest that lexical or at least distributional knowledge is detrimental when learning what a word refers to in the real world and that referential meaning should potentially be learned from visual object representation only.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_10",
+      "title": "5.1 Model comparison",
+      "level": 2,
+      "parent_id": "sec_9",
+      "key": "5_1_model_comparison",
+      "text": "Setup We use the train/test split of REFERIT data as in (Schlangen et al., 2016). We consider image regions with non-relational referring expressions that contain at least one of the 159 head nouns from the list of entry-level nouns (see section 3). This amounts to 6208 image regions for testing and 73K instances for training. Results Table 1 shows accuracies in the object naming task for the TRANSFER, WAC and SIMWAP models according to their accuracies in the top n, including two variants of WAC where its top 5 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 5 and top 10 predictions are project into the distributional space. Overall, the differences in accuracy between the models are small, but the various models that link their predictions to word representations in the distributional space all perform slightly worse than the plain WAC model, i.e. individual word classifiers trained on visual features only. This suggests that referential meanings for a word are learned less accurately when mapping from visual to distributional space, which replicates results reported in the literature on standard object recognition benchmarks. hit @k(%) @1 @2 @5 transfer 48.34 60.49 74.89 wac 49.34 61.86 75.35 wac, project top5 48.73 61.10 74.07 wac, project top10 48.68 61.23 74.31 sim-wap 48.13 60.60 75.40 Table 1: Accuracies in object naming",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_11",
+      "title": "5.2 Model combination",
+      "level": 2,
+      "parent_id": "sec_9",
+      "key": "5_2_model_combination",
+      "text": "In order to get more insight into why the TRANSFER and SIM-WAP models produce slightly worse results than individual visual word classifiers, we now test to what extent the different models are complementary and combine them by aggregating over their naming predictions. If the models are complementary, their combination should lead to more confident and accurate naming decisions. Setup We combine TRANSFER, SIM-WAP and WAC by aggregating the scores they predict for different object names for a given object. During testing, we apply all models to an image region and consider words ranked among the top 10. We first normalize the referential appropriateness scores in each top-10 list and then compute their sum. This aggregation scheme will give more weight to words that appear in the top 10 list of different models, and less weight to words that only get top-ranked by a single model. We test on the same data as in Section 5.1. hit @k(%) 1 5 10 sim-wap + transfer 49.10 61.78 75.81 sim-wap + wac 51.10 63.45 77.92 transfer + wac 51.13 63.76 77.84 wac + transfer + sim-wap 52.19 64.71 78.40 Table 2: Object naming acc., combined models Results Table 2 shows that all model combinations improve over the results of their isolated models in Table 1, suggesting that WAC, TRANSFER and SIM-WAP indeed do capture complementary aspects of referential word meaning. On their own, the distributionally informed models are less tuned to specific word occurrences than the visual word classifiers in the WAC model, but they can add useful information which leads to a clear overall improvement. We take this as a promising finding, supporting our initial hypothesis that knowledge on lexical distributional meaning should and can be exploited when learning how to use words for reference. Av. cosine distance among top k gold - top k 5 10 5 10 transfer 0.68 0.73 0.72 0.75 wac 0.82 0.80 0.82 0.84 sim-wap 0.68 0.74 0.72 0.75 Table 3: Cosine distances between word2vec embeddings of nouns generated in the top k",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_12",
+      "title": "5.3 Analysis",
+      "level": 2,
+      "parent_id": "sec_9",
+      "key": "5_3_analysis",
+      "text": "Figure 2 illustrates objects from our test set where the combination of TRANSFER, SIM-WAP and WAC predicts an accurate name, whereas the models in isolation do not. These examples give some interesting insight into why the models capture different aspects of referential word use and meaning. Word Similarities Many of the examples in Figure 2 suggest that the object names ranked among the top 3 by the TRANSFER and SIMWAP model are semantically similar to each other, whereas WAC generates object names on top that describe very different underlying object categories, such as seal / rock in Figure 2(a), animal / lamp in Figure 2(g) or chair / shirt in Figure 2(c). To quantify this general impression, Table 3 shows cosine distances among words in the top n generated by our models, using their word2vec embeddings. The average cosine distance between words in our vocabulary is 0.83. The transfer and sim-wap model rank words on top that are clearly more similar to each other than word pairs on average, whereas words ranked top by the wac model are more dissimilar. This parallels findings by Frome et al. (2013), discussed in Section 2. Additional evaluation metrics, such as success rates 6 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 550 551 552 553 554 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599 in a human evaluation (cf. Zarrieß and Schlangen (2016)), would be an interesting direction for more detailed investigation here. Word Use But even though the WAC classifiers lack knowledge on lexical similarities, they seem to able to detect relatively specific instances of word use such as hut in Figure 2(b), shirt in 2(c) or lamp in 2(h). Here, the combination with TRANSFER and SIM-WAP is helpful to give more weight to the object name that is taxonomically correct (sometimes pushing up words below the top-3 and hence not shown in Figure 2). In Figure 1(e), SIMWAP and TRANSFER give more weight to typical names for persons, whereas WAC top-ranks more unusual names, reflecting that the person is difficult to identify visually. Another observation is that the mapping models have difficulties dealing with object names in singular and plural. As these words have very similar representations in the distributional space, they are often predicted as likely variants among the top 10 by SIM-WAP and TRANSFER, whereas the WAC model seems to predict inappropriate plural words less often among the top 3. Such specific phenomena at the intersection of visual and semantic similarity have found very little attention in the literature. We will investigate them further in our Experiments on zeroshot naming in the following Section.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_13",
+      "title": "6 Zero-Shot Naming",
+      "level": 1,
+      "parent_id": null,
+      "key": "6_zero_shot_naming",
+      "text": "Zero-shot learning is an attractive prospect for REG from images, as it promises to overcome dependence on pairings of visual instances and natural names being available for all names, if visual/referential data can be generalised from other types of information. Previous work has looked at the feasibility of zero-shot learning as a function of semantic similarity or ontological closeness between unknown and known categories, and confirmed the intuition that the task is harder the less close unknown categories are to known ones (Frome et al., 2013; Norouzi et al., 2013). Our experiments on object naming in Section 5 suggest that lexical similarities encoded in a distributional space might not always fully carry over to referential meaning. This could constitute an additional challenge for zero-shot learning, as distributional similarities might be misleading when the model has to fully rely on them for learning referential word meanings. Therefore, the following experiments investigate the performance of our models in zero-shot naming as a function of the lexical relation between unknown and known object names, i.e. namely hypernyms and singular/plurals. Both relations are typically captured by distributional models of word meaning in terms of closeness in the vector space, but their visual and referential relation is clearly different.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_14",
+      "title": "6.1 Vocabulary Splits and Testsets",
+      "level": 2,
+      "parent_id": "sec_13",
+      "key": "6_1_vocabulary_splits_and_testsets",
+      "text": "Random As in previous work on zero-shot learning, we consider zero-shot naming for words of varying degrees of similarity in our vocabulary. We randomly split our 159 names from Experiment 1 into 10 subsets. We train the models on 90% of the nouns (and all their visual instances in the image corpus) and test on the set of image regions that are named with words which the model did not observe during training. Results reported in Table 4 on the random test set correspond to averaged scores from cross-validation over the 10 splits. Hypernyms We manually split the model’s vocabulary into set of hypernyms (see Appendix A) and the remaining nouns. We train the models on those 84K image regions that where not named with a hypernym, and test on 8895 image regions that were named with a hypernym in the corpus. We checked that for each of these hypernyms, the vocabulary contains at least one or two names that can be considered as hyponyms, i.e. the model sees objects during training that are instances of vehicle for example, but never encounters actual uses of that name. This test set is particularly interesting from an REG perspective, as objects named with very general terms by human speakers are often difficult to describe with more common, but more specific terms, as is illustrated by the uses of structure and thingy in Figure 1. Singulars/Plurals We pick 68 words from our vocabulary that can be grouped into 34 singularplural noun pairs (see Appendix A). From each pair, we randomly include the singular or plural noun in the set of zero-shot nouns. Thus, we make sure that the model encounters singular and plural names during training, but it never encounters both variants of a name. This results in a more even training/test split, i.e. we train on 23K image regions and evaluate on 13825 instances. 7 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 650 651 652 653 654 655 656 657 658 659 660 661 662 663 664 665 666 667 668 669 670 671 672 673 674 675 676 677 678 (a) wac: seal, rock, water sim-wap: side, rock,rocks transfer: rocks, rock, water combination: rock (c) wac: chair, shirt, guy sim-wap: woman, man, girl transfer: door, woman, window combination: shirt (e) wac: chick, person, guy sim-wap: man, person, woman transfer: man, guy, girl combination: person (g) wac: animal, lamp, table sim-wap: man, girl, person transfer: man, clouds, cloud combination: person (b) wac: cactus, hut, mountain sim-wap: side, rock, mountain transfer: mountain, rocks, rock combination: hut (d) wac: roof, house, building sim-wap: building, house, trees transfer: building, house, trees combination: house (f) wac: bush, bushes, tree sim-wap: trees, tree, grass transfer: trees, tree, bushes combination: bushes (h) wac: post, light, lamp sim-wap: tree, sky, pole transfer: tree, sky, trees combination: lamp Figure 2: Examples from object naming experiment where model combination is accurate Zero-shot Model full vocab disjoint vocab names @1 @2 @5 @10 @1 @2 Random transfer 0.05 2.38 16.57 35.71 41.49 62.34 wac, project top10 0.00 4.42 21.16 39.17 38.03 58.07 wac, project top5 0.00 4.39 21.63 40.01 37.46 57.36 sim-wap 3.71 13.13 36.49 54.44 42.28 64.26 Hypernyms transfer 0.07 1.25 7.75 29.93 59.88 73.88 wac, project top10 0.00 3.01 15.55 36.99 50.51 66.33 wac, project top5 0.00 2.78 16.75 38.13 47.73 64.38 sim-wap 3.16 10.33 31.14 49.62 57.55 70.15 Singulars/Plurals transfer 0.01 22.84 44.30 72.85 34.56 51.79 wac, project top10 0.00 22.21 43.43 68.95 31.46 48.76 wac, project top5 0.00 22.18 43.93 69.33 31.46 48.88 sim-wap 15.39 34.73 56.62 77.32 37.24 54.02 8 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_15",
+      "title": "6.2 Evaluation",
+      "level": 2,
+      "parent_id": "sec_13",
+      "key": "6_2_evaluation",
+      "text": "Some previous work on zero-shot image labeling assumes additional components that first identify whether an image should be labelled by a known or unknown word (Frome et al., 2013). We follow Lazaridou et al. (2014) and let the model decide whether to refer to an object by a known or unknown name. Related to that, distinct evaluation procedures have been used in the literature on zero-shot learning: Testing on full vocabulary A realistic way to test zero-shot learning performance is to consider all words from a given vocabulary during testing, though the testset only contains instances of objects that have been named with a ‘zero-shot word’ (for which no visual instances were seen during training). Accuracies in this setup reflect how well the model is able to generalize, i.e. how often it decides to deviate from the words it was trained on, and (implicitly) predicts that the given object requires a “new” name. In case of the (i) hypernym and (ii) singular/plural test set, this accuracy also reflects to what extent the model is able to detect cases where (i) a more general or vague term is needed, where (ii) an unknown singular/plural counterpart of a known object type occurs. Testing on disjoint vocabulary Alternatively, the model’s vocabulary can be restricted during testing to zero-shot words only, such that names encountered during training and testing are disjoint, see e.g. (Lampert et al., 2009, 2013). This setup factors out the generalization problem, and assesses to what extent a model is able to capture the referential meaning of a word that does not have instances in the training data.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_16",
+      "title": "6.3 Results",
+      "level": 2,
+      "parent_id": "sec_13",
+      "key": "6_3_results",
+      "text": "As compared to Experiment 1 where models achieved similar performance, differences are more pronounced in the zero-shot setup, as shown in Table 4. In particular, we find that the SIMWAP model which induces individual predictors for words that have not been observed in the training data is clearly more successful than TRANSFER or WAC that project predictions into the distributional space. When tested on the full vocabulary, we find that TRANSFER and WAC very rarely generate names whose referents were excluded from training, which is in line with observations made by Lazaridou et al. (2015a). The SIM-WAP predictors generalize much better, in particular on the singular/plural testset. An interesting exception is the good performance of the TRANSFER model on the hypernym test set, when evaluated with a disjoint vocabulary. This corroborates evidence from Experiment 1, namely that the transfer model captures taxonomic aspects of object names better than the other models. Projection via individual word classifiers, on the other hand, seems to generalize better than TRANSFER, at least when looking at accuracies @2 ... @10. Thus, combining several vectors predicted by a model of referential word meaning can provide additional information, as compared to mapping an object to a single vector in distributional space. More work is needed to establish how these approaches can be integrated more effectively.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_17",
+      "title": "7 Discussion and Conclusion",
+      "level": 1,
+      "parent_id": null,
+      "key": "7_discussion_and_conclusion",
+      "text": "In this paper, we have investigated models of referential word meaning, using different ways of combining visual information about a word’s referent and distributional knowledge about its lexical similarities. Previous cross-modal mapping models essentially force semantically similar objects to be mapped into the same area in the semantic space regardless of their actual visual similarity. We found that cross-modal mapping produces semantically appropriate and mutually highly similar object names in its top-n list, but does not preserve differences in referential word use (e.g. appropriatness of person vs. woman) especially within the same semantic field. We have shown that it is beneficial for performance in standard and zeroshot object naming to treat words as individual predictors that capture referential appropriateness and are only indirectly linked to a distributional space, either through lexical mapping during application or through cross-modal similarity mapping during training. As we have tested these approaches on a rather small vocabulary, which may limit generality of conclusions, future work will be devoted to scaling up these findings to larger test sets, as e.g. recently collected through conversational agents (Das et al., 2016) that circumvent the need for human-human interaction data. Also from an REG perspective, various extensions of this approach are possible, such as the inclusion of contextual information during object naming and its combination with attribute selection. 9 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Marco Baroni. Georgiana Dinu. Germán Kruszewski.. Don’t count, predict! a systematic comparison of context-counting vs. context-predicting semantic vectors. In ACL (1). pages 238–247.. 2014",
+      "marker": null,
+      "authors": [
+        "Marco Baroni",
+        "Georgiana Dinu",
+        "Germán Kruszewski."
+      ],
+      "title": "Don’t count, predict! a systematic comparison of context-counting vs",
+      "year": "2014",
+      "venue": "context-predicting semantic vectors. In ACL (1). pages 238–247.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Robert Dale. Ehud Reiter.. Computational interpretations of the gricean maxims in the generation of referring expressions. Cognitive Science 19(2):233–263.. 1995",
+      "marker": null,
+      "authors": [
+        "Robert Dale",
+        "Ehud Reiter."
+      ],
+      "title": "Computational interpretations of the gricean maxims in the generation of referring expressions",
+      "year": "1995",
+      "venue": "Cognitive Science 19(2):233–263.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Abhishek Das. Satwik Kottur. Khushi Gupta. Avi Singh. Deshraj Yadav. José M.F. Moura. Devi Parikh. Dhruv Batra.. Visual dialog. CoRR abs/1611.08669. http://arxiv.org/abs/1611.08669.. 2016",
+      "marker": null,
+      "authors": [
+        "Abhishek Das",
+        "Satwik Kottur",
+        "Khushi Gupta",
+        "Avi Singh",
+        "Deshraj Yadav",
+        "José M.F. Moura",
+        "Devi Parikh",
+        "Dhruv Batra."
+      ],
+      "title": "Visual dialog",
+      "year": "2016",
+      "venue": "CoRR abs/1611.08669. http://arxiv.org/abs/1611.08669.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "Jia Deng. W. Dong. Richard Socher. L.-J. Li. K. Li. L. Fei-Fei.. ImageNet: A Large-Scale Hierarchical Image Database. CVPR09.. 2009",
+      "marker": null,
+      "authors": [
+        "Jia Deng",
+        "W. Dong",
+        "Richard Socher",
+        "L.-J. Li",
+        "K. Li",
+        "L. Fei-Fei."
+      ],
+      "title": "ImageNet: A Large-Scale Hierarchical Image Database",
+      "year": "2009",
+      "venue": "CVPR09.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Katrin Erk.. What do you know about an alligator when you know the company it keeps? Semantics and Pragmatics 9(17):1–63. https://doi.org/10.3765/sp.9.17.. 2016",
+      "marker": null,
+      "authors": [
+        "Katrin Erk."
+      ],
+      "title": "What do you know about an alligator when you know the company it keeps? Semantics and Pragmatics 9(17):1–63",
+      "year": "2016",
+      "venue": "https://doi.org/10.3765/sp.9.17.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "Yansong Feng. Mirella Lapata.. Visual information in semantic representation. Human Language Technologies: The 2010 Annual Conference of the North American Chapter of the Association for Computational Linguistics. Association for. 2010",
+      "marker": null,
+      "authors": [
+        "Yansong Feng",
+        "Mirella Lapata."
+      ],
+      "title": "Visual information in semantic representation",
+      "year": "2010",
+      "venue": "Human Language Technologies: The 2010 Annual Conference of the North American Chapter of the Association for Computational Linguistics. Association for",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Andrea Frome. Greg S Corrado. Jon Shlens. Samy Bengio. Jeff Dean. Marc Aurelio Ranzato. Tomas Mikolov.. Devise: A deep visualsemantic embedding model. C. J. C. Burges, L. Bottou, M. Welling, Z. Ghahramani, and K. Q.. 2013",
+      "marker": null,
+      "authors": [
+        "Andrea Frome",
+        "Greg S Corrado",
+        "Jon Shlens",
+        "Samy Bengio",
+        "Jeff Dean",
+        "Marc Aurelio Ranzato",
+        "Tomas Mikolov."
+      ],
+      "title": "Devise: A deep visualsemantic embedding model",
+      "year": "2013",
+      "venue": "C. J. C. Burges, L. Bottou, M. Welling, Z. Ghahramani, and K. Q.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Dimitra Gkatzia. Verena Rieser. Phil Bartie. William Mackaness.. From the virtual to the real world: Referring to objects in real-world spatial scenes. Proceedings of EMNLP 2015. Association for Computational Linguistics.. 2015",
+      "marker": null,
+      "authors": [
+        "Dimitra Gkatzia",
+        "Verena Rieser",
+        "Phil Bartie",
+        "William Mackaness."
+      ],
+      "title": "From the virtual to the real world: Referring to objects in real-world spatial scenes",
+      "year": "2015",
+      "venue": "Proceedings of EMNLP 2015. Association for Computational Linguistics.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Michael Grubinger. Paul Clough. Henning Müller. Thomas Deselaers.. The IAPR TC-12 benchmark: a new evaluation resource for visual information systems. Proceedings of the International Conference on Language Resources and Evaluation. 2006",
+      "marker": null,
+      "authors": [
+        "Michael Grubinger",
+        "Paul Clough",
+        "Henning Müller",
+        "Thomas Deselaers."
+      ],
+      "title": "The IAPR TC-12 benchmark: a new evaluation resource for visual information systems",
+      "year": "2006",
+      "venue": "Proceedings of the International Conference on Language Resources and Evaluation",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Ronghang Hu. Huazhe Xu. Marcus Rohrbach. Jiashi Feng. Kate Saenko. Trevor Darrell.. Natural language object retrieval. CoRR abs/1511.04164. http://arxiv.org/abs/1511.04164.. 2015",
+      "marker": null,
+      "authors": [
+        "Ronghang Hu",
+        "Huazhe Xu",
+        "Marcus Rohrbach",
+        "Jiashi Feng",
+        "Kate Saenko",
+        "Trevor Darrell."
+      ],
+      "title": "Natural language object retrieval",
+      "year": "2015",
+      "venue": "CoRR abs/1511.04164. http://arxiv.org/abs/1511.04164.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Douwe Kiela. Léon Bottou.. Learning Image Embeddings using Convolutional Neural Networks for Improved Multi-Modal Semantics. Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP-14).. 2014",
+      "marker": null,
+      "authors": [
+        "Douwe Kiela",
+        "Léon Bottou."
+      ],
+      "title": "Learning Image Embeddings using Convolutional Neural Networks for Improved Multi-Modal Semantics",
+      "year": "2014",
+      "venue": "Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP-14).",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Satwik Kottur. Ramakrishna Vedantam. José MF Moura. Devi Parikh.. Visual word2vec (vis-w2v): Learning visually grounded word embeddings using abstract scenes. Proceedings of the IEEE Conference on Computer Vision and Pattern. 2016",
+      "marker": null,
+      "authors": [
+        "Satwik Kottur",
+        "Ramakrishna Vedantam",
+        "José MF Moura",
+        "Devi Parikh."
+      ],
+      "title": "Visual word2vec (vis-w2v): Learning visually grounded word embeddings using abstract scenes",
+      "year": "2016",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Emiel Krahmer. Kees Van Deemter.. Computational generation of referring expressions: A survey. Computational Linguistics 38(1):173–218.. 2012",
+      "marker": null,
+      "authors": [
+        "Emiel Krahmer",
+        "Kees Van Deemter."
+      ],
+      "title": "Computational generation of referring expressions: A survey",
+      "year": "2012",
+      "venue": "Computational Linguistics 38(1):173–218.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Christoph H Lampert. Hannes Nickisch. Stefan Harmeling.. Learning to detect unseen object classes by between-class attribute transfer. IEEE Computer Vision and Pattern Recognition. IEEE, pages 951–958.. 2009",
+      "marker": null,
+      "authors": [
+        "Christoph H Lampert",
+        "Hannes Nickisch",
+        "Stefan Harmeling."
+      ],
+      "title": "Learning to detect unseen object classes by between-class attribute transfer",
+      "year": "2009",
+      "venue": "IEEE Computer Vision and Pattern Recognition. IEEE, pages 951–958.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Christoph H. Lampert. Hannes Nickisch. Stefan Harmeling.. Attribute-based classification for zero-shot visual object categorization. IEEE Transactions on Pattern Analysis and Machine Intelligence 36(3):453–465.. 2013",
+      "marker": null,
+      "authors": [
+        "Christoph H. Lampert",
+        "Hannes Nickisch",
+        "Stefan Harmeling."
+      ],
+      "title": "Attribute-based classification for zero-shot visual object categorization",
+      "year": "2013",
+      "venue": "IEEE Transactions on Pattern Analysis and Machine Intelligence 36(3):453–465.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Angeliki Lazaridou. Elia Bruni. Marco Baroni.. Is this a wampimuk? Cross-modal mapping between distributional semantics and the visual world. Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics. 2014",
+      "marker": null,
+      "authors": [
+        "Angeliki Lazaridou",
+        "Elia Bruni",
+        "Marco Baroni."
+      ],
+      "title": "Is this a wampimuk? Cross-modal mapping between distributional semantics and the visual world",
+      "year": "2014",
+      "venue": "Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "Angeliki Lazaridou. Georgiana Dinu. Marco Baroni.. Hubness and pollution: Delving into cross-space mapping for zero-shot learning. Proceedings of the 53rd Annual Meeting of the Association for Computational Lin-. 2015",
+      "marker": null,
+      "authors": [
+        "Angeliki Lazaridou",
+        "Georgiana Dinu",
+        "Marco Baroni."
+      ],
+      "title": "Hubness and pollution: Delving into cross-space mapping for zero-shot learning",
+      "year": "2015",
+      "venue": "Proceedings of the 53rd Annual Meeting of the Association for Computational Lin-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Angeliki Lazaridou. Nghia The Pham. Marco Baroni.. Combining language and vision with a multimodal skip-gram model. Proceedings of the 2015 Conference of the North American Chapter of the Association for Computational Linguistics: Hu-. 2015",
+      "marker": null,
+      "authors": [
+        "Angeliki Lazaridou",
+        "Nghia The Pham",
+        "Marco Baroni."
+      ],
+      "title": "Combining language and vision with a multimodal skip-gram model",
+      "year": "2015",
+      "venue": "Proceedings of the 2015 Conference of the North American Chapter of the Association for Computational Linguistics: Hu-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Willem JM Levelt. Herbert Schriefers. Dirk Vorberg. Antje S Meyer. Thomas Pechmann. Jaap Havinga. The time course of lexical access. 1991",
+      "marker": null,
+      "authors": [
+        "Willem JM Levelt",
+        "Herbert Schriefers",
+        "Dirk Vorberg",
+        "Antje S Meyer",
+        "Thomas Pechmann",
+        "Jaap Havinga"
+      ],
+      "title": "The time course of lexical access",
+      "year": "1991",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_20",
+      "raw": "Junhua Mao. Jonathan Huang. Alexander Toshev. Oana Camburu. Alan L. Yuille. Kevin Murphy.. Generation and comprehension of unambiguous object descriptions. ArXiv / CoRR abs/1511.02283. http://arxiv.org/abs/1511.02283.. 2015",
+      "marker": null,
+      "authors": [
+        "Junhua Mao",
+        "Jonathan Huang",
+        "Alexander Toshev",
+        "Oana Camburu",
+        "Alan L. Yuille",
+        "Kevin Murphy."
+      ],
+      "title": "Generation and comprehension of unambiguous object descriptions",
+      "year": "2015",
+      "venue": "ArXiv / CoRR abs/1511.02283. http://arxiv.org/abs/1511.02283.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_21",
+      "raw": "Tomas Mikolov. Ilya Sutskever. Kai Chen. Greg S Corrado. Jeff Dean.. Distributed representations of words and phrases and their compositionality. C. J. C. Burges, L. Bottou, M. Welling, Z. Ghahramani, and K. Q. Weinberger, editors, Ad-. 2013",
+      "marker": null,
+      "authors": [
+        "Tomas Mikolov",
+        "Ilya Sutskever",
+        "Kai Chen",
+        "Greg S Corrado",
+        "Jeff Dean."
+      ],
+      "title": "Distributed representations of words and phrases and their compositionality",
+      "year": "2013",
+      "venue": "C. J. C. Burges, L. Bottou, M. Welling, Z. Ghahramani, and K. Q. Weinberger, editors, Ad-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_22",
+      "raw": "Mohammad Norouzi. Tomas Mikolov. Samy Bengio. Yoram Singer. Jonathon Shlens. Andrea Frome. Greg S Corrado. Jeffrey Dean. Zero-shot learning by convex combination of semantic embeddings. 2013",
+      "marker": null,
+      "authors": [
+        "Mohammad Norouzi",
+        "Tomas Mikolov",
+        "Samy Bengio",
+        "Yoram Singer",
+        "Jonathon Shlens",
+        "Andrea Frome",
+        "Greg S Corrado",
+        "Jeffrey Dean"
+      ],
+      "title": "Zero-shot learning by convex combination of semantic embeddings",
+      "year": "2013",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_23",
+      "raw": "Vicente Ordonez. Wei Liu. Jia Deng. Yejin Choi. Alexander C. Berg. Tamara L. Berg.. Learning to name objects. Commun. ACM 59(3):108–115.. 2016",
+      "marker": null,
+      "authors": [
+        "Vicente Ordonez",
+        "Wei Liu",
+        "Jia Deng",
+        "Yejin Choi",
+        "Alexander C. Berg",
+        "Tamara L. Berg."
+      ],
+      "title": "Learning to name objects",
+      "year": "2016",
+      "venue": "Commun. ACM 59(3):108–115.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_24",
+      "raw": "Eleanor Rosch.. Principles of Categorization. Eleanor Rosch and Barbara B. Lloyd, editors, Cognition and Categorization, Lawrence Erlbaum, Hillsdale, N.J., USA, pages 27—-48.. 1978",
+      "marker": null,
+      "authors": [
+        "Eleanor Rosch."
+      ],
+      "title": "Principles of Categorization",
+      "year": "1978",
+      "venue": "Eleanor Rosch and Barbara B. Lloyd, editors, Cognition and Categorization, Lawrence Erlbaum, Hillsdale, N.J., USA, pages 27—-48.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_25",
+      "raw": "Deb Roy.. Grounding words in perception and action: Computational insights. Trends in Cognitive Sciene 9(8):389–396.. 2005",
+      "marker": null,
+      "authors": [
+        "Deb Roy."
+      ],
+      "title": "Grounding words in perception and action: Computational insights",
+      "year": "2005",
+      "venue": "Trends in Cognitive Sciene 9(8):389–396.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_26",
+      "raw": "Deb Roy. Peter Gorniak. Niloy Mukherjee. Josh Juster.. A trainable spoken language understanding system for visual object selection. Proceedings of the International Conference on Speech and Language Processing 2002 (ICSLP 2002). Col-. 2002",
+      "marker": null,
+      "authors": [
+        "Deb Roy",
+        "Peter Gorniak",
+        "Niloy Mukherjee",
+        "Josh Juster."
+      ],
+      "title": "A trainable spoken language understanding system for visual object selection",
+      "year": "2002",
+      "venue": "Proceedings of the International Conference on Speech and Language Processing 2002 (ICSLP 2002). Col-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_27",
+      "raw": "Deb K. Roy.. Learning visually-grounded words and syntax for a scene description task. Computer Speech and Language 16(3).. 2002",
+      "marker": null,
+      "authors": [
+        "Deb K. Roy."
+      ],
+      "title": "Learning visually-grounded words and syntax for a scene description task",
+      "year": "2002",
+      "venue": "Computer Speech and Language 16(3).",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_28",
+      "raw": "David Schlangen. Sina Zarriess. Casey Kennington.. Resolving references to objects in photographs using the words-as-classifiers model. Proceedings of the 54rd Annual Meeting of the Association for Computational Linguistics (ACL 2016).. 2016",
+      "marker": null,
+      "authors": [
+        "David Schlangen",
+        "Sina Zarriess",
+        "Casey Kennington."
+      ],
+      "title": "Resolving references to objects in photographs using the words-as-classifiers model",
+      "year": "2016",
+      "venue": "Proceedings of the 54rd Annual Meeting of the Association for Computational Linguistics (ACL 2016).",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_29",
+      "raw": "Carina Silberer. Mirella Lapata.. Learning grounded meaning representations with autoencoders. Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). Association for Computa-. 2014",
+      "marker": null,
+      "authors": [
+        "Carina Silberer",
+        "Mirella Lapata."
+      ],
+      "title": "Learning grounded meaning representations with autoencoders",
+      "year": "2014",
+      "venue": "Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). Association for Computa-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_30",
+      "raw": "Richard Socher. Milind Ganjoo. Christopher D Manning. Andrew Ng.. Zero-shot learning through cross-modal transfer. Advances in neural information processing systems. pages 935–943.. 2013",
+      "marker": null,
+      "authors": [
+        "Richard Socher",
+        "Milind Ganjoo",
+        "Christopher D Manning",
+        "Andrew Ng."
+      ],
+      "title": "Zero-shot learning through cross-modal transfer",
+      "year": "2013",
+      "venue": "Advances in neural information processing systems. pages 935–943.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_31",
+      "raw": "Christian Szegedy. Wei Liu. Yangqing Jia. Pierre Sermanet. Scott Reed. Dragomir Anguelov. Dumitru Erhan. Vincent Vanhoucke. Andrew Rabinovich.. Going deeper with convolutions. CVPR 2015. Boston, MA, USA.. 2015",
+      "marker": null,
+      "authors": [
+        "Christian Szegedy",
+        "Wei Liu",
+        "Yangqing Jia",
+        "Pierre Sermanet",
+        "Scott Reed",
+        "Dragomir Anguelov",
+        "Dumitru Erhan",
+        "Vincent Vanhoucke",
+        "Andrew Rabinovich."
+      ],
+      "title": "Going deeper with convolutions",
+      "year": "2015",
+      "venue": "CVPR 2015. Boston, MA, USA.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_32",
+      "raw": "Peter D Turney. Patrick Pantel.. From frequency to meaning: Vector space models of semantics. Journal of artificial intelligence research 37(1):141–188.. 2010",
+      "marker": null,
+      "authors": [
+        "Peter D Turney",
+        "Patrick Pantel."
+      ],
+      "title": "From frequency to meaning: Vector space models of semantics",
+      "year": "2010",
+      "venue": "Journal of artificial intelligence research 37(1):141–188.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_33",
+      "raw": "Sina Zarrieß. David Schlangen.. Easy things first: Installments improve referring expression generation for objects in photographs. Proceedings of ACL 2016. Berlin, Germany.. 2016",
+      "marker": null,
+      "authors": [
+        "Sina Zarrieß",
+        "David Schlangen."
+      ],
+      "title": "Easy things first: Installments improve referring expression generation for objects in photographs",
+      "year": "2016",
+      "venue": "Proceedings of ACL 2016. Berlin, Germany.",
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citation_mentions": [
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "However, classification is not naming (Ordonez et al., 2016).",
+      "section_id": "sec_2",
+      "start_offset": 932,
+      "end_offset": 993
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": null,
+      "sentence": "For instance, a robin can be named “bird”, but a penguin is better referred to as “penguin” (Rosch, 1978); along the same lines, the rather unusual building in Figure 1 that is not easy to otherwise",
+      "section_id": "sec_2",
+      "start_offset": 1371,
+      "end_offset": 1569
+    },
+    {
+      "reference_id": "ref_29",
+      "marker": null,
+      "sentence": "Szegedy et al. (2015)).",
+      "section_id": "sec_2",
+      "start_offset": 908,
+      "end_offset": 931
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "While indeed performing with some promise on this task (Lazaridou et al., 2014), this approach does not generally outperform standard object classification with known categories (Frome et al.",
+      "section_id": "sec_2",
+      "start_offset": 2636,
+      "end_offset": 2827
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": ", 2014), this approach does not generally outperform standard object classification with known categories (Frome et al., 2013; Norouzi et al., 2013).",
+      "section_id": "sec_2",
+      "start_offset": 2708,
+      "end_offset": 2857
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": ", 2014), this approach does not generally outperform standard object classification with known categories (Frome et al., 2013; Norouzi et al., 2013).",
+      "section_id": "sec_2",
+      "start_offset": 2708,
+      "end_offset": 2857
+    },
+    {
+      "reference_id": "ref_26",
+      "marker": null,
+      "sentence": "Grounding and Reference An early example for work in REG that goes beyond Dale and Reiter (1995)’s dominant symbolic paradigm is Deb Roy’s work from the early 2000s (Roy et al., 2002; Roy, 2002, 2005).",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 201
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "More recently, research on REG, which has traditionally been done on small toy data sets, is being scaled up to realworld images (Kazemzadeh et al., 2014; Gkatzia et al., 2015; Zarrieß and Schlangen, 2016; Mao et al., 2015).",
+      "section_id": "sec_3",
+      "start_offset": 202,
+      "end_offset": 426
+    },
+    {
+      "reference_id": "ref_33",
+      "marker": null,
+      "sentence": "More recently, research on REG, which has traditionally been done on small toy data sets, is being scaled up to realworld images (Kazemzadeh et al., 2014; Gkatzia et al., 2015; Zarrieß and Schlangen, 2016; Mao et al., 2015).",
+      "section_id": "sec_3",
+      "start_offset": 202,
+      "end_offset": 426
+    },
+    {
+      "reference_id": "ref_20",
+      "marker": null,
+      "sentence": "More recently, research on REG, which has traditionally been done on small toy data sets, is being scaled up to realworld images (Kazemzadeh et al., 2014; Gkatzia et al., 2015; Zarrieß and Schlangen, 2016; Mao et al., 2015).",
+      "section_id": "sec_3",
+      "start_offset": 202,
+      "end_offset": 426
+    },
+    {
+      "reference_id": "ref_2",
+      "marker": null,
+      "sentence": "Grounding and Reference An early example for work in REG that goes beyond Dale and Reiter (1995)’s dominant symbolic paradigm is Deb Roy’s work from the early 2000s (Roy et al.",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 176
+    },
+    {
+      "reference_id": "ref_2",
+      "marker": null,
+      "sentence": "Grounding and Reference An early example for work in REG that goes beyond Dale and Reiter (1995)’s dominant symbolic paradigm is Deb Roy’s work from the early 2000s (Roy et al., 2002; Roy, 2002, 2005). More recently, research on REG, which has traditionally been done on small toy data sets, is being scaled up to realworld images (Kazemzadeh et al., 2014; Gkatzia et al., 2015; Zarrieß and Schlangen, 2016; Mao et al., 2015). In this paper, we focus on a particular problem posed by REG on real-world images, namely generating the appropriate head noun for a given object. Similarly, Ordonez et al. (2016) have studied the problem of deriving appropriate object names, or so-called entry-level categories, from the output of an object recognizer.",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 747
+    },
+    {
+      "reference_id": "ref_32",
+      "marker": null,
+      "sentence": "Multi-modal and cross-modal distributional semantics Distributional semantic models are a well-known method for capturing lexical word meaning in a variety of tasks (Turney and Pantel, 2010; Mikolov et al., 2013; Erk, 2016).",
+      "section_id": "sec_3",
+      "start_offset": 1103,
+      "end_offset": 1327
+    },
+    {
+      "reference_id": "ref_21",
+      "marker": null,
+      "sentence": "Multi-modal and cross-modal distributional semantics Distributional semantic models are a well-known method for capturing lexical word meaning in a variety of tasks (Turney and Pantel, 2010; Mikolov et al., 2013; Erk, 2016).",
+      "section_id": "sec_3",
+      "start_offset": 1103,
+      "end_offset": 1327
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Multi-modal and cross-modal distributional semantics Distributional semantic models are a well-known method for capturing lexical word meaning in a variety of tasks (Turney and Pantel, 2010; Mikolov et al., 2013; Erk, 2016).",
+      "section_id": "sec_3",
+      "start_offset": 1103,
+      "end_offset": 1327
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation.",
+      "section_id": "sec_3",
+      "start_offset": 1328,
+      "end_offset": 1701
+    },
+    {
+      "reference_id": "ref_29",
+      "marker": null,
+      "sentence": "Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation.",
+      "section_id": "sec_3",
+      "start_offset": 1328,
+      "end_offset": 1701
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation.",
+      "section_id": "sec_3",
+      "start_offset": 1328,
+      "end_offset": 1701
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation.",
+      "section_id": "sec_3",
+      "start_offset": 1328,
+      "end_offset": 1701
+    },
+    {
+      "reference_id": "ref_12",
+      "marker": null,
+      "sentence": "Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation.",
+      "section_id": "sec_3",
+      "start_offset": 1328,
+      "end_offset": 1701
+    },
+    {
+      "reference_id": "ref_30",
+      "marker": null,
+      "sentence": "More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space.",
+      "section_id": "sec_3",
+      "start_offset": 1702,
+      "end_offset": 1967
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space.",
+      "section_id": "sec_3",
+      "start_offset": 1702,
+      "end_offset": 1967
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space.",
+      "section_id": "sec_3",
+      "start_offset": 1702,
+      "end_offset": 1967
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space.",
+      "section_id": "sec_3",
+      "start_offset": 1702,
+      "end_offset": 1967
+    },
+    {
+      "reference_id": "ref_17",
+      "marker": null,
+      "sentence": "tends to reproduce word vectors observed during training (Lazaridou et al., 2015a).",
+      "section_id": "sec_3",
+      "start_offset": 2728,
+      "end_offset": 2811
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": ", 2013; Erk, 2016). Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation. More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space. When tested on standard object recognition tasks, transfer, however, comes at a price. Frome et al. (2013) and Norouzi et al.",
+      "section_id": "sec_3",
+      "start_offset": 1308,
+      "end_offset": 2093
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": ", 2013; Erk, 2016). Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation. More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space. When tested on standard object recognition tasks, transfer, however, comes at a price. Frome et al. (2013) and Norouzi et al. (2013) both find that it slightly degrades performance as compared to a plain object classification using standard accuracy metrics (called flat “hit @k metric” in their paper).",
+      "section_id": "sec_3",
+      "start_offset": 1308,
+      "end_offset": 2271
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": ", 2013; Erk, 2016). Recent work on multi-modal distributional vector spaces (Feng and Lapata, 2010; Silberer and Lapata, 2014; Kiela and Bottou, 2014; Lazaridou et al., 2015b; Kottur et al., 2016) has aimed at capturing semantic similarity even more accurately by integrating distributional and perceptual features associated with words (mostly taken from images) into a single representation. More related to our work are cross-modal mapping models (Socher et al., 2013; Frome et al., 2013; Norouzi et al., 2013; Lazaridou et al., 2014), that learn to transfer a representation of an object or image in the visual space to a vector in a distributional space. When tested on standard object recognition tasks, transfer, however, comes at a price. Frome et al. (2013) and Norouzi et al. (2013) both find that it slightly degrades performance as compared to a plain object classification using standard accuracy metrics (called flat “hit @k metric” in their paper). Interestingly though, Frome et al. (2013) report better performance using “hierarchical precision”, which essentially means that transfer predicts words that are ontologically closer to the gold label and makes “semantically more reasonable errors”.",
+      "section_id": "sec_3",
+      "start_offset": 1308,
+      "end_offset": 2521
+    },
+    {
+      "reference_id": "ref_19",
+      "marker": null,
+      "sentence": "Levelt et al. (1991)) and based on the simplifying assumption that the name used for referring to an object can be determined successfully without looking at other objects in the image.",
+      "section_id": "sec_4",
+      "start_offset": 575,
+      "end_offset": 760
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": ", 2014), which is based on the SAIAPR image collection (Grubinger et al., 2006) (99.",
+      "section_id": "sec_4",
+      "start_offset": 869,
+      "end_offset": 953
+    },
+    {
+      "reference_id": "ref_28",
+      "marker": null,
+      "sentence": "We follow (Schlangen et al., 2016) and select words with a minimum frequency of 40 in these two data sets, which gives us a vocabulary of 793 words.",
+      "section_id": "sec_4",
+      "start_offset": 981,
+      "end_offset": 1129
+    },
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "Thus, our experiments are on a smaller scale as compared to (Ordonez et al., 2016).",
+      "section_id": "sec_4",
+      "start_offset": 1532,
+      "end_offset": 1615
+    },
+    {
+      "reference_id": "ref_31",
+      "marker": null,
+      "sentence": "(2016), we derive representations of our visual inputs with a convolutional neural network, ‘GoogleNet’ (Szegedy et al., 2015), which was trained on the ImageNet corpus (Deng et al.",
+      "section_id": "sec_4",
+      "start_offset": 2398,
+      "end_offset": 2579
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": ", 2015), which was trained on the ImageNet corpus (Deng et al., 2009), and extract the final fully-connected layer before the classification layer, to give us a 1024 dimensional representation of the region.",
+      "section_id": "sec_4",
+      "start_offset": 2517,
+      "end_offset": 2724
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "Hu et al. (2015)’s discussion on “stuff” entities such “sky” or “grass” in the REFERIT data.",
+      "section_id": "sec_4",
+      "start_offset": 1823,
+      "end_offset": 1915
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "Hu et al. (2015)’s discussion on “stuff” entities such “sky” or “grass” in the REFERIT data. For testing, we remove relational REs (containing a relational preposition such as ‘left of X’), because here we cannot be sure that the head noun of the target is fully informative; we also remove REs with more than one head noun from our list (i.e. these are mostly relational expressions as well such as ‘girl laughing at boy’). We pair each image region from the test set with its corresponding names from the remaining REs. Image and Word Embeddings Following Schlangen et al. (2016), we derive representations of our visual inputs with a convolutional neural network, ‘GoogleNet’ (Szegedy et al.",
+      "section_id": "sec_4",
+      "start_offset": 1823,
+      "end_offset": 2517
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "As distributional word vectors, we use the word2vec representations provided by Baroni et al. (2014) (trained with CBOW, 5-word context window, 10 negative samples, 400 dimensions).",
+      "section_id": "sec_4",
+      "start_offset": 2867,
+      "end_offset": 3048
+    },
+    {
+      "reference_id": "ref_27",
+      "marker": null,
+      "sentence": "Here, we use Schlangen et al. (2016)’s WAC model, building the training set for each word w as follows: all visual objects in a corpus that have been referred to as w are used as positive instances, the remaining objects as negative instances.",
+      "section_id": "sec_7",
+      "start_offset": 673,
+      "end_offset": 916
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "In order to extend the model’s vocabulary for zero-shot learning, we follow Norouzi et al. (2013) and associate the top n words with their corresponding distributional vector and compute the convex combination of these vectors.",
+      "section_id": "sec_7",
+      "start_offset": 1341,
+      "end_offset": 1568
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "object recognition with known object categories, cross-modal projection or transfer approaches have been reported to perform worse than standard object classification methods (Frome et al., 2013; Norouzi et al., 2013).",
+      "section_id": "sec_9",
+      "start_offset": 201,
+      "end_offset": 419
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "object recognition with known object categories, cross-modal projection or transfer approaches have been reported to perform worse than standard object classification methods (Frome et al., 2013; Norouzi et al., 2013).",
+      "section_id": "sec_9",
+      "start_offset": 201,
+      "end_offset": 419
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "This parallels findings by Frome et al. (2013), discussed in Section 2.",
+      "section_id": "sec_12",
+      "start_offset": 1073,
+      "end_offset": 1144
+    },
+    {
+      "reference_id": "ref_33",
+      "marker": null,
+      "sentence": "Zarrieß and Schlangen (2016)), would be an interesting direction for more detailed investigation here.",
+      "section_id": "sec_12",
+      "start_offset": 1623,
+      "end_offset": 1725
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "Previous work has looked at the feasibility of zero-shot learning as a function of semantic similarity or ontological closeness between unknown and known categories, and confirmed the intuition that the task is harder the less close unknown categories are to known ones (Frome et al., 2013; Norouzi et al., 2013).",
+      "section_id": "sec_13",
+      "start_offset": 264,
+      "end_offset": 577
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "Previous work has looked at the feasibility of zero-shot learning as a function of semantic similarity or ontological closeness between unknown and known categories, and confirmed the intuition that the task is harder the less close unknown categories are to known ones (Frome et al., 2013; Norouzi et al., 2013).",
+      "section_id": "sec_13",
+      "start_offset": 264,
+      "end_offset": 577
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "When tested on the full vocabulary, we find that TRANSFER and WAC very rarely generate names whose referents were excluded from training, which is in line with observations made by Lazaridou et al. (2015a). The SIM-WAP predictors generalize much better, in particular on the singular/plural testset.",
+      "section_id": "sec_16",
+      "start_offset": 392,
+      "end_offset": 691
+    },
+    {
+      "reference_id": "ref_3",
+      "marker": null,
+      "sentence": "recently collected through conversational agents (Das et al., 2016) that circumvent the need for human-human interaction data.",
+      "section_id": "sec_17",
+      "start_offset": 1197,
+      "end_offset": 1323
+    }
+  ],
+  "figures": [],
+  "hidden_text_findings": []
+}

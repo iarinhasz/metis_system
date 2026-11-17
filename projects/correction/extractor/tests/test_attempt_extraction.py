@@ -111,7 +111,7 @@ def test_event_payload_has_counts_and_ids_but_no_text(attempt: Attempt) -> None:
     assert payload == {
         "extraction_id": str(extraction.pk),
         "reused": False,
-        "model": "google/gemini-3.6-flash",
+        "model": "google/gemini-2.5-flash",
         "sections": 4,
         "below_check": ["sec_2"],
         "references": 1,
@@ -119,6 +119,8 @@ def test_event_payload_has_counts_and_ids_but_no_text(attempt: Attempt) -> None:
         "unlinked_citations": 0,
         "figures": 0,
         "figures_described": 0,
+        "hidden_passages": 0,
+        "hidden_instructions": 0,
     }
 
 

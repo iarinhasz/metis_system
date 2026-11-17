@@ -15,7 +15,7 @@ def test_article_requires_abstract_and_references() -> None:
 
 def test_article_goes_to_the_model_as_pdf() -> None:
     assert ARTICLE_CONFIG.strategy is InputStrategy.PDF
-    assert ARTICLE_CONFIG.model == "gemini-3.6-flash"
+    assert ARTICLE_CONFIG.model == "gemini-2.5-flash"
 
 
 def test_article_accepts_portuguese_and_english_titles() -> None:

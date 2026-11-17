@@ -19,6 +19,7 @@ from projects.correction.evaluation.context import EvaluationContext, Evaluation
 from projects.correction.evaluation.section_pass import (
     RunReviewCheckpoints,
     SectionPassStep,
+    _scoped,
     split_section_text,
 )
 from projects.correction.evaluation.tests.test_context import _context_run
@@ -231,3 +232,39 @@ def test_database_checkpoint_persists_round_and_refuses_stale_owner(run: Run) ->
     Run.objects.filter(pk=run.pk).update(current_task_id="replacement-task")
     with pytest.raises(RunConflict, match="perdeu a posse"):
         store.read_state()
+
+
+def _raw_observation(**changes: object) -> Observation:
+    return Observation.model_validate(
+        {
+            "id": "o1",
+            "section_id": "sec_9",
+            "role": "results",
+            "kind": "weakness",
+            "statement": "O método não diz como os dados foram escolhidos.",
+            "criteria": ["soundness", "impact"],
+            "severity": "minor",
+            "confidence": 0.7,
+        }
+        | changes
+    )
+
+
+def test_observation_is_scoped_to_the_requested_section_role_and_criteria() -> None:
+    criteria: list[dict[str, object]] = [{"key": "soundness"}, {"key": "replicability"}]
+
+    scoped = _scoped(_raw_observation(), "sec_3", SectionRole.METHOD, criteria, "1")
+
+    assert scoped is not None
+    assert (scoped.id, scoped.section_id, scoped.role) == (
+        "sec_3:method:1:o1",
+        "sec_3",
+        SectionRole.METHOD,
+    )
+    assert scoped.criteria == (Criterion.SOUNDNESS,)
+
+
+def test_observation_without_any_requested_criterion_is_dropped() -> None:
+    criteria: list[dict[str, object]] = [{"key": "clarity"}]
+
+    assert _scoped(_raw_observation(), "sec_3", SectionRole.METHOD, criteria, "1") is None

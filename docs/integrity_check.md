@@ -1,11 +1,17 @@
 # Checagem de integridade (E3)
 
-**Desenho planejado, revisto em 13/11/2026.** A integração completa do app
-`integrity/`, seus modelos, corpus e APIs ainda não está concluída. A detecção
-lexical e a resolução de referências já têm módulos próprios, mas
-`IntegrityStage` continua sendo um stub que retorna `risk=low`; isso não é uma
-checagem do artigo. O gate existe na máquina de estados; E5 declara `not_checked`,
-com risco desconhecido. [Estado e metas](status_and_metrics.md).
+**Desenho revisto em 15/11/2026.** O E3 está implementado de forma enxuta pela Plataforma (ver [o que roda hoje](#o-que-roda-hoje)): a Fase 0 (texto oculto), as regras de risco, o relatório, o gate no admin e a rota da API. As checagens das referências entram nas etapas 5.1 a 5.3. O plágio (Fase 1) ficou fora do escopo em 15/11; em 16/11, a trilha de Integridade entregou peças dele (corpus, embeddings, MinHash e o semântico PT↔EN) e a cascata de resolução de referências, que ainda não rodam no E3. O resto deste documento é o desenho completo. [Estado e metas](status_and_metrics.md).
+
+## O que roda hoje
+
+- **`integrity/workflow.py`:** `run_integrity()` lê o `ExtractedArticle` do run, junta os achados de cada checagem, aplica as regras e grava o relatório. É código, sem Workflow do Agno e sem chamar modelo, como o E1.
+- **Fase 0** (`integrity/hidden.py`): cada trecho de `ExtractedArticle.hidden_text_findings` (a varredura do E1 com `pdfplumber`) vira achado `hidden_instruction` (quando tem cara de instrução a um revisor de IA) ou `hidden_text`. A mensagem diz a página e como o texto está escondido; o texto vai na evidência.
+- **Regras v1** (`integrity/rules.py`): `hidden_instruction` é alto, `hidden_text` é baixo; o risco do artigo é o maior entre os achados. As gravidades ficam em `IntegrityRules`, e `RULES_VERSION` é gravada em cada relatório.
+- **Relatório** (`IntegrityReport` e `IntegrityFinding`): o risco, a versão das regras, o `coverage` (o que foi conferido) e os achados em ordem. Um retry do E3 substitui o relatório, e a gravação exige a posse do estágio.
+- **Risco alto** → `StageOutcome(halt=True)` → `waiting_human_review`. O evento do E3 traz só `risk`, `findings`, `high` e o id do relatório.
+- **E5:** o resumo (`IntegritySummary`) vem do relatório, com o risco, as mensagens e o `coverage`; sem relatório (rubric check), continua `not_checked`.
+- **Ficou de fora, por ora:** a narrativa por LLM (`integrity_narrator`) e o plágio.
+- **Peças prontas, ainda não chamadas pelo E3** (16/11, trilha de Integridade): os clientes do `scholarly/` (Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, etapa 4.1), o corpus `SourceDocument`/`SourceChunk` com pgvector, os embeddings locais e o comando `load_peerread` (4.3), a sobreposição léxica com MinHash e winnowing em `integrity/lexical.py` (4.5), a resolução de referências em cascata em `integrity/resolution.py` (4.2) e o semântico PT↔EN em `integrity/semantic.py` (4.6).
 
 ## Objetivo e princípios
 
@@ -39,7 +45,7 @@ anexa os achados estruturados ao contrato. São sinalizados texto branco/da cor 
 fundo, fonte abaixo de 2 pt, texto fora da página, texto sob imagens e padrões de
 instrução escondida. Instrução dirigida a revisores de IA tem severidade alta,
 porque é uma tentativa de manipular a avaliação; o conteúdo encontrado é evidência,
-nunca uma instrução a executar.
+nunca uma instrução a executar. Aqui, cada achado vira um `IntegrityFinding`: `hidden_instruction` (alto, para no gate) ou `hidden_text` (baixo).
 
 ## Fase 1 — Similaridade, em funil
 
@@ -144,6 +150,7 @@ Exemplo ilustrativo de achado:
 ## Gate e revisão humana
 
 - **Risco alto** → `waiting_human_review`. O admin mostra os achados com o trecho do artigo e o da fonte lado a lado. A pessoa escolhe *continuar* ou *encerrar* e deixa uma nota; a decisão vira `RunEvent`.
+- **Quem decide:** o grupo `revisores`, criado depois das migrações, só vê o run e os achados e decide no gate (`attempts.decide_run`); reprocessar continua exigindo a permissão de alterar o run. A mesma decisão sai pela API em `POST /api/runs/{id}/decision`, e os achados em `GET /api/runs/{id}/integrity` (**409** antes do E3).
 - **Risco médio ou baixo** → o run segue. O resumo entra no contexto dos avaliadores, que podem considerá-lo em originalidade, por exemplo.
 
 ## APIs externas

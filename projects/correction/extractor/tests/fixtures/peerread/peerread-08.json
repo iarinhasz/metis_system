@@ -1,0 +1,1272 @@
+{
+  "contract_version": "1.0",
+  "title": "Evaluation Metrics for Reading Comprehension: Prerequisite Skills and Readability",
+  "authors": [],
+  "language": "en",
+  "abstract": "Knowing the quality of reading comprehension (RC) datasets is important for the development of natural language understanding systems. In this study, two classes of metrics were adopted for evaluating RC datasets: prerequisite skills and readability. We applied these classes to six existing datasets, including MCTest and SQuAD, and demonstrated the characteristics of the datasets according to each metric and the correlation between the two classes. Our dataset analysis suggested that the readability of RC datasets does not directly affect the question difficulty and that it is possible to create an RC dataset that is easy-to-read but difficult-to-answer.",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "Seção 1",
+      "level": 1,
+      "parent_id": null,
+      "key": "secao_1",
+      "text": "1 000 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 074 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096 097 098 099",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_2",
+      "title": "1 Introduction",
+      "level": 1,
+      "parent_id": null,
+      "key": "1_introduction",
+      "text": "A major goal of natural language processing (NLP) is to develop agents that can understand natural language. Such an ability can be tested with a reading comprehension (RC) task that requires the agent to read open-domain documents and answer questions about them. Building the RC ability is challenging because RC comprises multiple processes including parsing, understanding cohesion, and inference with linguistic and general knowledge. Clarifying what a system achieves is important to the development of RC systems. To achieve robust improvement, systems need to be measured according to various metrics, not just simple accuracy. However, a current problem is that most RC datasets are presented only with superficial categories, such as question types (e.g., what, where, and who) and answer types (e.g., numeric, location, and person). In addition, Chen et al. (2016) revealed that some questions in datasets may not have the quality to test RC systems. In these situations, it is difficult to assess systems accurately. As Norvig (1989) stated, questions easy for humans often turn out to be difficult for systems. For example, see the two RC questions in Figure 1. In the first example from SQuAD (Rajpurkar et al., 2016), although the document is taken from a Wikipedia article and is thus written for adults, the question is easy to solve simply look at one sentence and select an entity. On the other hand, in the second example from MCTest (Richardson et al., 2013), the document is written for children and is easy to read, but the question requires reading multiple sentences and a combination of several skills, such as understanding of causal relations (Sara wanted... → they went to...), coreference resolution (Sara and Her Dad = they), and complementing ellipsis (baseball team = team). These two examples show that the readability of the text does not necessarily correlate with the difficulty of the questions. Nevertheless, the accompanying categories of existing RC datasets cannot 2 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 provide any way to analyze this issue. In this study, our goal was to investigate how the two difficulties of “answering questions” and “reading text” relate in RC. Therefore, we adopted two classes of evaluation metrics for RC datasets to analyze both the quality of datasets and the performance of systems. Our paper is divided into the following sections. First, we adopt the two classes: prerequisite skills and readability (Section 3). We then specify evaluation metrics for each (Sections 3.1 and 3.2). Next, we annotate six existing RC datasets with these metrics (Section 4). Finally, we present our annotation results (Section 5) and discuss them (Section 6). Our two classes of metrics are based on McNamara and Magliano (2009)’s analysis of human text comprehension in psychology. The first class defines the difficulty of comprehending the context to answer questions. We adopted prerequisite skills proposed in a previous study by Sugawara et al. (2017). That study presented an important observation of the relation between the difficulty of an RC task and prerequisite skills: the more skills that are required to answer a question, the more difficult the question is. From this observation, we assume that the number of required skills corresponds to the difficulty of a question. This is because each skill corresponds to a function of a system, which has to be equipped with the system. However, a problem in previous studies, including that of Sugawara and Aizawa (2016), is that they analyzed only two datasets and that their categorization of knowledge reasoning is provisional with a weak theoretical background. Therefore, we reorganized the category of knowledge reasoning in terms of textual entailment and human text comprehension. In research on textual entailment, several methodologies have been proposed for precise analysis of entailment phenomena (Dagan et al., 2013; LoBue and Yates, 2011). In psychology research, Kintsch (1993) proposed dichotomies for the classification of human inferences: retrieved versus generated. In addition, McNamara and Magliano (2009) proposed a similar distinction for inferences: bridging versus elaboration. We utilized these insights in order to develop a comprehensive but not overly specific classification of knowledge reasoning. The second class defines the difficulty of reading contents, readability, in documents considering syntactic and lexical complexity. We leverage a wide range of linguistic features proposed by Vajjala and Meurers (2012). In the annotation, annotators selected sentences needed for answering and then annotated them with prerequisite skills under the same condition for RC datasets with different task formulations. Therefore, our annotation was equivalent in that the datasets were annotated from the point of view of whether a context entails a hypothesis that can be made from a question and its answer. This means our methodology could not evaluate the competence of looking for sentences that need to be read and answer candidates from the context. Therefore, our methodology was used to evaluate the understanding of contextual entailments in a broader sense for RC. The contributions of this paper are as follows: 1. We adopt two classes of evaluation metrics to show the qualitative features of RC datasets. Through analyses of RC datasets, we demonstrate that there is only a weak correlation between the difficulty of questions and the readability of context texts in RC datasets. 2. We revise the previous classification of prerequisite skills for RC. Specifically, skills of knowledge reasoning are organized in terms of entailment phenomena and human text comprehension in psychology. 3. We annotate six existing RC datasets with our organized metrics for the comparison and make the results publicly available. We believe that our annotation results will help researchers to develop a method for the stepby-step construction of better RC datasets and a method to improve RC systems.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_3",
+      "title": "2 Related Work",
+      "level": 1,
+      "parent_id": null,
+      "key": "2_related_work",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_4",
+      "title": "2.1 Reading Comprehension Datasets",
+      "level": 2,
+      "parent_id": "sec_3",
+      "key": "2_1_reading_comprehension_datasets",
+      "text": "In this section, we present a short chronicle of RC datasets. To our knowledge, Hirschman et al. (1999) were the first to use NLP methods for RC. Their dataset consisted of reading materials for grades 3–6 with simple 5W (wh-) questions. Afterwards, investigations into natural language understanding questions mainly focused on other formulations, such as question answering (Yang et al., 2015; Wang et al., 2007; Voorhees et al., 1999) and textual entailment (Bentivogli et al., 2010; Sammons et al., 2010; Dagan et al., 2006). 3 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 One of the RC tasks following it was QA4MRE (Sutcliffe et al., 2013). The top accuracy of this task remained 59% at that time, and the size of the dataset was very limited: there were only 224 gold-standard questions, which is not enough for machine learning methods. Thus, an important issue for designing RC datasets is their scalability. Richardson et al. (2013) presented MCTest, which is an opendomain narrative dataset for gauging comprehension at a childs level. This dataset was created by crowdsourcing and is based on scalable methodology. Since then, more large-scale datasets have been proposed with the development of machine learning. For example, the CNN/Daily Mail dataset (Hermann et al., 2015) and CBTest (Hill et al., 2016) have approximately 1.4M and 688K passages, respectively. These context texts and questions were automatically curated and generated from large corpora. However, Chen et al. (2016) indicated that approximately 25% of the questions in the CNN/Daily Mail dataset are unsolvable or nonsense. This has highlighted the demand for more stable and robust sourcing methods regarding dataset quality. In addition to this, several RC datasets were presented in the last half of 2016 with large documents and sensible queries that were guaranteed by crowdsourcing or human testing. We explain those datasets in Section 4.2. They were aimed at achieving large and good-quality content for machine learning models. Nonetheless, as shown in the examples of Figure 1, there is room for improvement, and there is still no methodology available for evaluating the quality.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_5",
+      "title": "2.2 Reading Comprehension in Psychology",
+      "level": 2,
+      "parent_id": "sec_3",
+      "key": "2_2_reading_comprehension_in_psychology",
+      "text": "In psychology, there is a rich tradition of research on human text comprehension. The construction– integration (C–I) model (Kintsch, 1988) is one of the most basic and influential theories. This model assumes connectional and computational architecture for text comprehension. It assumes that comprehension is the processing of information based on the following steps:1 1. Construction: Read sentences or clauses as inputs; form and elaborate concepts and propositions corresponding to the inputs. 2. Integration: Associate the contents to consistently understand them (e.g., coreference, 1Note that this is only a very simplified overview. discourse, and coherence). During these steps, three levels of representation are constructed (Van Dijk and Kintsch, 1983): the surface code (i.e., wording and syntax), the textbase (i.e., text propositions with cohesion), and the situation model (i.e., mental representation). Based on the above assumptions, McNamara and Magliano (2009) proposed two aspects of text comprehension: “strategic/skilled comprehension” and “text ease of processing.” We employed these assumptions as the basis of two classes of evaluation metrics (Section 3). On the other hand, Kintsch (1993) proposed two dichotomies for the classification of human inferences, including the knowledge-based ones that are performed in the C–I model. The first is whether inferences are automatic or controlled. However, Graesser et al. (1994) indicated that this distinction is ambiguous because there is a continuum between the two states that depends on individuals. Therefore, this dichotomy is not suited for empirical evaluation, which we are working on attempting. The second is whether inferences are retrieved or generated. Retrieved means that the information used for inference is retrieved from context. In contrast, when inferences are generated, the reader uses external knowledge going beyond the context. A similar distinction was proposed by McNamara and Magliano (2009): bridging and elaboration. Bridging inference connects current information to other information that was previously encountered. Elaboration connects current information to external knowledge that is not in a context. We use these two types of inferences in the classification of knowledge reasoning.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_6",
+      "title": "3 Evaluation Metrics for Datasets",
+      "level": 1,
+      "parent_id": null,
+      "key": "3_evaluation_metrics_for_datasets",
+      "text": "Based on McNamara and Magliano (2009)’s depiction of text comprehension, we adopted two classes for the evaluation of RC datasets: prerequisite skills and readability. We refined the prerequisite skills (Section 3.1) for RC that were proposed by Sugawara et al. (2017) and Sugawara and Aizawa (2016) using the insights mentioned in the previous section. This class covers the textbase and situation model, or understanding each fact and associating multiple facts in a text: relations of events, characters, topic of story, and so on. This class also includes knowledge reasoning; this is divided into several met- 4 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 rics according to the distinctions of human inferences, as discussed by Kintsch (1993) and McNamara and Magliano (2009), and according to the classification of entailment phenomena by Dagan et al. (2013) and LoBue and Yates (2011). Readability metrics (Section 3.2) intuitively describe the difficulty of reading: vocabulary and the complexity of texts, or the surface code.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_7",
+      "title": "3.1 Prerequisite Skills",
+      "level": 2,
+      "parent_id": "sec_6",
+      "key": "3_1_prerequisite_skills",
+      "text": "By refining Sugawara et al. (2017)’s ten reading comprehension skills, we reorganized thirteen prerequisite skills in total, which are presented below. Skills that have been modified/elaborated from the original definition are appended with an asterisk (∗), and new skills unique to this study are appended with a dagger (†). 1. Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975). This skill is a renamed version of list/enumeration used in the original classification to emphasize its scope for multiple objects. 2. Mathematical reasoning∗: We merged statistical and quantitative reasoning with mathematical reasoning. This skill is a renamed version of mathematical operations. 3. Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013). This skill is similar to direct reference (Clark, 1975). 4. Logical reasoning∗: We reorganized this skill as understanding predicate logic, e.g., conditionals, quantifiers, negation, and transitivity. Note that mathematical reasoning and this skill are intended to align with offline skills mentioned by Graesser et al. (1994). 5. Analogy∗: Understanding of metaphors including metonymy and synecdoche. See LoBue and Yates (2011) for examples of synecdoche. 6. Causal relation: Understanding of causality that is represented by explicit expressions of why, because, the reason... (only if they exist). 7. Spatiotemporal relation: Understanding of spatial and/or temporal relationships between multiple entities, events, and states. For commonsense reasoning in the original classification, we defined the following four categories, which can be jointly required. 8. Ellipsis†: Recognizing implicit/omitted information (argument, predicate, quantifier, time, place). This skill is inspired by Dagan et al. (2013) and the discussion of Sugawara et al. (2017). 9. Bridging†: Inferences between two facts supported by grammatical and lexical knowledge (e.g., synonymy, hypernymy, thematic role, part of events, idioms, and apposition). This skill is inspired by the concept of indirect reference in the literature (Clark, 1975). Note that we excluded direct reference because it is coreference resolution (pronominalization) or elaboration (epithets). 10. Elaboration†: Inference using known facts, general knowledge (e.g., kinship, exchange, typical event sequence, and naming), and implicit relations (e.g., noun-compound and possessive) (see Dagan et al. (2013) for details). Bridging and elaboration are distinguished by whether knowledge used in inferences is grammatical/lexical versus general/commonsense. 11. Meta-knowledge†: Using knowledge including a reader, writer, and text genre (e.g., narratives and expository documents) from metaviewpoints (e.g., Who are the principal characters of the story? and What is the main subject of this article?). Although this skill can be regarded as part of elaboration, we defined an independent skill because this knowledge is specific to RC. The last two skills are intended to be performed on a single sentence. 12. Schematic clause relation: Understanding of complex sentences that have coordination or subordination, including relative clauses. 13. Punctuation∗: Understanding of punctuation marks (e.g., parenthesis, dash, quotation, colon, and semicolon). This skill is a renamed version of special sentence structure. Concerning the original definition, we regarded “scheme” in figures of speech as ambiguous and excluded it (ellipsis was defined as a skill, and apposition was merged into bridging). We did the same with understanding of constructions, which was merged into idioms in bridging. Note that we did not construct this classification to be dependent on RC models. This is because our methodology is intended to be general and applicable to many kinds of architectures.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_8",
+      "title": "3.2 Readability Metrics",
+      "level": 2,
+      "parent_id": "sec_6",
+      "key": "3_2_readability_metrics",
+      "text": "In this study, we evaluated the readability of texts based on metrics in NLP. Several studies have examined readability for various applications, such 4http://en.wikipedia.org/wiki/ Academic_Word_List 5 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 462 463 464 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 - Ave. num. of characters per word (NumChar) - Ave. num. of syllables per word (NumSyll) - Ave. sentence length in words (MLS) - Proportion of words in AWL (AWL) - Modifier variation (ModVar) - Num. of coordinate phrases per sentence (CoOrd) - Coleman–Liau index (Coleman) - Dependent clause to clause ratio (DC/C) - Complex nominals per clause (CN/C) - Adverb variation (AdvVar) Figure 2: Readability metrics. AWL refers to the Academic Word List.4 as second language learning (Razon and Barnden, 2015) and text simplification (Aluisio et al., 2010), and various aspects, such as development measures of second language acquisition (Vajjala and Meurers, 2012) and discourse relations (Pitler and Nenkova, 2008). Of these, we used the classification of linguistic features proposed by Vajjala and Meurers (2012). This is because they presented a comparison of a wide range of linguistic features focusing on second language acquisition and their method can be applied to plain text.2 We list the readability metrics in Figure 2, which were reported by Vajjala and Meurers (2012) as the top ten features that affect human readability. To classify these metrics, we can place three classes: lexical features (NumChar, NumSyll, AWL, AdvVar, and ModVar), syntactic features (MLS, CoOrd, DC/C, and CN/C), and traditional features (Coleman). We applied these metrics only to sentences that needed to be read to answer questions. Nonetheless, because these metrics were proposed for human readability, they do not necessarily correlate with those for RC systems. Therefore, in a system analysis, we ideally have to consult various features.3",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_9",
+      "title": "4 Annotation of Reading Comprehension Datasets",
+      "level": 1,
+      "parent_id": null,
+      "key": "4_annotation_of_reading_comprehension_datasets",
+      "text": "We annotated six existing RC datasets with the prerequisite skills. We explain the annotation procedure in Section 4.1 and the specifications of the annotated RC datasets in Section 4.2. 2Pitler and Nenkova (2008)’s work is more suitable for measuring text quality. However, we could not use their results because we did not have discourse annotations. 3We will make available the analysis of RC datasets on basic features as much as possible.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_10",
+      "title": "4.1 Annotation Procedure",
+      "level": 2,
+      "parent_id": "sec_9",
+      "key": "4_1_annotation_procedure",
+      "text": "We asked three annotators to annotate questions of RC datasets with the prerequisite skills that are required to answer each question. We allowed multiple labeling. For each task that was curated from the datasets, the annotators saw the context, question, and its answer jointly. When a dataset consisted of multiple choice questions, we showed all candidates and labeled the correct one with an asterisk. The annotators then selected sentences that needed to be read to answer the question and decided if each prerequisite skill was required. The annotators were allowed to select nonsense for an unsolvable question to distinguish it from a solvable question that required no skills.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_11",
+      "title": "4.2 Dataset Specifications",
+      "level": 2,
+      "parent_id": "sec_9",
+      "key": "4_2_dataset_specifications",
+      "text": "For the annotation, we randomly selected 100 questions from each dataset in Table 1. This amount of questions was considered to be sufficient for the analysis of RC datasets as performed by Chen et al. (2016). The questions were sampled from the gold-standard dataset of QA4MRE and the development sets of the other RC datasets. We explain the method of choosing questions for the annotation in Appendix A. There were other datasets we did not annotate in this study. We decided not to annotate those datasets because of the following reasons. CNN/Daily Mail (Hermann et al., 2015) is anonymized and contains some errors (Chen et al., 2016), so it did not seem to be suitable for annotation. We considered CBTest (Hill et al., 2016) to be for language modeling tasks rather than RC task and excluded it. LAMBADA (Paperno et al., 2016)’s texts are formatted for machine reading, 6 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599 Skills QA4MRE MCTest SQuAD WDW MARCO NewsQA 1. Tracking 11.0 6.0 3.0 8.0 6.0 2.0 2. Math. 4.0 4.0 0.0 3.0 0.0 1.0 3. Coref. resol. 32.0 49.0 13.0 19.0 15.0 24.0 4. Logical rsng. 15.0 2.0 0.0 8.0 1.0 2.0 5. Analogy 7.0 0.0 0.0 7.0 0.0 3.0 6. Causal rel. 1.0 6.0 0.0 2.0 0.0 4.0 7. Sptemp rel. 26.0 9.0 2.0 2.0 0.0 3.0 8. Ellipsis 13.0 4.0 3.0 16.0 2.0 15.0 9. Bridging 69.0 26.0 42.0 59.0 36.0 50.0 10. Elaboration 60.0 8.0 13.0 57.0 18.0 36.0 11. Meta 1.0 1.0 0.0 0.0 0.0 0.0 12. Clause rel. 52.0 40.0 28.0 42.0 27.0 34.0 13. Punctuation 34.0 1.0 24.0 20.0 14.0 25.0 Nonsense 10.0 1.0 3.0 27.0 14.0 1.0 Table 2: Frequencies (%) of prerequisite skills needed for the RC datasets. #Skills QA4MRE MCTest SQuAD WDW MARCO NewsQA 0 2.0 18.0 27.0 2.0 15.0 13.0 1 13.0 36.0 33.0 5.0 35.0 26.0 2 13.0 24.0 24.0 14.0 29.0 23.0 3 20.0 15.0 6.0 22.0 6.0 25.0 4 14.0 4.0 6.0 16.0 2.0 9.0 5 13.0 1.0 1.0 6.0 0.0 2.0 6 10.0 1.0 0.0 6.0 0.0 1.0 7 1.0 0.0 0.0 2.0 0.0 0.0 8 1.0 0.0 0.0 0.0 0.0 0.0 9 0.0 0.0 0.0 0.0 0.0 0.0 10 3.0 0.0 0.0 0.0 0.0 0.0 Ave. 3.25 1.56 1.28 2.43 1.19 1.99 Table 3: Frequencies (%) of the number of required prerequisite skills for the RC datasets. and all tokens are lowercased, which seemingly prevents inferences based on proper nouns. Thus, we decided that its texts are not suitable for human reading and annotation.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_12",
+      "title": "5 Results of the Dataset Analysis",
+      "level": 1,
+      "parent_id": null,
+      "key": "5_results_of_the_dataset_analysis",
+      "text": "We present the results from evaluating the RC datasets according to the two classes of metrics. The inter-annotator agreement was 90.1% for 62 randomly sampled questions. The evaluation was performed according to the following four points of view (i)–(iv). (i) Frequencies of prerequisite skills (Table 2): QA4MRE had the highest scores for frequencies among the datasets. This seems to reflect the fact that QA4MRE has technical documents that contain a wide range of knowledge (bridging and elaboration), multiple clauses, and punctuation and that the questions are devised by experts. MCTest achieved high scores in several skills (first in causal relation and meta-knowledge and second in coreference resolution and spatiotemporal relation) and lower score in punctuation. These scores seem to be because the MCTest dataset consists of narratives. Another dataset that achieved remarkable scores is Who-did-What. This dataset achieved the highest score for ellipsis. This is because the questions of Who-did-What are automatically generated from articles not used as context. This methodology can avoid textual overlap between a question and its context; therefore, the skills of ellipsis, bridging, and elaboration are frequently required. With regard to nonsense, MS MARCO and Who-did-What received relatively high scores. This appears to have been caused by the automated curation, which may generate separation between the contents of the context and question (i.e., web segments and a search query in MS MARCO, and a context article and question article in Who-didWhat). In stark contrast, NewsQA had no nonsense questions. Although this result was affected by our filtering described in Appendix A, it is important to note that the NewsQA dataset includes annotations of meta information whether or not a question makes sense (is question bad). (ii) Number of required prerequisite skills (Table 3): QA4MRE had the highest score; on average, each question required 4.6 skills. There were few questions in QA4MRE that required zero or one skill, whereas the other datasets contained some questions that required zero or one skill. Table 3 also indicates that more than 90% of the MS MARCO questions required fewer than three skills, at least according to the annotation. (iii) Readability metrics for each dataset (Table 4): SQuAD and QA4MRE achieved the highest scores in most metrics; this reflects the fact that 7 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 657 658 659 660 661 662 663 664 665 666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 686 687 688 689 690 691 692 693 694 695 696 697 698 699 1.0 1.5 2.0 2.5 3.0 3.5 Average number of required skills 2 4 6 8 10 12 14 16 FK g ra de le ve l QA4MRE MCTest SQuAD WDW MARCO NewsQA Figure 3: Flesch–Kincaid grade levels and average number of required prerequisite skills for the RC datasets. 0 2 4 6 8 10 Number of required skills 10 0 10 20 30 40 50 FK g ra de le ve l QA4MRE MCTest SQuAD Figure 4: Flesch–Kincaid grade levels and number of required prerequisite skills for all questions of the selected RC datasets. Wikipedia articles and technical documents generally require a high grade level to understand. In contrast, MCTest had the lowest scores; its dataset consist of narratives for children. (iv) Correlation between numbers of required prerequisite skills and readability metrics (Figure 3, Figure 4, and Table 5): Our main interest was in the correlation between prerequisite skills and readability. To investigate this, we examined the relation between the number of required prerequisite skills and readability metrics (represented by the Flesch–Kincaid grade level), as shown in Figure 3 for each dataset and in Figure 4 for each question. The first figure shows the trends of the datasets. QA4MRE was relatively difficult both to read and to answer, and SQuAD was difficult to read but easy to answer. For further investigation, we selected three datasets (QA4MRE, MCTest, and SQuAD) and plotted all of their questions in the second figure. Three separate domains can be seen. Table 5 presents Pearson’s correlation coeffi- cients between the number of required prerequisite skills and each readability metric for all questions of the RC datasets. Although there are weak correlations from 0.025 to 0.416, the results highlight that there is not necessarily a strong correlation between the two values. This leads to the following two insights. First, the readability of RC datasets does not directly affect the difficulty of their questions. That is, RC datasets that are difficult to read are not necessary difficult to answer. Second, it is possible to create difficult questions from context that is easy to read. MCTest is a good example. The context texts of MCTest dataset are easy to read, but the difficulty of the questions is comparable to that of the other datasets. To summarize our results in terms of each RC dataset, we present the following observations: - QA4MRE seemed to be the most difficult dataset among the RC datasets we analyzed, whereas MS MARCO seemed to be the easiest. - MCTest is a good example of an RC dataset that is easy to read but difficult to answer. The corpus’ genre (i.e., narrative) seems to reflect the trend of required skills for the questions. - SQuAD was difficult to read along with QA4MRE but relatively easy to answer compared to other datasets. - Who-did-What performed well in terms of its query sourcing method. Although its questions are automatically created, they are sophisticated in terms of knowledge reasoning. However, an issue with the automated sourcing method is excluding nonsense questions. - MS MARCO was a relatively easy dataset in terms of prerequisite skills. A problem is that the dataset contained nonsense questions. - NewsQA is advantageous in that it provides meta information on the reliability of the ques- 8 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799 tions. Such information enabled us to avoid using nonsense questions, such as in the training of machine learning models.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_13",
+      "title": "6 Discussion",
+      "level": 1,
+      "parent_id": null,
+      "key": "6_discussion",
+      "text": "In this section, we discuss several matters regarding the construction of RC datasets and the development of RC systems using our methodology. How to utilize the two classes of metrics for system development: One example for the development of an RC system is that it should be built to solve an easy-to-read and easy-to-answer dataset. The next step is to improve the system so that it can solve an easy-to-read and difficult-toanswer dataset. Finally, only after it can solve such dataset should the system be applied to a difficultto-read and difficult-to-answer dataset. Appropriate datasets can be prepared for every step by measuring their properties using the metrics of this study. Such datasets can be placed in a continuum based on the grades of the metrics and applied to each step of the development, like in curriculum learning (Bengio et al., 2009) and transfer learning (Pan and Yang, 2010). Corpus genre: Attention should be paid to the genre of corpus used to construct a dataset. Expository documents like news articles tend to require factorial understanding. Most existing RC datasets use such texts because of their availability. On the other hand, narrative texts have a close correspondence to our everyday experience, such as the emotion and intention of characters (Graesser et al., 1994). If we want to build agents that work in the real world, RC datasets may have to be constructed from narratives. Question type: In contrast to factorial understanding, comprehensive understanding of natural language texts needs a better grasp of the global coherence (e.g., the main point or moral of the text, goal of a story, and intention of characters) from the broad context (Graesser et al., 1994). Most questions that are prevalent now require only local coherence (e.g., referential relations and thematic roles) with a narrow context. Such questions based on global coherence may be generated by techniques of abstractive text summarization (Rush et al., 2015; Ganesan et al., 2010). Annotation issues: There were questions for which there were disagreements regarding the decision of nonsense. For example, some questions can be solved by external knowledge without seeing their context. Thus, we should clarify what a Sentence QA4MRE MCTest SQuAD WDW MARCO NewsQA Number 1.120 1.180 1.040 1.110 1.080 1.170 Distance 1.880 0.930 0.090 0.730 0.280 0.540 Table 6: Average number and distance of sentences that need to be read to answer a question in the RC datasets. “solvable” or “reasonable” question is in RC. In addition, annotators reported that the prerequisite skills did not easily treat questions whose answer was “none of the above” in QA4MRE. We considered those “no answer” questions difficult in another sense, so our methodology failed to specify them. Competence of selecting necessary sentences: As mentioned in Section 1, our methodology cannot evaluate the competence of selecting sentences that need to be read to answer questions. As a brief analysis, we further investigated sentences in the context of the datasets that were highlighted in the annotation. Analyses were performed in two ways: for each question, we counted the number of required sentences and their distance (see Appendix B for the calculation method). The values of the first row in Table 6 show the average number of required sentences per question for each RC dataset. Although the scores seemed to be approximately level, MCTest required multiple sentences the most frequently. The second row presents the average distance of required sentences. QA4MRE demonstrated the longest distance because readers had to look for clues in long context texts of the dataset. In contrast, SQuAD and MS MARCO showed lower scores: most of their questions seem only to require reading a single sentence to answer. Of course, the scores of distances should depend on the length of the context texts.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_14",
+      "title": "7 Conclusion",
+      "level": 1,
+      "parent_id": null,
+      "key": "7_conclusion",
+      "text": "In this study, we adopted evaluation metrics to analyze both the performance of a system and the quality of RC datasets. We assumed two classes— refined prerequisite skills and readability—and defined evaluation metrics for each. Next, we annotated six existing RC datasets with those defined metrics. Our annotation highlights the characteristics of the datasets and provides a valuable guide for the construction of new datasets and the development of RC systems. For future work, we plan to use the analysis in the present study to construct a system that can be applied to multiple datasets. 9 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_15",
+      "title": "A Sampling Methods for Questions",
+      "level": 1,
+      "parent_id": null,
+      "key": "a_sampling_methods_for_questions",
+      "text": "In this appendix, we explain the method of choosing questions for the annotation. QA4MRE (Sutcliffe et al., 2013): The goldstandard dataset consists of four different topics and four documents for each topic. We randomly selected 100 main and auxiliary questions so that at least one question of each document was included. MCTest (Richardson et al., 2013): This dataset consists of two sets: MC160 and MC500. Their development sets have 80 tasks in total; each includes context texts and four questions. We randomly chose 25 tasks (100 questions) from the development sets. SQuAD (Rajpurkar et al., 2016): This dataset includes some Wikipedia articles from various topics, and those articles are divided into paragraphs. We randomly chose 100 paragraphs from 1000 1001 1002 1003 1004 1005 1006 1007 1008 1009 1010 1011 1012 1013 1014 1015 1016 1017 1018 1019 1020 1021 1022 1023 1024 1025 1026 1027 1028 1029 1030 1031 1032 1033 1034 1035 1036 1037 1038 1039 1040 1041 1042 1043 1044 1045 1046 1047 1048 1049 1050 1051 1052 1053 1054 1055 1056 1057 1058 1059 1060 1061 1062 1063 1064 1065 1066 1067 1068 1069 1070 1071 1072 1073 1074 1075 1076 1077 1078 1079 1080 1081 1082 1083 1084 1085 1086 1087 1088 1089 1090 1091 1092 1093 1094 1095 1096 1097 1098 1099 15 articles and used only one question of each paragraph for the annotation. Who-did-What (WDW) (Onishi et al., 2016): This dataset is constructed from the English Gigaword newswire corpus (v5). Its questions are automatically created from an article that differs from one used for context. In addition, questions that can be solved by a simple baseline method are excluded from the dataset. MS MARCO (MARCO) (Nguyen et al., 2016): A task of this dataset comprises several segments, one question, and its answer. We randomly chose 100 tasks (100 questions) and only used segments whose attribute was is selected = 1 as context. NewsQA (Trischler et al., 2016): we randomly chose questions that satisfied the following conditions: is answer absent = 0, is question bad = 0, and validated answers do not include bad question or none.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_16",
+      "title": "B Calculation of Sentence Distance",
+      "level": 1,
+      "parent_id": null,
+      "key": "b_calculation_of_sentence_distance",
+      "text": "As mentioned in Section 6, the distance of sentences was calculated as follows. If a question required only one sentence to be read, its distance was zero. If a question required two adjacent sentences to be read, its distance was one. If a question required more than two sentences to be read, its distance was the sum of distances of any two sentences.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Sandra Aluisio. Lucia Specia. Caroline Gasperin. Carolina Scarton.. Readability assessment for text simplification. Proceedings of the NAACL HLT 2010 Fifth Workshop on Innovative Use of NLP for Building Educa-. 2010",
+      "marker": null,
+      "authors": [
+        "Sandra Aluisio",
+        "Lucia Specia",
+        "Caroline Gasperin",
+        "Carolina Scarton."
+      ],
+      "title": "Readability assessment for text simplification",
+      "year": "2010",
+      "venue": "Proceedings of the NAACL HLT 2010 Fifth Workshop on Innovative Use of NLP for Building Educa-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Yoshua Bengio. Jérôme Louradour. Ronan Collobert. Jason Weston.. Curriculum learning. Proceedings of the 26th annual international conference on machine learning. ACM, pages 41–48.. 2009",
+      "marker": null,
+      "authors": [
+        "Yoshua Bengio",
+        "Jérôme Louradour",
+        "Ronan Collobert",
+        "Jason Weston."
+      ],
+      "title": "Curriculum learning",
+      "year": "2009",
+      "venue": "Proceedings of the 26th annual international conference on machine learning. ACM, pages 41–48.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Luisa Bentivogli. Elena Cabrio. Ido Dagan. Danilo Giampiccolo. Medea Lo Leggio. Bernardo Magnini.. Building textual entailment specialized data sets: a methodology for isolating linguistic phenomena relevant to inference. Proceedings of. 2010",
+      "marker": null,
+      "authors": [
+        "Luisa Bentivogli",
+        "Elena Cabrio",
+        "Ido Dagan",
+        "Danilo Giampiccolo",
+        "Medea Lo Leggio",
+        "Bernardo Magnini."
+      ],
+      "title": "Building textual entailment specialized data sets: a methodology for isolating linguistic phenomena relevant to inference",
+      "year": "2010",
+      "venue": "Proceedings of",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "Danqi Chen. Jason Bolton. D. Christopher Manning.. A thorough examination of the cnn/daily mail reading comprehension task. Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics. Association for. 2016",
+      "marker": null,
+      "authors": [
+        "Danqi Chen",
+        "Jason Bolton",
+        "D. Christopher Manning."
+      ],
+      "title": "A thorough examination of the cnn/daily mail reading comprehension task",
+      "year": "2016",
+      "venue": "Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics. Association for",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Herbert H Clark.. Bridging. Proceedings of the 1975 workshop on Theoretical issues in natural language processing. Association for Computational Linguistics, pages 169–174.. 1975",
+      "marker": null,
+      "authors": [
+        "Herbert H Clark."
+      ],
+      "title": "Bridging",
+      "year": "1975",
+      "venue": "Proceedings of the 1975 workshop on Theoretical issues in natural language processing. Association for Computational Linguistics, pages 169–174.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "Ido Dagan. Oren Glickman. Bernardo Magnini.. The PASCAL recognising textual entailment challenge. Machine learning challenges. evaluating predictive uncertainty, visual object classification, and recognising tectual entailment, Springer,. 2006",
+      "marker": null,
+      "authors": [
+        "Ido Dagan",
+        "Oren Glickman",
+        "Bernardo Magnini."
+      ],
+      "title": "The PASCAL recognising textual entailment challenge",
+      "year": "2006",
+      "venue": "Machine learning challenges. evaluating predictive uncertainty, visual object classification, and recognising tectual entailment, Springer,",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Ido Dagan. Dan Roth. Mark Sammons. Fabio Massimo Zanzotto.. Recognizing textual entailment: Models and applications. Synthesis Lectures on Human Language Technologies 6(4):1–220.. 2013",
+      "marker": null,
+      "authors": [
+        "Ido Dagan",
+        "Dan Roth",
+        "Mark Sammons",
+        "Fabio Massimo Zanzotto."
+      ],
+      "title": "Recognizing textual entailment: Models and applications",
+      "year": "2013",
+      "venue": "Synthesis Lectures on Human Language Technologies 6(4):1–220.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Kavita Ganesan. ChengXiang Zhai. Jiawei Han.. Opinosis: a graph-based approach to abstractive summarization of highly redundant opinions. Proceedings of the 23rd international conference on computational linguistics. Association for Compu-. 2010",
+      "marker": null,
+      "authors": [
+        "Kavita Ganesan",
+        "ChengXiang Zhai",
+        "Jiawei Han."
+      ],
+      "title": "Opinosis: a graph-based approach to abstractive summarization of highly redundant opinions",
+      "year": "2010",
+      "venue": "Proceedings of the 23rd international conference on computational linguistics. Association for Compu-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Arthur C Graesser. Murray Singer. Tom Trabasso.. Constructing inferences during narrative text comprehension. Psychological review 101(3):371.. 1994",
+      "marker": null,
+      "authors": [
+        "Arthur C Graesser",
+        "Murray Singer",
+        "Tom Trabasso."
+      ],
+      "title": "Constructing inferences during narrative text comprehension",
+      "year": "1994",
+      "venue": "Psychological review 101(3):371.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Karl Moritz Hermann. Tomas Kocisky. Edward Grefenstette. Lasse Espeholt. Will Kay. Mustafa Suleyman. Phil Blunsom.. Teaching machines to read and comprehend. Advances in Neural Information Processing Systems (NIPS). pages. 2015",
+      "marker": null,
+      "authors": [
+        "Karl Moritz Hermann",
+        "Tomas Kocisky",
+        "Edward Grefenstette",
+        "Lasse Espeholt",
+        "Will Kay",
+        "Mustafa Suleyman",
+        "Phil Blunsom."
+      ],
+      "title": "Teaching machines to read and comprehend",
+      "year": "2015",
+      "venue": "Advances in Neural Information Processing Systems (NIPS). pages",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Felix Hill. Antoine Bordes. Sumit Chopra. Jason Weston.. The goldilocks principle: Reading children’s books with explicit memory representations. Proceedings of the International Conference on Learning Representations (ICLR).. 2016",
+      "marker": null,
+      "authors": [
+        "Felix Hill",
+        "Antoine Bordes",
+        "Sumit Chopra",
+        "Jason Weston."
+      ],
+      "title": "The goldilocks principle: Reading children’s books with explicit memory representations",
+      "year": "2016",
+      "venue": "Proceedings of the International Conference on Learning Representations (ICLR).",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Lynette Hirschman. Marc Light. Eric Breck. John D Burger.. Deep read: A reading comprehension system. Proceedings of the 37th Annual Meeting of the Association for Computational Linguistics. Association for Computational Linguistics,. 1999",
+      "marker": null,
+      "authors": [
+        "Lynette Hirschman",
+        "Marc Light",
+        "Eric Breck",
+        "John D Burger."
+      ],
+      "title": "Deep read: A reading comprehension system",
+      "year": "1999",
+      "venue": "Proceedings of the 37th Annual Meeting of the Association for Computational Linguistics. Association for Computational Linguistics,",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Walter Kintsch.. The role of knowledge in discourse comprehension: A construction-integration model. Psychological review 95(2):163.. 1988",
+      "marker": null,
+      "authors": [
+        "Walter Kintsch."
+      ],
+      "title": "The role of knowledge in discourse comprehension: A construction-integration model",
+      "year": "1988",
+      "venue": "Psychological review 95(2):163.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Walter Kintsch.. Information accretion and reduction in text processing: Inferences. Discourse processes 16(1-2):193–202.. 1993",
+      "marker": null,
+      "authors": [
+        "Walter Kintsch."
+      ],
+      "title": "Information accretion and reduction in text processing: Inferences",
+      "year": "1993",
+      "venue": "Discourse processes 16(1-2):193–202.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Peter LoBue. Alexander Yates.. Types of common-sense knowledge needed for recognizing textual entailment. Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Tech-. 2011",
+      "marker": null,
+      "authors": [
+        "Peter LoBue",
+        "Alexander Yates."
+      ],
+      "title": "Types of common-sense knowledge needed for recognizing textual entailment",
+      "year": "2011",
+      "venue": "Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Tech-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Danielle S McNamara. Joe Magliano.. Toward a comprehensive model of comprehension. Psychology of learning and motivation 51:297–384.. 2009",
+      "marker": null,
+      "authors": [
+        "Danielle S McNamara",
+        "Joe Magliano."
+      ],
+      "title": "Toward a comprehensive model of comprehension",
+      "year": "2009",
+      "venue": "Psychology of learning and motivation 51:297–384.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "Tri Nguyen. Mir Rosenberg. Xia Song. Jianfeng Gao. Saurabh Tiwary. Rangan Majumder. Li Deng.. MS MARCO: A human generated machine reading comprehension dataset. CoRR abs/1611.09268. http://arxiv.org/abs/1611.09268.. 2016",
+      "marker": null,
+      "authors": [
+        "Tri Nguyen",
+        "Mir Rosenberg",
+        "Xia Song",
+        "Jianfeng Gao",
+        "Saurabh Tiwary",
+        "Rangan Majumder",
+        "Li Deng."
+      ],
+      "title": "MS MARCO: A human generated machine reading comprehension dataset",
+      "year": "2016",
+      "venue": "CoRR abs/1611.09268. http://arxiv.org/abs/1611.09268.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Peter Norvig.. Marker passing as a weak method for text inferencing. Cognitive Science 13(4):569– 620.. 1989",
+      "marker": null,
+      "authors": [
+        "Peter Norvig."
+      ],
+      "title": "Marker passing as a weak method for text inferencing",
+      "year": "1989",
+      "venue": "Cognitive Science 13(4):569– 620.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Takeshi Onishi. Hai Wang. Mohit Bansal. Kevin Gimpel. David McAllester.. Who did what: A large-scale person-centered cloze dataset. Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing. Association. 2016",
+      "marker": null,
+      "authors": [
+        "Takeshi Onishi",
+        "Hai Wang",
+        "Mohit Bansal",
+        "Kevin Gimpel",
+        "David McAllester."
+      ],
+      "title": "Who did what: A large-scale person-centered cloze dataset",
+      "year": "2016",
+      "venue": "Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing. Association",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_20",
+      "raw": "Sinno Jialin Pan. Qiang Yang.. A survey on transfer learning. IEEE Transactions on knowledge and data engineering 22(10):1345–1359.. 2010",
+      "marker": null,
+      "authors": [
+        "Sinno Jialin Pan",
+        "Qiang Yang."
+      ],
+      "title": "A survey on transfer learning",
+      "year": "2010",
+      "venue": "IEEE Transactions on knowledge and data engineering 22(10):1345–1359.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_21",
+      "raw": "Denis Paperno. Germán Kruszewski. Angeliki Lazaridou. Quan Ngoc Pham. Raffaella Bernardi. Sandro Pezzelle. Marco Baroni. Gemma Boleda. Raquel Fernandez. The lambada dataset: Word prediction requiring a broad discourse context. 2016",
+      "marker": null,
+      "authors": [
+        "Denis Paperno",
+        "Germán Kruszewski",
+        "Angeliki Lazaridou",
+        "Quan Ngoc Pham",
+        "Raffaella Bernardi",
+        "Sandro Pezzelle",
+        "Marco Baroni",
+        "Gemma Boleda",
+        "Raquel Fernandez"
+      ],
+      "title": "The lambada dataset: Word prediction requiring a broad discourse context",
+      "year": "2016",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_22",
+      "raw": "Emily Pitler. Ani Nenkova.. Revisiting readability: A unified framework for predicting text quality. Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing. Association for Computational. 2008",
+      "marker": null,
+      "authors": [
+        "Emily Pitler",
+        "Ani Nenkova."
+      ],
+      "title": "Revisiting readability: A unified framework for predicting text quality",
+      "year": "2008",
+      "venue": "Proceedings of the 2008 Conference on Empirical Methods in Natural Language Processing. Association for Computational",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_23",
+      "raw": "Pranav Rajpurkar. Jian Zhang. Konstantin Lopyrev. Percy Liang.. Squad: 100, 000+ questions for machine comprehension of text. CoRR abs/1606.05250. http://arxiv.org/abs/1606.05250.. 2016",
+      "marker": null,
+      "authors": [
+        "Pranav Rajpurkar",
+        "Jian Zhang",
+        "Konstantin Lopyrev",
+        "Percy Liang."
+      ],
+      "title": "Squad: 100, 000+ questions for machine comprehension of text",
+      "year": "2016",
+      "venue": "CoRR abs/1606.05250. http://arxiv.org/abs/1606.05250.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_24",
+      "raw": "Abigail Razon. John Barnden.. A new approach to automated text readability classification based on concept indexing with integrated part-ofspeech n-gram features. Proceedings of the International Conference Recent Advances in Natu-. 2015",
+      "marker": null,
+      "authors": [
+        "Abigail Razon",
+        "John Barnden."
+      ],
+      "title": "A new approach to automated text readability classification based on concept indexing with integrated part-ofspeech n-gram features",
+      "year": "2015",
+      "venue": "Proceedings of the International Conference Recent Advances in Natu-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_25",
+      "raw": "Matthew Richardson. J.C. Christopher Burges. Erin Renshaw.. MCTest: A challenge dataset for the open-domain machine comprehension of text. Proceedings of the 2013 Conference on Empirical Methods in Natural. 2013",
+      "marker": null,
+      "authors": [
+        "Matthew Richardson",
+        "J.C. Christopher Burges",
+        "Erin Renshaw."
+      ],
+      "title": "MCTest: A challenge dataset for the open-domain machine comprehension of text",
+      "year": "2013",
+      "venue": "Proceedings of the 2013 Conference on Empirical Methods in Natural",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_26",
+      "raw": "Alexander M. Rush. Sumit Chopra. Jason Weston.. A neural attention model for abstractive sentence summarization. Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computa-. 2015",
+      "marker": null,
+      "authors": [
+        "Alexander M. Rush",
+        "Sumit Chopra",
+        "Jason Weston."
+      ],
+      "title": "A neural attention model for abstractive sentence summarization",
+      "year": "2015",
+      "venue": "Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computa-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_27",
+      "raw": "Mark Sammons. V.G.Vinod Vydiswaran. Dan Roth. ask not what textual entailment can do for you.... In Proceedings of the 48th Annual Meeting of the Association. 2010",
+      "marker": null,
+      "authors": [
+        "Mark Sammons",
+        "V.G.Vinod Vydiswaran",
+        "Dan Roth"
+      ],
+      "title": "ask not what textual entailment can do for you...",
+      "year": "2010",
+      "venue": "In Proceedings of the 48th Annual Meeting of the Association",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_28",
+      "raw": "Saku Sugawara. Akiko Aizawa.. An analysis of prerequisite skills for reading comprehension. Proceedings of the Workshop on Uphill Battles in Language Processing: Scaling Early Achievements to Robust Methods. Association for. 2016",
+      "marker": null,
+      "authors": [
+        "Saku Sugawara",
+        "Akiko Aizawa."
+      ],
+      "title": "An analysis of prerequisite skills for reading comprehension",
+      "year": "2016",
+      "venue": "Proceedings of the Workshop on Uphill Battles in Language Processing: Scaling Early Achievements to Robust Methods. Association for",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_29",
+      "raw": "Saku Sugawara. Hikaru Yokono. Akiko Aizawa.. Prerequisite skills for reading comprehension: Multi-perspective analysis of mctest datasets and systems. AAAI Conference on Artificial Intelligence.. 2017",
+      "marker": null,
+      "authors": [
+        "Saku Sugawara",
+        "Hikaru Yokono",
+        "Akiko Aizawa."
+      ],
+      "title": "Prerequisite skills for reading comprehension: Multi-perspective analysis of mctest datasets and systems",
+      "year": "2017",
+      "venue": "AAAI Conference on Artificial Intelligence.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_30",
+      "raw": "Richard Sutcliffe. Anselmo Peñas. Eduard Hovy. Pamela Forner. Álvaro Rodrigo. Corina Forascu. Yassine Benajiba. Petya Osenova.. Overview of QA4MRE main task at CLEF 2013. Working Notes, CLEF .. 2013",
+      "marker": null,
+      "authors": [
+        "Richard Sutcliffe",
+        "Anselmo Peñas",
+        "Eduard Hovy",
+        "Pamela Forner",
+        "Álvaro Rodrigo",
+        "Corina Forascu",
+        "Yassine Benajiba",
+        "Petya Osenova."
+      ],
+      "title": "Overview of QA4MRE main task at CLEF 2013",
+      "year": "2013",
+      "venue": "Working Notes, CLEF .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_31",
+      "raw": "Adam Trischler. Tong Wang. Xingdi Yuan. Justin Harris. Alessandro Sordoni. Philip Bachman. Kaheer Suleman.. Newsqa: A machine comprehension dataset. CoRR abs/1611.09830.. 2016",
+      "marker": null,
+      "authors": [
+        "Adam Trischler",
+        "Tong Wang",
+        "Xingdi Yuan",
+        "Justin Harris",
+        "Alessandro Sordoni",
+        "Philip Bachman",
+        "Kaheer Suleman."
+      ],
+      "title": "Newsqa: A machine comprehension dataset",
+      "year": "2016",
+      "venue": "CoRR abs/1611.09830.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_32",
+      "raw": "Sowmya Vajjala. Detmar Meurers.. On improving the accuracy of readability classification using insights from second language acquisition. Proceedings of the Seventh Workshop on Building Educational Applica-. 2012",
+      "marker": null,
+      "authors": [
+        "Sowmya Vajjala",
+        "Detmar Meurers."
+      ],
+      "title": "On improving the accuracy of readability classification using insights from second language acquisition",
+      "year": "2012",
+      "venue": "Proceedings of the Seventh Workshop on Building Educational Applica-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_33",
+      "raw": "Teun Adrianus Van Dijk. Walter Kintsch.. Strategies of discourse comprehension. Citeseer.. 1983",
+      "marker": null,
+      "authors": [
+        "Teun Adrianus Van Dijk",
+        "Walter Kintsch."
+      ],
+      "title": "Strategies of discourse comprehension",
+      "year": "1983",
+      "venue": "Citeseer.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_34",
+      "raw": "Ellen M Voorhees. The trec-8 question answering track report. Trec. volume 99, pages 77–. 1999",
+      "marker": null,
+      "authors": [
+        "Ellen M Voorhees"
+      ],
+      "title": "The trec-8 question answering track report",
+      "year": "1999",
+      "venue": "Trec. volume 99, pages 77–",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_35",
+      "raw": "Mengqiu Wang. Noah A. Smith. Teruko Mitamura.. What is the Jeopardy model? a quasi-synchronous grammar for QA. Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing. 2007",
+      "marker": null,
+      "authors": [
+        "Mengqiu Wang",
+        "Noah A. Smith",
+        "Teruko Mitamura."
+      ],
+      "title": "What is the Jeopardy model? a quasi-synchronous grammar for QA",
+      "year": "2007",
+      "venue": "Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_36",
+      "raw": "Yi Yang. Wen-tau Yih. Christopher Meek.. Wikiqa: A challenge dataset for open-domain question answering. Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computational. 2015",
+      "marker": null,
+      "authors": [
+        "Yi Yang",
+        "Wen-tau Yih",
+        "Christopher Meek."
+      ],
+      "title": "Wikiqa: A challenge dataset for open-domain question answering",
+      "year": "2015",
+      "venue": "Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computational",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_37",
+      "raw": "NewsQA (Trischler. 2016): we randomly chose questions that satisfied the following conditions: is answer absent = 0, is question bad = 0, and validated answers do not include bad question or none. 2016",
+      "marker": null,
+      "authors": [
+        "NewsQA (Trischler"
+      ],
+      "title": "2016): we randomly chose questions that satisfied the following conditions: is answer absent = 0, is question bad = 0, and validated answers do not include bad question or none",
+      "year": "2016",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citation_mentions": [
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "In the first example from SQuAD (Rajpurkar et al., 2016), although the document is taken from a Wikipedia article and is thus written for adults, the question is easy to solve simply look at one sentence and select an entity.",
+      "section_id": "sec_2",
+      "start_offset": 1175,
+      "end_offset": 1400
+    },
+    {
+      "reference_id": "ref_25",
+      "marker": null,
+      "sentence": "On the other hand, in the second example from MCTest (Richardson et al., 2013), the document is written for children and is easy to read, but the question requires reading multiple sentences and a combination of several skills, such as understanding of causal relations (Sara wanted.",
+      "section_id": "sec_2",
+      "start_offset": 1401,
+      "end_offset": 1684
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "As Norvig (1989) stated, questions easy for humans often turn out to be difficult for systems.",
+      "section_id": "sec_2",
+      "start_offset": 1029,
+      "end_offset": 1123
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "In research on textual entailment, several methodologies have been proposed for precise analysis of entailment phenomena (Dagan et al., 2013; LoBue and Yates, 2011).",
+      "section_id": "sec_2",
+      "start_offset": 4163,
+      "end_offset": 4328
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "In research on textual entailment, several methodologies have been proposed for precise analysis of entailment phenomena (Dagan et al., 2013; LoBue and Yates, 2011).",
+      "section_id": "sec_2",
+      "start_offset": 4163,
+      "end_offset": 4328
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Our two classes of metrics are based on McNamara and Magliano (2009)’s analysis of human text comprehension in psychology.",
+      "section_id": "sec_2",
+      "start_offset": 3074,
+      "end_offset": 3196
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Our two classes of metrics are based on McNamara and Magliano (2009)’s analysis of human text comprehension in psychology. The first class defines the difficulty of comprehending the context to answer questions. We adopted prerequisite skills proposed in a previous study by Sugawara et al. (2017). That study presented an important observation of the relation between the difficulty of an RC task and prerequisite skills: the more skills that are required to answer a question, the more difficult the question is.",
+      "section_id": "sec_2",
+      "start_offset": 3074,
+      "end_offset": 3588
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Our two classes of metrics are based on McNamara and Magliano (2009)’s analysis of human text comprehension in psychology. The first class defines the difficulty of comprehending the context to answer questions. We adopted prerequisite skills proposed in a previous study by Sugawara et al. (2017). That study presented an important observation of the relation between the difficulty of an RC task and prerequisite skills: the more skills that are required to answer a question, the more difficult the question is. From this observation, we assume that the number of required skills corresponds to the difficulty of a question. This is because each skill corresponds to a function of a system, which has to be equipped with the system. However, a problem in previous studies, including that of Sugawara and Aizawa (2016), is that they analyzed only two datasets and that their categorization of knowledge reasoning is provisional with a weak theoretical background.",
+      "section_id": "sec_2",
+      "start_offset": 3074,
+      "end_offset": 4039
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "In research on textual entailment, several methodologies have been proposed for precise analysis of entailment phenomena (Dagan et al., 2013; LoBue and Yates, 2011). In psychology research, Kintsch (1993) proposed dichotomies for the classification of human inferences: retrieved versus generated.",
+      "section_id": "sec_2",
+      "start_offset": 4163,
+      "end_offset": 4460
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "In research on textual entailment, several methodologies have been proposed for precise analysis of entailment phenomena (Dagan et al., 2013; LoBue and Yates, 2011). In psychology research, Kintsch (1993) proposed dichotomies for the classification of human inferences: retrieved versus generated. In addition, McNamara and Magliano (2009) proposed a similar distinction for inferences: bridging versus elaboration.",
+      "section_id": "sec_2",
+      "start_offset": 4163,
+      "end_offset": 4578
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "In research on textual entailment, several methodologies have been proposed for precise analysis of entailment phenomena (Dagan et al., 2013; LoBue and Yates, 2011). In psychology research, Kintsch (1993) proposed dichotomies for the classification of human inferences: retrieved versus generated. In addition, McNamara and Magliano (2009) proposed a similar distinction for inferences: bridging versus elaboration. We utilized these insights in order to develop a comprehensive but not overly specific classification of knowledge reasoning. The second class defines the difficulty of reading contents, readability, in documents considering syntactic and lexical complexity. We leverage a wide range of linguistic features proposed by Vajjala and Meurers (2012). In the annotation, annotators selected sentences needed for answering and then annotated them with prerequisite skills under the same condition for RC datasets with different task formulations.",
+      "section_id": "sec_2",
+      "start_offset": 4163,
+      "end_offset": 5119
+    },
+    {
+      "reference_id": "ref_36",
+      "marker": null,
+      "sentence": "Afterwards, investigations into natural language understanding questions mainly focused on other formulations, such as question answering (Yang et al., 2015; Wang et al., 2007; Voorhees et al., 1999) and textual entailment (Bentivogli et al.",
+      "section_id": "sec_4",
+      "start_offset": 238,
+      "end_offset": 479
+    },
+    {
+      "reference_id": "ref_35",
+      "marker": null,
+      "sentence": "Afterwards, investigations into natural language understanding questions mainly focused on other formulations, such as question answering (Yang et al., 2015; Wang et al., 2007; Voorhees et al., 1999) and textual entailment (Bentivogli et al.",
+      "section_id": "sec_4",
+      "start_offset": 238,
+      "end_offset": 479
+    },
+    {
+      "reference_id": "ref_3",
+      "marker": null,
+      "sentence": ", 1999) and textual entailment (Bentivogli et al., 2010; Sammons et al., 2010; Dagan et al., 2006).",
+      "section_id": "sec_4",
+      "start_offset": 430,
+      "end_offset": 529
+    },
+    {
+      "reference_id": "ref_27",
+      "marker": null,
+      "sentence": ", 1999) and textual entailment (Bentivogli et al., 2010; Sammons et al., 2010; Dagan et al., 2006).",
+      "section_id": "sec_4",
+      "start_offset": 430,
+      "end_offset": 529
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": ", 1999) and textual entailment (Bentivogli et al., 2010; Sammons et al., 2010; Dagan et al., 2006).",
+      "section_id": "sec_4",
+      "start_offset": 430,
+      "end_offset": 529
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": "To our knowledge, Hirschman et al. (1999) were the first to use NLP methods for RC.",
+      "section_id": "sec_4",
+      "start_offset": 62,
+      "end_offset": 145
+    },
+    {
+      "reference_id": "ref_30",
+      "marker": null,
+      "sentence": "One of the RC tasks following it was QA4MRE (Sutcliffe et al., 2013).",
+      "section_id": "sec_4",
+      "start_offset": 928,
+      "end_offset": 997
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": "For example, the CNN/Daily Mail dataset (Hermann et al., 2015) and CBTest (Hill et al.",
+      "section_id": "sec_4",
+      "start_offset": 1577,
+      "end_offset": 1663
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": ", 2015) and CBTest (Hill et al., 2016) have approximately 1.",
+      "section_id": "sec_4",
+      "start_offset": 1632,
+      "end_offset": 1692
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "Richardson et al. (2013) presented MCTest, which is an opendomain narrative dataset for gauging comprehension at a childs level.",
+      "section_id": "sec_4",
+      "start_offset": 1269,
+      "end_offset": 1397
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": "However, Chen et al. (2016) indicated that approximately 25% of the questions in the CNN/Daily Mail dataset are unsolvable or nonsense.",
+      "section_id": "sec_4",
+      "start_offset": 1823,
+      "end_offset": 1958
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": null,
+      "sentence": "The construction– integration (C–I) model (Kintsch, 1988) is one of the most basic and influential theories.",
+      "section_id": "sec_5",
+      "start_offset": 82,
+      "end_offset": 190
+    },
+    {
+      "reference_id": "ref_12",
+      "marker": null,
+      "sentence": "During these steps, three levels of representation are constructed (Van Dijk and Kintsch, 1983): the surface code (i.e., wording and syntax), the textbase (i.e., text propositions with cohesion), and the situation model (i.e., mental representation). Based on the above assumptions, McNamara and Magliano (2009) proposed two aspects of text comprehension: “strategic/skilled comprehension” and “text ease of processing.",
+      "section_id": "sec_5",
+      "start_offset": 670,
+      "end_offset": 1089
+    },
+    {
+      "reference_id": "ref_12",
+      "marker": null,
+      "sentence": "During these steps, three levels of representation are constructed (Van Dijk and Kintsch, 1983): the surface code (i.e., wording and syntax), the textbase (i.e., text propositions with cohesion), and the situation model (i.e., mental representation). Based on the above assumptions, McNamara and Magliano (2009) proposed two aspects of text comprehension: “strategic/skilled comprehension” and “text ease of processing.” We employed these assumptions as the basis of two classes of evaluation metrics (Section 3). On the other hand, Kintsch (1993) proposed two dichotomies for the classification of human inferences, including the knowledge-based ones that are performed in the C–I model.",
+      "section_id": "sec_5",
+      "start_offset": 670,
+      "end_offset": 1358
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": "However, Graesser et al. (1994) indicated that this distinction is ambiguous because there is a continuum between the two states that depends on individuals.",
+      "section_id": "sec_5",
+      "start_offset": 1420,
+      "end_offset": 1577
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": "However, Graesser et al. (1994) indicated that this distinction is ambiguous because there is a continuum between the two states that depends on individuals. Therefore, this dichotomy is not suited for empirical evaluation, which we are working on attempting. The second is whether inferences are retrieved or generated. Retrieved means that the information used for inference is retrieved from context. In contrast, when inferences are generated, the reader uses external knowledge going beyond the context. A similar distinction was proposed by McNamara and Magliano (2009): bridging and elaboration.",
+      "section_id": "sec_5",
+      "start_offset": 1420,
+      "end_offset": 2022
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "Based on McNamara and Magliano (2009)’s depiction of text comprehension, we adopted two classes for the evaluation of RC datasets: prerequisite skills and readability.",
+      "section_id": "sec_6",
+      "start_offset": 0,
+      "end_offset": 167
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "Based on McNamara and Magliano (2009)’s depiction of text comprehension, we adopted two classes for the evaluation of RC datasets: prerequisite skills and readability. We refined the prerequisite skills (Section 3.1) for RC that were proposed by Sugawara et al. (2017) and Sugawara and Aizawa (2016) using the insights mentioned in the previous section.",
+      "section_id": "sec_6",
+      "start_offset": 0,
+      "end_offset": 353
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "Based on McNamara and Magliano (2009)’s depiction of text comprehension, we adopted two classes for the evaluation of RC datasets: prerequisite skills and readability. We refined the prerequisite skills (Section 3.1) for RC that were proposed by Sugawara et al. (2017) and Sugawara and Aizawa (2016) using the insights mentioned in the previous section.",
+      "section_id": "sec_6",
+      "start_offset": 0,
+      "end_offset": 353
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "rics according to the distinctions of human inferences, as discussed by Kintsch (1993) and McNamara and Magliano (2009), and according to the classification of entailment phenomena by Dagan et al.",
+      "section_id": "sec_6",
+      "start_offset": 1013,
+      "end_offset": 1209
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "rics according to the distinctions of human inferences, as discussed by Kintsch (1993) and McNamara and Magliano (2009), and according to the classification of entailment phenomena by Dagan et al.",
+      "section_id": "sec_6",
+      "start_offset": 1013,
+      "end_offset": 1209
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "rics according to the distinctions of human inferences, as discussed by Kintsch (1993) and McNamara and Magliano (2009), and according to the classification of entailment phenomena by Dagan et al. (2013) and LoBue and Yates (2011).",
+      "section_id": "sec_6",
+      "start_offset": 1013,
+      "end_offset": 1244
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "rics according to the distinctions of human inferences, as discussed by Kintsch (1993) and McNamara and Magliano (2009), and according to the classification of entailment phenomena by Dagan et al. (2013) and LoBue and Yates (2011). Readability metrics (Section 3.",
+      "section_id": "sec_6",
+      "start_offset": 1013,
+      "end_offset": 1276
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975).",
+      "section_id": "sec_7",
+      "start_offset": 329,
+      "end_offset": 439
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013).",
+      "section_id": "sec_7",
+      "start_offset": 742,
+      "end_offset": 850
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "This skill is similar to direct reference (Clark, 1975).",
+      "section_id": "sec_7",
+      "start_offset": 851,
+      "end_offset": 907
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "This skill is inspired by the concept of indirect reference in the literature (Clark, 1975).",
+      "section_id": "sec_7",
+      "start_offset": 2083,
+      "end_offset": 2175
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": null,
+      "sentence": "By refining Sugawara et al. (2017)’s ten reading comprehension skills, we reorganized thirteen prerequisite skills in total, which are presented below.",
+      "section_id": "sec_7",
+      "start_offset": 0,
+      "end_offset": 151
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975). This skill is a renamed version of list/enumeration used in the original classification to emphasize its scope for multiple objects. 2. Mathematical reasoning∗: We merged statistical and quantitative reasoning with mathematical reasoning. This skill is a renamed version of mathematical operations. 3. Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013). This skill is similar to direct reference (Clark, 1975). 4. Logical reasoning∗: We reorganized this skill as understanding predicate logic, e.g., conditionals, quantifiers, negation, and transitivity. Note that mathematical reasoning and this skill are intended to align with offline skills mentioned by Graesser et al. (1994). 5.",
+      "section_id": "sec_7",
+      "start_offset": 329,
+      "end_offset": 1181
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975). This skill is a renamed version of list/enumeration used in the original classification to emphasize its scope for multiple objects. 2. Mathematical reasoning∗: We merged statistical and quantitative reasoning with mathematical reasoning. This skill is a renamed version of mathematical operations. 3. Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013). This skill is similar to direct reference (Clark, 1975). 4. Logical reasoning∗: We reorganized this skill as understanding predicate logic, e.g., conditionals, quantifiers, negation, and transitivity. Note that mathematical reasoning and this skill are intended to align with offline skills mentioned by Graesser et al. (1994). 5. Analogy∗: Understanding of metaphors including metonymy and synecdoche. See LoBue and Yates (2011) for examples of synecdoche.",
+      "section_id": "sec_7",
+      "start_offset": 329,
+      "end_offset": 1308
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975). This skill is a renamed version of list/enumeration used in the original classification to emphasize its scope for multiple objects. 2. Mathematical reasoning∗: We merged statistical and quantitative reasoning with mathematical reasoning. This skill is a renamed version of mathematical operations. 3. Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013). This skill is similar to direct reference (Clark, 1975). 4. Logical reasoning∗: We reorganized this skill as understanding predicate logic, e.g., conditionals, quantifiers, negation, and transitivity. Note that mathematical reasoning and this skill are intended to align with offline skills mentioned by Graesser et al. (1994). 5. Analogy∗: Understanding of metaphors including metonymy and synecdoche. See LoBue and Yates (2011) for examples of synecdoche. 6. Causal relation: Understanding of causality that is represented by explicit expressions of why, because, the reason... (only if they exist). 7. Spatiotemporal relation: Understanding of spatial and/or temporal relationships between multiple entities, events, and states. For commonsense reasoning in the original classification, we defined the following four categories, which can be jointly required. 8. Ellipsis†: Recognizing implicit/omitted information (argument, predicate, quantifier, time, place). This skill is inspired by Dagan et al. (2013) and the discussion of Sugawara et al.",
+      "section_id": "sec_7",
+      "start_offset": 329,
+      "end_offset": 1900
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975). This skill is a renamed version of list/enumeration used in the original classification to emphasize its scope for multiple objects. 2. Mathematical reasoning∗: We merged statistical and quantitative reasoning with mathematical reasoning. This skill is a renamed version of mathematical operations. 3. Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013). This skill is similar to direct reference (Clark, 1975). 4. Logical reasoning∗: We reorganized this skill as understanding predicate logic, e.g., conditionals, quantifiers, negation, and transitivity. Note that mathematical reasoning and this skill are intended to align with offline skills mentioned by Graesser et al. (1994). 5. Analogy∗: Understanding of metaphors including metonymy and synecdoche. See LoBue and Yates (2011) for examples of synecdoche. 6. Causal relation: Understanding of causality that is represented by explicit expressions of why, because, the reason... (only if they exist). 7. Spatiotemporal relation: Understanding of spatial and/or temporal relationships between multiple entities, events, and states. For commonsense reasoning in the original classification, we defined the following four categories, which can be jointly required. 8. Ellipsis†: Recognizing implicit/omitted information (argument, predicate, quantifier, time, place). This skill is inspired by Dagan et al. (2013) and the discussion of Sugawara et al. (2017). 9.",
+      "section_id": "sec_7",
+      "start_offset": 329,
+      "end_offset": 1911
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Object tracking∗: Jointly tracking or grasping of multiple objects, including set or membership (Clark, 1975). This skill is a renamed version of list/enumeration used in the original classification to emphasize its scope for multiple objects. 2. Mathematical reasoning∗: We merged statistical and quantitative reasoning with mathematical reasoning. This skill is a renamed version of mathematical operations. 3. Coreference resolution∗: This skill has a small modification: it includes one anaphora (Dagan et al., 2013). This skill is similar to direct reference (Clark, 1975). 4. Logical reasoning∗: We reorganized this skill as understanding predicate logic, e.g., conditionals, quantifiers, negation, and transitivity. Note that mathematical reasoning and this skill are intended to align with offline skills mentioned by Graesser et al. (1994). 5. Analogy∗: Understanding of metaphors including metonymy and synecdoche. See LoBue and Yates (2011) for examples of synecdoche. 6. Causal relation: Understanding of causality that is represented by explicit expressions of why, because, the reason... (only if they exist). 7. Spatiotemporal relation: Understanding of spatial and/or temporal relationships between multiple entities, events, and states. For commonsense reasoning in the original classification, we defined the following four categories, which can be jointly required. 8. Ellipsis†: Recognizing implicit/omitted information (argument, predicate, quantifier, time, place). This skill is inspired by Dagan et al. (2013) and the discussion of Sugawara et al. (2017). 9. Bridging†: Inferences between two facts supported by grammatical and lexical knowledge (e.g., synonymy, hypernymy, thematic role, part of events, idioms, and apposition). This skill is inspired by the concept of indirect reference in the literature (Clark, 1975). Note that we excluded direct reference because it is coreference resolution (pronominalization) or elaboration (epithets). 10. Elaboration†: Inference using known facts, general knowledge (e.g., kinship, exchange, typical event sequence, and naming), and implicit relations (e.g., noun-compound and possessive) (see Dagan et al. (2013) for details).",
+      "section_id": "sec_7",
+      "start_offset": 329,
+      "end_offset": 2525
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": null,
+      "sentence": "as second language learning (Razon and Barnden, 2015) and text simplification (Aluisio et al.",
+      "section_id": "sec_8",
+      "start_offset": 1001,
+      "end_offset": 1094
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "as second language learning (Razon and Barnden, 2015) and text simplification (Aluisio et al., 2010), and various aspects, such as development measures of second language acquisition (Vajjala and Meurers, 2012) and discourse relations (Pitler and Nenkova, 2008).",
+      "section_id": "sec_8",
+      "start_offset": 1001,
+      "end_offset": 1263
+    },
+    {
+      "reference_id": "ref_32",
+      "marker": null,
+      "sentence": ", 2010), and various aspects, such as development measures of second language acquisition (Vajjala and Meurers, 2012) and discourse relations (Pitler and Nenkova, 2008).",
+      "section_id": "sec_8",
+      "start_offset": 1094,
+      "end_offset": 1263
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": ", 2010), and various aspects, such as development measures of second language acquisition (Vajjala and Meurers, 2012) and discourse relations (Pitler and Nenkova, 2008).",
+      "section_id": "sec_8",
+      "start_offset": 1094,
+      "end_offset": 1263
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "as second language learning (Razon and Barnden, 2015) and text simplification (Aluisio et al., 2010), and various aspects, such as development measures of second language acquisition (Vajjala and Meurers, 2012) and discourse relations (Pitler and Nenkova, 2008). Of these, we used the classification of linguistic features proposed by Vajjala and Meurers (2012). This is because they presented a comparison of a wide range of linguistic features focusing on second language acquisition and their method can be applied to plain text.",
+      "section_id": "sec_8",
+      "start_offset": 1001,
+      "end_offset": 1533
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "as second language learning (Razon and Barnden, 2015) and text simplification (Aluisio et al., 2010), and various aspects, such as development measures of second language acquisition (Vajjala and Meurers, 2012) and discourse relations (Pitler and Nenkova, 2008). Of these, we used the classification of linguistic features proposed by Vajjala and Meurers (2012). This is because they presented a comparison of a wide range of linguistic features focusing on second language acquisition and their method can be applied to plain text.2 We list the readability metrics in Figure 2, which were reported by Vajjala and Meurers (2012) as the top ten features that affect human readability.",
+      "section_id": "sec_8",
+      "start_offset": 1001,
+      "end_offset": 1684
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "Pitler and Nenkova (2008)’s work is more suitable for measuring text quality.",
+      "section_id": "sec_9",
+      "start_offset": 188,
+      "end_offset": 265
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": "CNN/Daily Mail (Hermann et al., 2015) is anonymized and contains some errors (Chen et al.",
+      "section_id": "sec_11",
+      "start_offset": 544,
+      "end_offset": 633
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": ", 2015) is anonymized and contains some errors (Chen et al., 2016), so it did not seem to be suitable for annotation.",
+      "section_id": "sec_11",
+      "start_offset": 574,
+      "end_offset": 691
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "We considered CBTest (Hill et al., 2016) to be for language modeling tasks rather than RC task and excluded it.",
+      "section_id": "sec_11",
+      "start_offset": 692,
+      "end_offset": 803
+    },
+    {
+      "reference_id": "ref_21",
+      "marker": null,
+      "sentence": "LAMBADA (Paperno et al., 2016)’s texts are formatted for machine reading,",
+      "section_id": "sec_11",
+      "start_offset": 804,
+      "end_offset": 877
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": "This amount of questions was considered to be sufficient for the analysis of RC datasets as performed by Chen et al. (2016). The questions were sampled from the gold-standard dataset of QA4MRE and the development sets of the other RC datasets.",
+      "section_id": "sec_11",
+      "start_offset": 85,
+      "end_offset": 328
+    },
+    {
+      "reference_id": "ref_2",
+      "marker": null,
+      "sentence": "Such datasets can be placed in a continuum based on the grades of the metrics and applied to each step of the development, like in curriculum learning (Bengio et al., 2009) and transfer learning (Pan and Yang, 2010).",
+      "section_id": "sec_13",
+      "start_offset": 690,
+      "end_offset": 906
+    },
+    {
+      "reference_id": "ref_20",
+      "marker": null,
+      "sentence": ", 2009) and transfer learning (Pan and Yang, 2010).",
+      "section_id": "sec_13",
+      "start_offset": 855,
+      "end_offset": 906
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": "On the other hand, narrative texts have a close correspondence to our everyday experience, such as the emotion and intention of characters (Graesser et al., 1994).",
+      "section_id": "sec_13",
+      "start_offset": 1151,
+      "end_offset": 1314
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": ", the main point or moral of the text, goal of a story, and intention of characters) from the broad context (Graesser et al., 1994).",
+      "section_id": "sec_13",
+      "start_offset": 1586,
+      "end_offset": 1718
+    },
+    {
+      "reference_id": "ref_26",
+      "marker": null,
+      "sentence": "Such questions based on global coherence may be generated by techniques of abstractive text summarization (Rush et al., 2015; Ganesan et al., 2010).",
+      "section_id": "sec_13",
+      "start_offset": 1858,
+      "end_offset": 2006
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "Such questions based on global coherence may be generated by techniques of abstractive text summarization (Rush et al., 2015; Ganesan et al., 2010).",
+      "section_id": "sec_13",
+      "start_offset": 1858,
+      "end_offset": 2006
+    }
+  ],
+  "figures": [],
+  "hidden_text_findings": []
+}

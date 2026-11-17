@@ -192,29 +192,15 @@ class SectionPassStep:
             if not response.valid or not isinstance(response.content, SectionObservations):
                 raise InvalidEvaluationOutput("O passe por seção retornou uma saída inválida.")
             output = response.content
-            allowed_criteria = {item["key"] for item in criteria}
             output_ids = [item.id for item in output.observations]
-            if output.section_id != section_id or len(output_ids) != len(set(output_ids)):
-                raise InvalidEvaluationOutput(
-                    "A saída do passe não corresponde à seção solicitada."
-                )
-            for observation in output.observations:
-                if (
-                    observation.section_id != section_id
-                    or observation.role is not role
-                    or not {criterion.value for criterion in observation.criteria}
-                    <= allowed_criteria
-                ):
-                    raise InvalidEvaluationOutput(
-                        "A saída do passe contém seção, papel ou critério incompatível."
-                    )
-                result.append(
-                    observation.model_copy(
-                        update={
-                            "id": (f"{section_id}:{role.value}:{chunk_index + 1}:{observation.id}")
-                        }
-                    )
-                )
+            if len(output_ids) != len(set(output_ids)):
+                raise InvalidEvaluationOutput("A saída do passe repete ids de observação.")
+            result.extend(
+                kept
+                for observation in output.observations
+                if (kept := _scoped(observation, section_id, role, criteria, f"{chunk_index + 1}"))
+                is not None
+            )
         return tuple(result)
 
     @staticmethod
@@ -233,6 +219,33 @@ class SectionPassStep:
                 "observations": tuple(observations.values()),
             }
         )
+
+
+def _scoped(
+    observation: Observation,
+    section_id: str,
+    role: SectionRole,
+    criteria: Sequence[dict[str, object]],
+    part: str,
+) -> Observation | None:
+    """A observação presa à seção, ao papel e aos critérios do pedido.
+
+    Seção e papel o código já sabe: ficam os do pedido, mesmo que o modelo escreva outros (com
+    modelos reais, um desvio desses derrubava o avaliador inteiro). Critério fora da lista do
+    papel sai; a observação que fica sem nenhum é descartada.
+    """
+    allowed = {str(item["key"]) for item in criteria}
+    kept = tuple(c for c in observation.criteria if c.value in allowed)
+    if not kept:
+        return None
+    return observation.model_copy(
+        update={
+            "id": f"{section_id}:{role.value}:{part}:{observation.id}",
+            "section_id": section_id,
+            "role": role,
+            "criteria": kept,
+        }
+    )
 
 
 def split_section_text(text: str, *, max_chars: int = MAX_SECTION_CHARS) -> tuple[str, ...]:

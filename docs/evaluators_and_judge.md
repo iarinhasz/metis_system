@@ -46,7 +46,7 @@ Cada passe por seção tem uma tarefa pequena e um checklist próprio. Mas parte
 - **Mapa do documento.** Montado em código no E2, sem LLM (ver [Perfil e Questions](questions_and_profiling.md#papéis-das-seções-e-mapa-do-documento)): abstract, seções com papel e primeira frase, legendas de figuras e tabelas.
   - Com ele, cada passe sabe o que existe fora da sua seção.
   - Na dúvida, o passe marca a observação como `possibly_elsewhere` em vez de afirmar que algo falta.
-- **O artigo é dado, não instrução.** Payloads delimitados e conferência de evidência são defesas previstas para E4. O scan de texto oculto do E1 ainda não está implementado.
+- **O artigo é dado, não instrução.** Payloads delimitados e conferência de evidência são defesas previstas para E4. Desde 15/11, o E1 procura texto oculto no PDF (1.7), e o E3 transforma o achado em risco.
 - **Ordem do prompt.** O conteúdo do artigo vem antes da tarefa, como prefixo estável, para aproveitar o caching de prompt. Isso pesa sobretudo no juiz, que recebe o artigo inteiro em toda rodada.
 
 ## Papéis e critérios
