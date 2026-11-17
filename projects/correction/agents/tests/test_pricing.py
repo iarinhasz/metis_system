@@ -24,6 +24,17 @@ def test_the_catalog_uses_only_the_three_project_models() -> None:
     assert models == {"gemini-2.5-flash", "gpt-5.6-luna", "gpt-5.4-nano"}
 
 
+def test_the_live_contract_models_are_project_models() -> None:
+    """O merge da main na dev (17/11) colou de volta um bloco antigo com `gpt-4o-mini`."""
+    settings = MetisSettings(_env_file=None)
+
+    assert {settings.agno_contract_openai_model, settings.agno_contract_google_model} <= {
+        "gemini-2.5-flash",
+        "gpt-5.6-luna",
+        "gpt-5.4-nano",
+    }
+
+
 def test_cache_is_charged_once_at_its_own_rate() -> None:
     assert Pricing().cost(
         Provider.OPENAI,
