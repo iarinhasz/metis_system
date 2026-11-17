@@ -1,10 +1,11 @@
 # Checagem de integridade (E3)
 
-**Desenho planejado, revisto em 13/11/2026.** O app `integrity/`, seus modelos,
-corpus, detectores e APIs acadêmicas abaixo ainda não estão implementados.
-`IntegrityStage` hoje apenas retorna `risk=low` para seguir o pipeline. O gate
-existe na máquina de estados; esse risco de stub não é uma checagem do artigo.
-E5 declara `not_checked`, com risco desconhecido. [Estado e metas](status_and_metrics.md).
+**Desenho planejado, revisto em 13/11/2026.** A integração completa do app
+`integrity/`, seus modelos, corpus e APIs ainda não está concluída. A detecção
+lexical e a resolução de referências já têm módulos próprios, mas
+`IntegrityStage` continua sendo um stub que retorna `risk=low`; isso não é uma
+checagem do artigo. O gate existe na máquina de estados; E5 declara `not_checked`,
+com risco desconhecido. [Estado e metas](status_and_metrics.md).
 
 ## Objetivo e princípios
 
@@ -33,7 +34,12 @@ A resolução das referências roda **primeiro**, porque as duas fases dependem 
 
 ## Fase 0 — Texto oculto e prompt injection
 
-O E1 encontra o texto oculto (ver [Extração](extraction.md)), e aqui ele vira achado. Instrução escondida dirigida a revisores IA tem severidade alta, porque é uma tentativa de manipular a avaliação.
+O E1 varre localmente o PDF com `pdfplumber` (ver [Extração](extraction.md)) e
+anexa os achados estruturados ao contrato. São sinalizados texto branco/da cor do
+fundo, fonte abaixo de 2 pt, texto fora da página, texto sob imagens e padrões de
+instrução escondida. Instrução dirigida a revisores de IA tem severidade alta,
+porque é uma tentativa de manipular a avaliação; o conteúdo encontrado é evidência,
+nunca uma instrução a executar.
 
 ## Fase 1 — Similaridade, em funil
 
@@ -72,6 +78,9 @@ Do mais barato ao mais caro:
 1. **Existência, em cascata.**
    - Com DOI → Crossref (404 é alerta) + OpenAlex por DOI (consulta grátis; traz `is_retracted`, abstract e link de acesso aberto).
    - Sem DOI → Crossref `query.bibliographic` com a string crua + Semantic Scholar `paper/search/match`.
+   - A implementação em `integrity/resolution.py` tenta Crossref, depois OpenAlex
+     quando há DOI e, se necessário, Semantic Scholar; falhas transitórias propagam
+     pelos clientes `scholarly/`.
    - Aceite: título com similaridade ≥ ~0,9, mesmo sobrenome do primeiro autor e diferença de ano ≤ 1.
    - Caso duvidoso → LLM, medindo a taxa de falso positivo.
    - Heurísticas de referência: `halref` e `RefChecker` (MIT).
