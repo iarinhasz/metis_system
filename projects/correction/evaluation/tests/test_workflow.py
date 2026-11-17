@@ -24,6 +24,7 @@ from projects.correction.evaluation.workflow import (
     run_evaluation,
 )
 from projects.correction.metis.config import settings
+from projects.correction.pipeline.errors import InvalidEvaluationOutput
 
 
 def _whole_document_output(run: Run) -> dict[str, list[dict[str, object]]]:
@@ -316,6 +317,52 @@ def test_e4_retry_resumes_after_judge_failure_without_repeating_reviewers(run: R
     assert len(reviewer_calls_before_retry) == len(EvaluatorSlot)
     assert [call.name for call in factory.calls].count("whole_document_reviewer") == 3
     assert len(ReviewRound.latest_for_consolidation(prepared.pk)) == 3
+
+
+@pytest.mark.django_db(transaction=True)
+def test_e4_retry_finishes_after_a_failed_synthesis_without_a_stuck_judged_round(
+    run: Run,
+) -> None:
+    """O caso do run real: a síntese falha, o juiz não julga a rodada incompleta, e o retry
+    termina sem refazer os passes por seção nem as checagens."""
+    prepared = _prepare_run(run)
+    _advance_to_evaluation(prepared)
+    task_id = "e4"
+    Run.objects.filter(pk=prepared.pk).update(
+        config_snapshot={
+            **prepared.config_snapshot,
+            "evaluation_mode": EvaluationMode.SECTIONED.value,
+        },
+    )
+    active_run = Run.for_evaluation(prepared.pk, task_id)
+    scripts = _sectioned_scripts(active_run)
+    slots = len(EvaluatorSlot)
+    factory = FakeAgentFactory(
+        str(prepared.pk),
+        Stage.EVALUATION,
+        task_id=task_id,
+        scripts={
+            "sections/method": [scripts["sections/method"]] * slots,
+            "cross_checker": [scripts["cross_checker"]] * slots,
+            # Cada slot pede a síntese duas vezes e não recebe nada; no retry, recebe.
+            "synthesizer": [{"criteria": []}] * (2 * slots) + [scripts["synthesizer"]] * slots,
+            "judge": [scripts["judge"]] * slots,
+        },
+    )
+
+    with pytest.raises(InvalidEvaluationOutput, match="não trouxe os critérios"):
+        run_evaluation(str(prepared.pk), task_id, factory=factory)
+    names = [call.name for call in factory.calls]
+    assert names.count("judge") == 0
+    assert not any(item.verdicts.exists() for item in ReviewRound.objects.filter(run=prepared))
+
+    result = run_evaluation(str(prepared.pk), task_id, factory=factory)
+
+    names = [call.name for call in factory.calls]
+    assert result["review_rounds"] == {slot.value: 1 for slot in EvaluatorSlot}
+    assert names.count("sections/method") == slots
+    assert names.count("cross_checker") == slots
+    assert names.count("judge") == slots
 
 
 def test_builder_uses_three_slots_and_snapshot_mode() -> None:

@@ -3,7 +3,7 @@
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Final, Protocol
 
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.runner import AgentPayload
@@ -26,6 +26,50 @@ from projects.correction.evaluation.models import ReviewRound
 from projects.correction.pipeline.errors import InvalidEvaluationOutput
 from projects.correction.queries.attempts.run import RunConflict
 from projects.correction.questions.criteria import CriterionConfig, PaperCriteria
+
+SYNTHESIS_ATTEMPTS: Final = 2
+
+
+def _cleaned(
+    items: Sequence[CriterionSynthesis],
+    pending: tuple[Criterion, ...],
+    config: dict[Criterion, CriterionConfig],
+    observations: Sequence[Observation],
+    checks: Sequence[CrossCheckResult],
+) -> list[CriterionSynthesis]:
+    """As sínteses aproveitáveis da resposta, uma por critério pedido.
+
+    Sai o critério não pedido ou repetido e a nota fora da escala (o critério volta a faltar).
+    Das que ficam, saem as citações do texto (no modo por seção, a síntese cita as observações
+    e as checagens pelo id) e os ids que não existem ou são de outro critério.
+    """
+    obs_by_id = {item.id: item for item in observations}
+    checks_by_id = {item.id: item for item in checks}
+    kept: dict[Criterion, CriterionSynthesis] = {}
+    for item in items:
+        key = item.criterion_key
+        if key not in pending or key in kept or item.grade not in config[key].grades:
+            continue
+        kept[key] = item.model_copy(
+            update={
+                "evidence": (),
+                "observation_ids": tuple(
+                    dict.fromkeys(
+                        i
+                        for i in item.observation_ids
+                        if i in obs_by_id and key in obs_by_id[i].criteria
+                    )
+                ),
+                "check_ids": tuple(
+                    dict.fromkeys(
+                        i
+                        for i in item.check_ids
+                        if i in checks_by_id and key in checks_by_id[i].criteria
+                    )
+                ),
+            }
+        )
+    return list(kept.values())
 
 
 class SynthesisCheckpoints(Protocol):
@@ -67,54 +111,50 @@ class SynthesisStep:
         if not pending:
             return state
 
-        criteria_payload = [
-            {
-                "key": key.value,
-                "label": config[key].label,
-                "question": config[key].question,
-                "allowed_grades": config[key].grades,
-                "rubric_text": (
-                    rubric_fields[key.value].rubric_text if key.value in rubric_fields else None
-                ),
-            }
-            for key in pending
-        ]
         observations: tuple[Observation, ...] = tuple(
             item for item in state.observations if set(item.criteria) & set(pending)
         )
         checks: tuple[CrossCheckResult, ...] = tuple(
             item for item in state.cross_checks if set(item.criteria) & set(pending)
         )
-        source = {
-            "slot": self.slot.value,
-            "paper_type": self.context.profile.paper_type.value,
-            "criteria": criteria_payload,
-            "observations": [item.model_dump(mode="json") for item in observations],
-            "cross_checks": [item.model_dump(mode="json") for item in checks],
-            "integrity_summary": self.context.integrity_summary,
-            "related_works": (
-                [item.model_dump(mode="json") for item in self.context.related_works]
-                if Criterion.ORIGINALITY in pending
-                else []
-            ),
-        }
-
-        self.checkpoints.assert_owned()
-        response = self.factory.synthesizer(
-            self.slot.value,
-            output_schema=CriteriaSynthesis,
-            spec=self.context.evaluator(self.slot).model,
-        ).run(
-            AgentPayload(
-                "Sintetize os itens e critérios fornecidos.",
-                article=json.dumps(source, ensure_ascii=False),
+        # Com modelos reais, a resposta vem quase certa: um critério repetido ou faltando,
+        # citações do texto no lugar dos ids, um id que não existe. O código limpa o que dá e
+        # pede de novo só os critérios que faltaram, uma vez, como o E1 faz com as seções.
+        additions: dict[Criterion, CriterionSynthesis] = {}
+        missing = pending
+        for _ in range(SYNTHESIS_ATTEMPTS):
+            hint = (
+                ""
+                if missing == pending
+                else " Faltaram estes critérios na resposta anterior: "
+                + ", ".join(key.value for key in missing)
+                + "."
             )
-        )
-        if not response.valid or not isinstance(response.content, CriteriaSynthesis):
-            raise InvalidEvaluationOutput("A síntese por critério retornou uma saída inválida.")
-        additions = response.content.criteria
-        self._validate(additions, pending, config, observations, checks)
-        updated = self._merge(state, additions, replace_existing=bool(refresh))
+            source = self._source(missing, config, rubric_fields, observations, checks)
+            self.checkpoints.assert_owned()
+            response = self.factory.synthesizer(
+                self.slot.value,
+                output_schema=CriteriaSynthesis,
+                spec=self.context.evaluator(self.slot).model,
+            ).run(
+                AgentPayload(
+                    "Sintetize os itens e critérios fornecidos." + hint,
+                    article=json.dumps(source, ensure_ascii=False),
+                )
+            )
+            if response.valid and isinstance(response.content, CriteriaSynthesis):
+                for item in _cleaned(
+                    response.content.criteria, missing, config, observations, checks
+                ):
+                    additions.setdefault(item.criterion_key, item)
+            missing = tuple(key for key in pending if key not in additions)
+            if not missing:
+                break
+        if missing:
+            names = ", ".join(key.value for key in missing)
+            raise InvalidEvaluationOutput(f"A síntese não trouxe os critérios: {names}.")
+        additions_in_order = tuple(additions[key] for key in pending)
+        updated = self._merge(state, additions_in_order, replace_existing=bool(refresh))
         if mark_changed:
             changed = {(item.item_type, item.item_key): item for item in updated.changed_items}
             changed.update(
@@ -143,44 +183,44 @@ class SynthesisStep:
             raise InvalidEvaluationOutput("O método não cobre o tipo de artigo do Run.")
         return paper
 
-    @staticmethod
-    def _validate(
-        additions: tuple[CriterionSynthesis, ...],
+    def _source(
+        self,
         pending: tuple[Criterion, ...],
         config: dict[Criterion, CriterionConfig],
+        rubric_fields: dict[str, Any],
         observations: Sequence[Observation],
         checks: Sequence[CrossCheckResult],
-    ) -> None:
-        keys = tuple(item.criterion_key for item in additions)
-        if len(keys) != len(set(keys)) or set(keys) != set(pending):
-            raise InvalidEvaluationOutput(
-                "A síntese não retornou exatamente os critérios solicitados."
-            )
-        obs_by_id = {item.id: item for item in observations}
-        checks_by_id = {item.id: item for item in checks}
-        for item in additions:
-            allowed_grades = config[item.criterion_key].grades
-            if item.grade not in allowed_grades:
-                raise InvalidEvaluationOutput("A síntese usou nota fora da escala do critério.")
-            if item.evidence:
-                raise InvalidEvaluationOutput(
-                    "A síntese sectioned deve referenciar observações e checagens por id."
-                )
-            if len(item.observation_ids) != len(set(item.observation_ids)) or any(
-                item_id not in obs_by_id or item.criterion_key not in obs_by_id[item_id].criteria
-                for item_id in item.observation_ids
-            ):
-                raise InvalidEvaluationOutput(
-                    "A síntese cita observação inexistente ou de outro critério."
-                )
-            if len(item.check_ids) != len(set(item.check_ids)) or any(
-                item_id not in checks_by_id
-                or item.criterion_key not in checks_by_id[item_id].criteria
-                for item_id in item.check_ids
-            ):
-                raise InvalidEvaluationOutput(
-                    "A síntese cita checagem inexistente ou de outro critério."
-                )
+    ) -> dict[str, object]:
+        return {
+            "slot": self.slot.value,
+            "paper_type": self.context.profile.paper_type.value,
+            "criteria": [
+                {
+                    "key": key.value,
+                    "label": config[key].label,
+                    "question": config[key].question,
+                    "allowed_grades": config[key].grades,
+                    "rubric_text": (
+                        rubric_fields[key.value].rubric_text if key.value in rubric_fields else None
+                    ),
+                }
+                for key in pending
+            ],
+            "observations": [
+                item.model_dump(mode="json")
+                for item in observations
+                if set(item.criteria) & set(pending)
+            ],
+            "cross_checks": [
+                item.model_dump(mode="json") for item in checks if set(item.criteria) & set(pending)
+            ],
+            "integrity_summary": self.context.integrity_summary,
+            "related_works": (
+                [item.model_dump(mode="json") for item in self.context.related_works]
+                if Criterion.ORIGINALITY in pending
+                else []
+            ),
+        }
 
     @staticmethod
     def _merge(

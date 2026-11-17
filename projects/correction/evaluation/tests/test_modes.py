@@ -206,3 +206,22 @@ def test_whole_document_checkpoint_persists_its_mode_and_refuses_stale_owner(run
     Run.objects.filter(pk=run.pk).update(current_task_id="replacement-task")
     with pytest.raises(RunConflict):
         checkpoints.store_state(state)
+
+
+def test_whole_document_asks_again_for_a_criterion_without_valid_evidence() -> None:
+    context = _context(EvaluationMode.WHOLE_DOCUMENT)
+    first = _output(context)
+    retry = _output(context)
+    criteria, again = first["criteria"], retry["criteria"]
+    assert isinstance(criteria, list) and isinstance(again, list)
+    criteria[0]["evidence"] = [{"quote": "Trecho", "section_id": "section-missing"}]
+    retry["criteria"] = again[:1]
+    factory = FakeAgentFactory(scripts={"whole_document_reviewer": [first, retry]})
+    step = WholeDocumentStep(context, EvaluatorSlot.A, factory, FakeCheckpoints())
+
+    state = step.execute()
+
+    assert len(factory.calls) == 2
+    asked = json.loads(factory.calls[1].payload.prompt)
+    assert [item["key"] for item in asked["criteria"]] == [criteria[0]["criterion_key"]]
+    assert len(state.criteria) == len(criteria)
