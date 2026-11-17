@@ -95,4 +95,5 @@ def to_extracted_document(article: ExtractedArticle) -> ExtractedDocument:
         references=references,
         citation_mentions=citation_mentions,
         figures=figures,
+        hidden_text_findings=article.hidden_text_findings,
     )

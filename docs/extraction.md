@@ -116,8 +116,8 @@ Desde a 1.8, cada `Figure` traz `description`, nula quando a chamada falhou: um 
 `ExtractedArticle` continua sendo o resultado persistido pelo E1. A propriedade
 `Extraction.document` adapta esse resultado para `ExtractedDocument` sob demanda;
 não altera o JSON salvo nem a chave do cache. E2, E4 e o benchmark de profiling
-consomem o contrato adaptado. Os achados de texto oculto da 1.7 ainda não estão
-incluídos: a interface dessa etapa precisa ser acordada com quem a implementa.
+consomem o contrato adaptado. `hidden_text_findings` registra achados de texto
+microscópico, invisível, fora da página ou com instruções dirigidas a revisores IA.
 
 ## Contrato `ExtractedDocument` (M1.1)
 
@@ -202,7 +202,7 @@ precisa medir o limite de páginas e fazer a verificação de carga.
 - **Citações:** chamada em número sobrescrito ("…doença¹⁻³", comum na área da saúde) não é reconhecida; num artigo numérico, um intervalo como "[1, 2]" no meio de uma fórmula vira citação; no autor-ano, "Silva (2020)" com duas entradas de Silva 2020 que nem o segundo autor nem o "et al." desempatam fica sem ligação.
 - **Tabela cortada no meio:** a conferência só pega a tabela que vem só com o cabeçalho. A Table 11 do ICLR 410 veio com 67 números numa rodada e 181 na seguinte. Os números que vêm estão no PDF (100% nas 16 tabelas conferidas), mas pode faltar linha.
 - **Julgamento brando:** nas 19 figuras e tabelas da calibração, o modelo disse sempre que a figura sustenta as frases e não apontou nenhum problema. Serve de ponto de partida para o E2, não de veredito.
-- **Ainda não feito:** o recorte da imagem (adiado) e a integração dos achados de texto oculto (1.7, Integridade) ao `ExtractedDocument` (1.11). O contrato PeerRead ainda aguarda a geração de fixtures reais quando o corpus estiver disponível.
+- **Ainda não feito:** o recorte da imagem (adiado). Os achados de texto oculto são extraídos pelo E1 e expostos no contrato `ExtractedDocument`; a checagem de risco ocorre no E3.
 
 ## Como testar
 
