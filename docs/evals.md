@@ -95,13 +95,44 @@ reconstruídos a partir da configuração atual. Quando o legado não guardou a 
 conhecida de um custo incompleto, ela permanece nula.
 Contadores de cache e raciocínio ausentes no legado também ficam nulos.
 
-## Integrar os próximos benchmarks
+## Benchmarks de integridade
 
-`bench_reviews`, `bench_judge`, `bench_plagiarism` e os benchmarks da Fase 2 são as
-próximas integrações do plano completo da 6.1. Cada runner fornecerá um
-`EvaluationReport` com amostra, política, versões e métricas próprias, usando
-`output_path` e `write_artifact` para guardar o resultado. Mudanças na definição
-das métricas ou na aplicação dos rótulos exigem uma nova `benchmark_version`.
+Os comandos `bench_plagiarism` e `bench_integrity_phase2` adaptam seus resultados
+ao mesmo `EvaluationReport` e usam `output_path`/`write_artifact` para criar
+artefatos imutáveis quando `--execute` é informado:
+
+```sh
+# Plágio sintético derivado das fixtures locais do PeerRead.
+uv run python manage.py bench_plagiarism --execute --limit 5
+
+# Exige JSONL local de referências ou casos de alinhamento normalizados.
+uv run python manage.py bench_integrity_phase2 \
+  --dataset planted_references --input references.jsonl --execute
+uv run python manage.py bench_integrity_phase2 \
+  --dataset sciciteval --input sciciteval-normalized.jsonl --execute
+uv run python manage.py bench_integrity_phase2 \
+  --dataset citation_integrity --input citation-integrity-normalized.jsonl --execute
+```
+
+`bench_plagiarism` mede os tipos literal, paráfrase, tradução e negativo; sem
+`--with-llm`, paráfrases e traduções não são geradas. Essa opção chama o agente
+reescritor e pode gerar custo externo. O comando de Fase 2 chama o agente de
+alinhamento para `sciciteval`/`citation_integrity`; `--execute` controla apenas
+a gravação do artefato, não a execução do benchmark nem as chamadas do agente.
+Ambos imprimem o relatório especializado em stdout sem `--execute`; com a opção,
+imprimem o formato `metis.evals` e o caminho do novo arquivo. `--output` escolhe
+um destino explícito em diretório existente e recusa sobrescrever arquivos.
+
+Os artefatos registram versão do benchmark (`plagiarism-1` ou
+`integrity-phase2-1`), hash e ids do conjunto, parâmetros, métricas e hashes do
+código. Quando há chamadas a LLM, incluem `ModelSpec`, hashes dos prompts e
+resumo de uso. Os datasets SciCiteVal e Citation Integrity não são baixados pelo
+comando: o operador fornece JSONL normalizado e registra a procedência/versão.
+Testes com fakes verificam integração e formato, mas não calibram limiares nem
+comprovam qualidade científica. Mudanças na definição das métricas ou aplicação
+dos rótulos exigem nova `benchmark_version`.
+
+`bench_reviews` e `bench_judge` continuam como integrações futuras do plano.
 
 As execuções de desempenho e com provedores reais ficam fora do CI. Os testes
 regulares verificam contratos, histórico, comparação, dry-run e integração com

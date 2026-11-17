@@ -19,8 +19,8 @@ from projects.correction.extractor.session import AgnoSession, SessionOpener
 
 
 def extraction_version(config: DocumentConfig) -> str:
-    """Hash da config (modelo, prompts, limites) e dos arquivos de prompt."""
-    payload = config.model_dump_json() + fingerprint()
+    """Hash da config, dos prompts e da vers?o dos scanners locais."""
+    payload = config.model_dump_json() + fingerprint() + "hidden-text-scan-v1"
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 

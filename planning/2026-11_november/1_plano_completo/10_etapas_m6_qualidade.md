@@ -29,8 +29,14 @@ integrado; comando `compare_evals` com verificação de compatibilidade e leitur
 do baseline legado. Medições de desempenho continuam fora do CI.
 Ver [operação e contrato](../../../docs/evals.md).
 
-Os runners específicos `bench_reviews`, `bench_judge`, `bench_plagiarism` e os
-benchmarks da Fase 2 permanecem como próximas integrações do plano completo.
+**Integração de integridade (Fase 5):** `bench_plagiarism` e
+`bench_integrity_phase2` agora adaptam os relatórios ao contrato comum
+`metis.evals` (`plagiarism-1` e `integrity-phase2-1`) e gravam artefatos
+imutáveis com `--execute`. A camada preserva métricas/casos específicos, identidade
+do dataset e hashes do código; quando há LLM, registra specs, hashes dos prompts
+e uso. `bench_reviews` e `bench_judge` ainda são integrações futuras. Os testes
+com fakes não constituem medições científicas; Q11 e os baselines de Fase 2 seguem
+pendentes até rodar datasets versionados e rotulados.
 
 **Verificação da base:** 654 testes passaram em Python 3.14 e PostgreSQL 18, com
 5 contratos `llm` excluídos e o aviso de depreciação já existente do SDK Google.
