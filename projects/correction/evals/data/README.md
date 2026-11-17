@@ -129,9 +129,10 @@ fixa uma amostra piloto estratificada de 10 artigos (5 aceitos e 5 rejeitados)
 do split `test` do ICLR 2017. A seleção é determinística (seed 313) sobre os
 15 aceitos e 23 rejeitados identificados nessa revisão do dataset. O catálogo
 fixa o commit de origem, o título, o veredito `accepted`, URLs e SHA-256 dos PDFs.
-Usa somente o veredito binário como referência humana; não compara texto ou nota
-de parecer. A amostra pequena serve para validar o fluxo e comparar modos, não
-para afirmar desempenho geral ou significância estatística.
+O catálogo serve à previsão binária da 3.13; notas numéricas de parecer podem ser
+preparadas separadamente para `bench_reviews`. A amostra pequena serve para
+validar o fluxo e comparar modos, não para afirmar desempenho geral ou
+significância estatística.
 
 Os PDFs não são versionados aqui. Baixe-os e confira cada hash antes da submissão.
 O trecho abaixo salva os arquivos em `/tmp/metis-peerread` e interrompe se algum
@@ -147,12 +148,17 @@ from urllib.request import urlopen
 catalog = json.loads(Path("projects/correction/evals/data/peerread_iclr2017_test_candidates.json").read_text())
 destination = Path("/tmp/metis-peerread")
 destination.mkdir(parents=True, exist_ok=True)
+reviews_dir = destination / "reviews"
+reviews_dir.mkdir(parents=True, exist_ok=True)
 for case in catalog["cases"]:
     content = urlopen(case["pdf_url"], timeout=60).read()
     digest = hashlib.sha256(content).hexdigest()
     if digest != case["pdf_sha256"]:
         raise SystemExit(f"SHA-256 divergente para {case['id']}: {digest}")
     (destination / f"{case['peerread_id']}.pdf").write_bytes(content)
+    review_json = urlopen(case["decision_url"], timeout=60).read()
+    json.loads(review_json)
+    (reviews_dir / f"{case['peerread_id']}.json").write_bytes(review_json)
     print(case["id"], digest)
 PY
 ```
@@ -180,6 +186,19 @@ concluído por artigo e chama as validações de snapshots, Question, configura�
 de avaliação e ModelSpecs do E4. Se houver zero ou mais de um Run compatível, a
 geração falha explicitamente para evitar escolher uma execução arbitrária. Use o
 caminho gerado nos comandos `ab_evaluation_mode` documentados acima.
+
+Para preparar também as notas numéricas de parecer para `bench_reviews`, passe o
+manifesto de Runs e o diretório local dos JSONs de parecer:
+
+```sh
+uv run python manage.py peerread_review_manifest caminho/manifesto-runs.json /tmp/metis-peerread/reviews
+uv run python manage.py peerread_review_manifest caminho/manifesto-runs.json /tmp/metis-peerread/reviews --execute
+```
+
+O preparo confere que as decisões continuam iguais ao catálogo, ignora os textos
+de comentários e agrega a mediana inteira por critério, excluindo meta-reviews.
+Casos sem nota numérica continuam no manifesto para a medição binária, mas não
+entram nas correlações de critério.
 
 O pipeline continua responsável por E1/E2 e pelo módulo de integridade. Nenhum
 resultado de `documentos_processados` ou `resultados_extracoes` é tratado como

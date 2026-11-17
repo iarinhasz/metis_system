@@ -8,7 +8,7 @@ from collections import deque
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from datasketch import MinHash, MinHashLSH  # type: ignore[import-untyped]
+from datasketch import MinHash, MinHashLSH  # type: ignore
 
 _WORD = re.compile(r"[^\W_]+", re.UNICODE)
 _NUM_PERM = 128

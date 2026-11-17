@@ -1,0 +1,30 @@
+{
+  "name": "peerread_review_scores",
+  "version": "1",
+  "cases": [
+    {
+      "id": "iclr_2017:test:paper-001",
+      "source_run_id": "00000000-0000-0000-0000-000000000001",
+      "human_decision": "accepted",
+      "human_scores": {
+        "originality": 4,
+        "soundness": 3,
+        "substance": 4,
+        "clarity": 5,
+        "meaningful_comparison": 3,
+        "impact": 4,
+        "replicability": 2
+      }
+    },
+    {
+      "id": "iclr_2017:test:paper-002",
+      "source_run_id": "00000000-0000-0000-0000-000000000002",
+      "human_decision": "rejected",
+      "human_scores": {
+        "originality": 2,
+        "soundness": 3,
+        "clarity": 2
+      }
+    }
+  ]
+}

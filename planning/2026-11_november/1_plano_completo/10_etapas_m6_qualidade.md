@@ -31,8 +31,17 @@ integrado; comando `compare_evals` com verificação de compatibilidade e leitur
 do baseline legado. Medições de desempenho continuam fora do CI.
 Ver [operação e contrato](../../../docs/evals.md).
 
-Os runners específicos `bench_reviews`, `bench_judge`, `bench_plagiarism` e os
-benchmarks da Fase 2 permanecem como próximas integrações do plano completo.
+**Implementação em andamento (16/11/2026):** `bench_reviews` consome manifesto de
+Runs concluídos, compara notas humanas por critério (Spearman/QWK) e mede a
+previsão estrita/potencial de aprovação. `peerread_review_manifest` agrega as
+notas numéricas PeerRead sem reter comentários. `bench_judge` usa casos sintéticos
+com erros controlados e os juízes configurados; a gravação usa o contrato comum.
+Os runners `bench_plagiarism` e da Fase 2 dependem dos contratos de resultados
+do E3 e do alinhamento de citações, ainda ausentes no código de integridade
+disponível nesta branch. Serão conectados quando as etapas 4.10 e 5.4–5.5
+publicarem esses contratos, para evitar duplicar os detectores de outro módulo.
+Não foram executados benchmarks com dados reais nesta branch; a correlação
+PeerRead e os números finais continuam pendentes de execução operacional.
 
 **Verificação da base:** 654 testes passaram em Python 3.14 e PostgreSQL 18, com
 5 contratos `llm` excluídos e o aviso de depreciação já existente do SDK Google.
