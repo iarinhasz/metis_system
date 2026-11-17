@@ -6,10 +6,14 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
+from pydantic import JsonValue
+
 from projects.correction.agents.schemas.criteria import Criterion
-from projects.correction.agents.specs import ModelSpec, Role
+from projects.correction.agents.specs import ModelSpec, Provider, Role
+from projects.correction.agents.usage import LLMUsage
 from projects.correction.attempts.models import LLMCall, Run
 from projects.correction.attempts.status import RunStatus, Stage
 from projects.correction.evals.ab_evaluation_mode import (
@@ -231,7 +235,29 @@ def build_review_report(
                 value=scores[name], unit="fraction", direction="higher"
             )
 
-    usage = UsageSummary.from_calls(all_calls)
+    usage = UsageSummary.from_calls(
+        [
+            LLMUsage(
+                run_id=str(call.run_id),
+                stage=call.stage,
+                role=Role(call.role),
+                agent=call.agent,
+                provider=Provider(call.provider),
+                model_id=call.model,
+                prompt_version=call.prompt_version,
+                input_tokens=call.input_tokens,
+                output_tokens=call.output_tokens,
+                cached_tokens=call.cached_tokens,
+                cache_write_tokens=call.cache_write_tokens,
+                reasoning_tokens=call.reasoning_tokens,
+                latency_ms=call.latency_ms,
+                success=call.success,
+                error=call.error or None,
+                cost_usd=call.cost_usd,
+            )
+            for call in all_calls
+        ]
+    )
     dataset_labels = {
         "name": manifest.name,
         "version": manifest.version,
@@ -274,10 +300,10 @@ def build_review_report(
             "human_decision_labelled_cases": sum(
                 case.human_decision is not None for case in manifest.cases
             ),
-            "acceptance_prediction": acceptance,
+            "acceptance_prediction": cast(JsonValue, acceptance),
             "runtime_seconds_per_article": statistics.mean(runtimes) if runtimes else None,
             "measured_runtimes": len(runtimes),
-            "cases": case_details,
+            "cases": cast(JsonValue, case_details),
         },
         notes=(
             "Notas humanas por artigo devem ser curadas antes da comparação; o benchmark não lê "

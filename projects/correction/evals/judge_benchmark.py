@@ -5,11 +5,14 @@ import statistics
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+from pydantic import JsonValue
 
 from projects.correction.agents.factory import AgentFactory
 from projects.correction.agents.schemas.criteria import Criterion
 from projects.correction.agents.schemas.evaluation import (
+    CriterionSynthesis,
     EvaluatorSlot,
     Evidence,
     ItemType,
@@ -127,16 +130,16 @@ def _scenarios() -> tuple[tuple[str, str | None, ReviewState], ...]:
     contradictory = ReviewState(
         observations=(valid,),
         criteria=(
-            {
-                "criterion_key": Criterion.SOUNDNESS,
-                "grade": 5,
-                "justification": (
+            CriterionSynthesis(
+                criterion_key=Criterion.SOUNDNESS,
+                grade=5,
+                justification=(
                     "The method soundly demonstrates a major improvement, reaching 99 percent "
                     "accuracy over the 91 percent baseline."
                 ),
-                "observation_ids": [valid.id],
-                "confidence": 0.95,
-            },
+                observation_ids=(valid.id,),
+                confidence=0.95,
+            ),
         ),
     )
     return (
@@ -248,7 +251,7 @@ def run_judge_benchmark(run: Run) -> EvaluationReport:
                 }
             )
 
-    expected_invalid = sum(expected for expected, _, _ in binary_rows)
+    expected_invalid_count = sum(expected for expected, _, _ in binary_rows)
     true_positive = sum(expected and predicted is True for expected, predicted, _ in binary_rows)
     false_negative = sum(
         expected and predicted is not True for expected, predicted, _ in binary_rows
@@ -264,7 +267,7 @@ def run_judge_benchmark(run: Run) -> EvaluationReport:
     precision = (
         true_positive / (true_positive + false_positive) if true_positive + false_positive else None
     )
-    recall = true_positive / expected_invalid if expected_invalid else None
+    recall = true_positive / expected_invalid_count if expected_invalid_count else None
     f1 = (
         2 * precision * recall / (precision + recall)
         if precision is not None and recall is not None and precision + recall
@@ -327,17 +330,20 @@ def run_judge_benchmark(run: Run) -> EvaluationReport:
             name="synthetic_judge_error_injection",
             version="1",
             sha256=fingerprint(fixture_payload),
-            case_ids=tuple(item[0] for item in outcomes),
+            case_ids=tuple(str(item["case_id"]) for item in outcomes),
         ),
         parameters={
             "metric_protocol": "bench-judge-v1",
             "slots": [EvaluatorSlot.A.value, EvaluatorSlot.B.value],
-            "judge_roles": sorted(role.value for role in model_specs),
-            "expected_errors": [
-                "fabricated_quote",
-                "quote_in_wrong_section",
-                "grade_contradicts_evidence",
-            ],
+            "judge_roles": cast(JsonValue, sorted(role.value for role in model_specs)),
+            "expected_errors": cast(
+                JsonValue,
+                [
+                    "fabricated_quote",
+                    "quote_in_wrong_section",
+                    "grade_contradicts_evidence",
+                ],
+            ),
         },
         model_specs=model_specs,
         prompt_versions={
@@ -358,7 +364,7 @@ def run_judge_benchmark(run: Run) -> EvaluationReport:
             "mean_provider_latency_ms": (
                 statistics.mean(call.latency_ms for call in calls) if calls else None
             ),
-            "cases": outcomes,
+            "cases": cast(JsonValue, outcomes),
         },
         notes=(
             "As quatro situações são sintéticas: um controle válido e três erros plantados. "
