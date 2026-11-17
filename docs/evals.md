@@ -85,10 +85,26 @@ uv run python manage.py ab_evaluation_mode manifesto.json --execute
 uv run python manage.py ab_evaluation_mode manifesto.json --report --batch-id UUID
 ```
 
-O relatório mede dispersão entre réplicas, concordância dos avaliadores,
-invalidação pelo juiz, correlação com as notas humanas, custo e tempo. A amostra
-curada e a decisão sobre o modo padrão continuam sendo uma etapa operacional
-posterior à implementação do comando.
+O manifesto pode incluir `human_decision` (`accepted` ou `rejected`), que permite
+medir a previsão de aprovação sem depender de notas humanas por critério. Essas
+notas continuam opcionais: Spearman/QWK ficam nulos quando ausentes. A previsão
+é reportada em duas leituras: estrita (`accept`) e potencial (`accept` ou
+`minor`). Runs sem recomendação ou com `needs_human_review` contam como abstenção;
+as réplicas precisam formar maioria estrita para gerar uma previsão por artigo.
+O relatório inclui acurácia, acurácia balanceada, precisão, recall, especificidade,
+F1 e cobertura, além dos números de acertos/erros/abstenções. As demais métricas
+existentes (dispersão, concordância, invalidação do juiz, custo e tempo) são mantidas.
+Essas métricas descrevem o conjunto rotulado e não calibram o sistema para outras
+conferências; é necessário curar a amostra e registrar a decisão sobre o modo padrão.
+
+A amostra piloto PeerRead, com 10 PDFs identificados por hash e veredito binário,
+está em
+[`peerread_iclr2017_test_candidates.json`](../projects/correction/evals/data/peerread_iclr2017_test_candidates.json).
+Os Runs precisam compartilhar a Question, configuração de avaliação e ModelSpecs.
+Depois que o fluxo regular gerar um único Run elegível por artigo,
+`manage.py peerread_ab_manifest --execute` monta o manifesto A/B usando o
+`external_id` e SHA-256. O README da amostra documenta o download verificado e
+o percurso pelos módulos existentes.
 
 ## Comparar relatórios
 

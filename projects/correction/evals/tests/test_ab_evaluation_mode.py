@@ -13,6 +13,7 @@ from projects.correction.evals.ab_evaluation_mode import (
     MODES,
     ABCase,
     ABManifest,
+    _acceptance_metrics,
     _mode_metrics,
     build_report,
     create_ab_runs,
@@ -50,6 +51,76 @@ def test_manifest_rejects_duplicate_ids_and_non_integer_or_out_of_range_scores()
                 "human_scores": {"clarity": "4"},
             }
         )
+
+
+def test_acceptance_prediction_reports_strict_and_potential_views_and_abstentions() -> None:
+    case_accepted = ABCase(id="accepted-paper", source_run_id=uuid4(), human_decision="accepted")
+    case_rejected = ABCase(id="rejected-paper", source_run_id=uuid4(), human_decision="rejected")
+    rows = []
+    for case, recommendations in (
+        (case_accepted, ["minor", "accept", "accept"]),
+        (case_rejected, ["reject", None, "reject"]),
+    ):
+        for replicate, recommendation in enumerate(recommendations, start=1):
+            rows.append(
+                {
+                    "case_id": case.id,
+                    "mode": EvaluationMode.SECTIONED.value,
+                    "replicate": replicate,
+                    "recommendation": recommendation,
+                    "needs_human_review": recommendation is None,
+                }
+            )
+
+    metrics = _acceptance_metrics(EvaluationMode.SECTIONED, rows, (case_accepted, case_rejected))
+
+    assert metrics["strict"]["accuracy"] == 1
+    assert metrics["strict"]["coverage"] == 1
+    assert metrics["strict"]["abstentions"] == 0
+    assert metrics["potential"]["accuracy"] == 1
+    assert metrics["potential"]["true_positive"] == 1
+
+
+def test_acceptance_prediction_abstains_when_replicas_do_not_reach_majority() -> None:
+    case = ABCase(id="paper", source_run_id=uuid4(), human_decision="accepted")
+    rows = [
+        {
+            "case_id": case.id,
+            "mode": EvaluationMode.SECTIONED.value,
+            "recommendation": value,
+            "needs_human_review": value is None,
+        }
+        for value in ("accept", "reject", None)
+    ]
+
+    metrics = _acceptance_metrics(EvaluationMode.SECTIONED, rows, (case,))
+
+    assert metrics["strict"]["coverage"] == 0
+    assert metrics["strict"]["abstentions"] == 1
+
+
+def test_binary_human_verdict_works_without_criterion_scores() -> None:
+    case = ABCase(id="paper", source_run_id=uuid4(), human_decision="rejected")
+    rows = [
+        {
+            "case_id": case.id,
+            "mode": EvaluationMode.SECTIONED.value,
+            "replicate": replicate,
+            "grades": {slot.value: {} for slot in EvaluatorSlot},
+            "families": {slot.value: Family.GPT for slot in EvaluatorSlot},
+            "judge_invalid": 0,
+            "judge_total": 0,
+            "recommendation": "reject",
+            "needs_human_review": False,
+        }
+        for replicate in (1, 2, 3)
+    ]
+
+    metrics, _ = _mode_metrics(EvaluationMode.SECTIONED, rows, (case,))
+
+    assert metrics["sectioned.human_spearman"].value is None
+    assert metrics["sectioned.human_qwk"].value is None
+    assert metrics["sectioned.strict_acceptance_accuracy"].value == 1
 
 
 def test_mode_metrics_report_repetition_agreement_judging_and_human_alignment() -> None:
@@ -164,6 +235,7 @@ def test_build_report_requires_complete_paired_batch_and_records_variants(run: R
         id="paper",
         source_run_id=uuid4(),
         human_scores={Criterion.SOUNDNESS: 4},
+        human_decision="accepted",
     )
     manifest = ABManifest(name="sample", version="1", cases=(case,))
     digest = "a" * 64
@@ -211,7 +283,13 @@ def test_build_report_requires_complete_paired_batch_and_records_variants(run: R
                 event_key=f"{item.pk}:evaluated",
             )
             Run.objects.filter(pk=item.pk).update(status=RunStatus.DONE, current_task_id=None)
-            FinalReport.objects.create(run=item, content={}, markdown="")
+            recommendation = "accept" if mode is EvaluationMode.SECTIONED else "minor"
+            FinalReport.objects.create(
+                run=item,
+                recommendation=recommendation,
+                content={"needs_human_review": False},
+                markdown="",
+            )
             runs.append(Run.objects.get(pk=item.pk))
 
     report = build_report(
@@ -225,6 +303,10 @@ def test_build_report_requires_complete_paired_batch_and_records_variants(run: R
     assert report.benchmark == "ab_evaluation_mode"
     assert report.metrics["sectioned.intra_evaluator_score_stddev"].value == 0
     assert report.metrics["whole_document.intra_evaluator_score_stddev"].value == 0
+    assert report.metrics["sectioned.strict_acceptance_accuracy"].value == 1
+    assert report.metrics["whole_document.strict_acceptance_accuracy"].value == 0
+    assert report.metrics["whole_document.potential_acceptance_accuracy"].value == 1
+    assert report.details["human_decision_labelled_cases"] == 1
     assert report.prompt_versions["profiler"] == ("b" * 64,)
     judge_total = report.details["judge_total"]
     assert isinstance(judge_total, int) and judge_total > 0

@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from django.db import transaction
@@ -27,6 +27,7 @@ from projects.correction.evals.contracts import (
     fingerprint,
 )
 from projects.correction.evaluation.context import EvaluationContextBuilder
+from projects.correction.evaluation.contracts import Recommendation
 from projects.correction.evaluation.models import FinalReport, ReviewRound
 from projects.correction.extractor.attempt_extraction import extraction_version
 from projects.correction.extractor.configs import ARTICLE_CONFIG
@@ -40,6 +41,7 @@ MODES = (EvaluationMode.SECTIONED, EvaluationMode.WHOLE_DOCUMENT)
 class ABCase(FrozenModel):
     id: str = Field(min_length=1, max_length=255)
     source_run_id: UUID
+    human_decision: Literal["accepted", "rejected"] | None = None
     human_scores: dict[Criterion, Annotated[int, Field(strict=True, ge=1, le=5)]] = Field(
         default_factory=dict
     )
@@ -86,6 +88,8 @@ def validate_sources(manifest: ABManifest) -> dict[UUID, Run]:
         raise ValueError("Cada source_run_id precisa apontar para um Run de avaliação existente.")
 
     version = extraction_version(ARTICLE_CONFIG)
+    question_snapshots: set[str] = set()
+    evaluation_configs: set[str] = set()
     for source in sources.values():
         if source.status != RunStatus.DONE or FinalReport.for_run(source.pk) is None:
             raise ValueError("Os runs de origem precisam estar concluídos e ter FinalReport.")
@@ -98,11 +102,18 @@ def validate_sources(manifest: ABManifest) -> dict[UUID, Run]:
             raise ValueError("A amostra precisa usar a extração em cache na versão atual do E1.")
         try:
             EvaluationContextBuilder(source).build()
-            EvaluationConfig.model_validate(source.config_snapshot["evaluation_config"])
+            question_snapshots.add(fingerprint(source.config_snapshot["question"]))
+            config = EvaluationConfig.model_validate(source.config_snapshot["evaluation_config"])
+            evaluation_configs.add(fingerprint(config.model_dump(mode="json")))
             if not source.config_snapshot.get("model_specs"):
                 raise ValueError("snapshot de modelos ausente")
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("Um run de origem não tem snapshots completos para o E4.") from exc
+
+    if len(question_snapshots) != 1 or len(evaluation_configs) != 1:
+        raise ValueError(
+            "Todos os runs de origem precisam usar a mesma Question e configuração de avaliação."
+        )
 
     configurations = {
         fingerprint(source.config_snapshot["model_specs"]) for source in sources.values()
@@ -270,6 +281,74 @@ def _valid_grades(row: ReviewRound) -> dict[str, int]:
     }
 
 
+def _binary_metrics(
+    actual: list[bool], predicted: list[bool], *, labelled: int
+) -> dict[str, float | int | None]:
+    tp = sum(a and p for a, p in zip(actual, predicted, strict=True))
+    fp = sum(not a and p for a, p in zip(actual, predicted, strict=True))
+    tn = sum(not a and not p for a, p in zip(actual, predicted, strict=True))
+    fn = sum(a and not p for a, p in zip(actual, predicted, strict=True))
+    positive_total, negative_total = tp + fn, tn + fp
+    precision = tp / (tp + fp) if tp + fp else None
+    recall = tp / positive_total if positive_total else None
+    specificity = tn / negative_total if negative_total else None
+    f1 = None
+    if precision is not None and recall is not None:
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    balanced = (
+        (recall + specificity) / 2 if recall is not None and specificity is not None else None
+    )
+    scored = len(actual)
+    return {
+        "accuracy": (tp + tn) / scored if scored else None,
+        "balanced_accuracy": balanced,
+        "precision": precision,
+        "recall": recall,
+        "specificity": specificity,
+        "f1": f1,
+        "coverage": scored / labelled if labelled else None,
+        "labelled_cases": labelled,
+        "scored_cases": scored,
+        "abstentions": labelled - scored,
+        "true_positive": tp,
+        "false_positive": fp,
+        "true_negative": tn,
+        "false_negative": fn,
+    }
+
+
+def _acceptance_metrics(
+    mode: EvaluationMode, rows: list[dict[str, Any]], cases: tuple[ABCase, ...]
+) -> dict[str, dict[str, float | int | None]]:
+    """Compara a recomendação com o veredito humano, votando entre réplicas por artigo."""
+    labelled_cases = [case for case in cases if case.human_decision is not None]
+    mode_rows = [row for row in rows if row["mode"] == mode.value]
+    output: dict[str, dict[str, float | int | None]] = {}
+    for strategy, positive_recommendations in (
+        ("strict", {Recommendation.ACCEPT.value}),
+        ("potential", {Recommendation.ACCEPT.value, Recommendation.MINOR.value}),
+    ):
+        actual: list[bool] = []
+        predicted: list[bool] = []
+        for case in labelled_cases:
+            case_rows = [row for row in mode_rows if row["case_id"] == case.id]
+            votes = []
+            for row in case_rows:
+                recommendation = row.get("recommendation")
+                if recommendation is None or row.get("needs_human_review"):
+                    continue
+                votes.append(recommendation in positive_recommendations)
+            # Réplicas sem recomendação ou com revisão humana sinalizada não votam.
+            positive_votes = sum(votes)
+            negative_votes = len(votes) - positive_votes
+            if max(positive_votes, negative_votes) <= len(case_rows) / 2:
+                continue
+            actual.append(case.human_decision == "accepted")
+            predicted.append(positive_votes > negative_votes)
+        output[strategy] = _binary_metrics(actual, predicted, labelled=len(labelled_cases))
+    return output
+
+
 def _mode_metrics(
     mode: EvaluationMode,
     rows: list[dict[str, Any]],
@@ -363,11 +442,28 @@ def _mode_metrics(
         unit="coefficient",
         direction="higher",
     )
+    acceptance_summaries = _acceptance_metrics(mode, rows, cases)
+    for strategy, acceptance_values in acceptance_summaries.items():
+        for name in (
+            "accuracy",
+            "balanced_accuracy",
+            "precision",
+            "recall",
+            "specificity",
+            "f1",
+            "coverage",
+        ):
+            metrics[f"{mode.value}.{strategy}_acceptance_{name}"] = Metric(
+                value=acceptance_values[name],
+                unit="fraction",
+                direction="higher",
+            )
     return metrics, {
         "paired_human_scores": len(human),
         "judge_invalid": judge_invalid,
         "judge_total": judge_total,
         "repeat_score_cells": len(repeat_spreads),
+        "acceptance_prediction": acceptance_summaries,
     }
 
 
@@ -502,6 +598,8 @@ def build_report(
                     for review in run.review_rounds.all()
                     for item in review.verdicts.all()
                 ),
+                "recommendation": run.final_report.recommendation,
+                "needs_human_review": bool(run.final_report.content.get("needs_human_review")),
             }
         )
         calls = [
@@ -597,7 +695,7 @@ def build_report(
     )
     return EvaluationReport(
         benchmark="ab_evaluation_mode",
-        benchmark_version="1",
+        benchmark_version="2",
         created_at=datetime.now(UTC),
         dataset=DatasetIdentity(
             name=manifest.name,
@@ -609,7 +707,13 @@ def build_report(
             "batch_id": str(batch_id),
             "replicates": replicates,
             "modes": [mode.value for mode in MODES],
-            "metric_protocol": "ab-evaluation-mode-v1",
+            "metric_protocol": "ab-evaluation-mode-v2",
+            "acceptance_prediction": {
+                "strict_positive": [Recommendation.ACCEPT.value],
+                "potential_positive": [Recommendation.ACCEPT.value, Recommendation.MINOR.value],
+                "abstain_when": "recommendation_missing_or_needs_human_review",
+                "replicate_rule": "strict_majority_of_all_replicates",
+            },
             "paired_runs": True,
         },
         model_specs=model_specs,
@@ -632,10 +736,16 @@ def build_report(
             "cases": details,
             "human_labelled_cases": sum(bool(case.human_scores) for case in manifest.cases),
             "human_score_entries": sum(len(case.human_scores) for case in manifest.cases),
+            "human_decision_labelled_cases": sum(
+                case.human_decision is not None for case in manifest.cases
+            ),
         },
         notes=(
             "A correlação humana usa a média das notas válidas de slots e réplicas "
             "por caso/critério.",
+            "A previsão de aprovação usa o veredito binário do dataset; resultados estritos e "
+            "potenciais são reportados separadamente. O desempenho depende de rótulos humanos "
+            "e não implica calibração fora da amostra.",
             "QWK arredonda essa média para a nota inteira mais próxima, com empate para cima.",
             "O custo por artigo fica nulo quando uma chamada da variante não tem preço conhecido.",
         ),
