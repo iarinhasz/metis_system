@@ -137,11 +137,71 @@ Contadores de cache e raciocínio ausentes no legado também ficam nulos.
 
 ## Integrar os próximos benchmarks
 
-`bench_reviews`, `bench_judge`, `bench_plagiarism` e os benchmarks da Fase 2 são as
-próximas integrações do plano completo da 6.1. Cada runner fornecerá um
-`EvaluationReport` com amostra, política, versões e métricas próprias, usando
-`output_path` e `write_artifact` para guardar o resultado. Mudanças na definição
-das métricas ou na aplicação dos rótulos exigem uma nova `benchmark_version`.
+### `bench_reviews` — notas e previsão de aprovação
+
+O comando `bench_reviews` compara `FinalReport`s existentes com notas humanas
+curadas por critério e, quando disponíveis, o veredito `accepted`/`rejected`.
+Usa o mesmo formato de manifesto do A/B; o
+[`exemplo`](../projects/correction/evals/data/bench_reviews_manifest.example.json)
+mostra os rótulos. A comparação de notas inclui Spearman e QWK geral e por
+critério; QWK arredonda notas previstas para o inteiro mais próximo, com empate
+para cima. A previsão binária estrita (`accept`) e potencial (`accept`/`minor`)
+inclui acurácia, precisão, recall, especificidade, F1 e cobertura. Ausência de
+recomendação ou pedido de revisão humana é abstenção.
+
+```sh
+uv run python manage.py bench_reviews manifesto.json
+uv run python manage.py bench_reviews manifesto.json --execute
+```
+
+O modo padrão valida e calcula sem gravar; `--execute` grava um relatório novo.
+Não chama provedores: lê Runs concluídos e exige a mesma Question, configuração,
+modo e ModelSpecs. As notas do manifesto devem ser agregadas e curadas por
+artigo antes da comparação. O preparo local acessa somente os campos numéricos
+de score dos JSONs PeerRead; comentários não entram nos rótulos nem são enviados
+aos provedores.
+
+Para a amostra PeerRead, `peerread_review_manifest` lê arquivos brutos
+`<peerread_id>.json`, mantém apenas escores numéricos por critério, exclui
+meta-reviews e agrega a mediana inteira por artigo/critério. A mediana `.5` é
+arredondada para cima. Os comentários não entram no manifesto resultante.
+
+```sh
+uv run python manage.py peerread_review_manifest manifesto_runs.json /tmp/metis-peerread/reviews
+uv run python manage.py peerread_review_manifest manifesto_runs.json /tmp/metis-peerread/reviews --execute
+uv run python manage.py bench_reviews caminho/manifesto-peerread.json --execute
+```
+
+### `bench_judge` — detecção de erros plantados
+
+O comando usa um Run concluído somente para carregar os ModelSpecs e o contexto
+de avaliação. Julga um artigo sintético com um controle válido e três erros
+plantados: citação inventada, evidência localizada na seção errada e nota que
+contradiz as evidências. Exercita os slots A e B para cobrir as duas famílias de
+juiz cruzado. Mede recall dos erros, precisão, F1, taxa de falso positivo e
+cobertura. As chamadas são reais e exigem as chaves configuradas.
+
+```sh
+uv run python manage.py bench_judge UUID_DO_RUN
+uv run python manage.py bench_judge UUID_DO_RUN --execute
+```
+
+O modo padrão valida a origem e não chama modelos. `--execute` faz até oito
+julgamentos sintéticos (podem ocorrer chamadas adicionais para corrigir citações
+de saída), guarda o uso e grava um relatório novo. Não cria Runs nem grava dados
+no banco. O resultado caracteriza esses cenários controlados, não a precisão do
+juiz em manuscritos reais.
+
+`bench_plagiarism` e os benchmarks da Fase 2 ainda dependem dos contratos de
+resultado da integridade: a saída integrada do E3 para plágio e a saída de
+alinhamento de citações da Fase 2. Esses resultados ainda não estão disponíveis
+em `projects/correction/`; os runners devem ser conectados depois que as etapas
+4.10 e 5.4–5.5 fornecerem esses contratos. Isso evita criar nesta camada uma
+segunda implementação dos detectores ou escolher um formato que conflite com o
+módulo de integridade. Cada runner então emitirá um `EvaluationReport` com
+amostra, política, versões e métricas próprias, usando `output_path` e
+`write_artifact`. Mudanças na definição das métricas ou na aplicação dos rótulos
+exigem uma nova `benchmark_version`.
 
 As execuções de desempenho e com provedores reais ficam fora do CI. Os testes
 regulares verificam contratos, histórico, comparação, dry-run e integração com
