@@ -1,0 +1,1 @@
+deixe de fora o texto das notas e também as marcas que as chamam no texto (o número, a letra ou o símbolo sobrescrito, como o 2 em "100%²" ou o `*` depois de um nome). Em `has_footnotes`, diga se a seção chamava alguma nota.

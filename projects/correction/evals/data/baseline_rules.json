@@ -1,0 +1,970 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-11-13T15:55:21.198365+00:00",
+  "mode": "rules",
+  "dataset_version": "plos-openalex-2026-11-13-v1",
+  "dataset_sha256": "7f806a0f7af155a47cf894f0bfd827594f467119e11aeb044e5beab588049149",
+  "annotation_status": "provisional; human review pending",
+  "taxonomy_version": null,
+  "max_attempts": 1,
+  "confidence_threshold": 0.7,
+  "model_specs": {},
+  "prompt_versions": [],
+  "source_sha256": {
+    "profiler.py": "7cd53132d13395e06951832f4872e686fdb61b8b8a4ac525a676240b094f5992",
+    "section_roles.py": "0779fd818e4cee766bd17869aedeab3ce9949138e1f376dc30015f1f1c0d23e3"
+  },
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": "0",
+  "unpriced_calls": 0,
+  "overall": {
+    "articles": 30,
+    "failures": 0,
+    "field_correct": null,
+    "field_accuracy": null,
+    "sections": 152,
+    "roles_exact": 119,
+    "roles_accuracy": 0.7828947368421053,
+    "roles_micro_precision": 0.7935483870967742,
+    "roles_micro_recall": 0.7834394904458599,
+    "roles_micro_f1": 0.7884615384615385,
+    "ambiguous_sections": 50
+  },
+  "by_area": {
+    "computing": {
+      "articles": 10,
+      "failures": 0,
+      "field_correct": null,
+      "field_accuracy": null,
+      "sections": 61,
+      "roles_exact": 44,
+      "roles_accuracy": 0.7213114754098361,
+      "roles_micro_precision": 0.7419354838709677,
+      "roles_micro_recall": 0.7301587301587301,
+      "roles_micro_f1": 0.736,
+      "ambiguous_sections": 21
+    },
+    "medicine": {
+      "articles": 10,
+      "failures": 0,
+      "field_correct": null,
+      "field_accuracy": null,
+      "sections": 51,
+      "roles_exact": 41,
+      "roles_accuracy": 0.803921568627451,
+      "roles_micro_precision": 0.803921568627451,
+      "roles_micro_recall": 0.803921568627451,
+      "roles_micro_f1": 0.8039215686274509,
+      "ambiguous_sections": 19
+    },
+    "physics": {
+      "articles": 10,
+      "failures": 0,
+      "field_correct": null,
+      "field_accuracy": null,
+      "sections": 40,
+      "roles_exact": 34,
+      "roles_accuracy": 0.85,
+      "roles_micro_precision": 0.8571428571428571,
+      "roles_micro_recall": 0.8372093023255814,
+      "roles_micro_f1": 0.8470588235294119,
+      "ambiguous_sections": 10
+    }
+  },
+  "predictions": [
+    {
+      "case_id": "0118432",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "related_work"
+        ],
+        "sec_3": [
+          "method"
+        ],
+        "sec_4": [
+          "results",
+          "discussion"
+        ],
+        "sec_5": [
+          "conclusion"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0089017",
+      "field": null,
+      "paper_type": "theoretical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "theorems"
+        ],
+        "sec_3": [
+          "discussion"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    },
+    {
+      "case_id": "0158765",
+      "field": null,
+      "paper_type": "review",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0130140",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "other"
+        ],
+        "sec_5": [
+          "method"
+        ],
+        "sec_6": [
+          "discussion"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_4"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0057041",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results",
+          "discussion"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    },
+    {
+      "case_id": "0035797",
+      "field": null,
+      "paper_type": "review",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0098679",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "conclusion"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0205844",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results",
+          "discussion"
+        ],
+        "sec_4": [
+          "conclusion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0082241",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0294236",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_5",
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0236630",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "other"
+        ],
+        "sec_5": [
+          "discussion"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_4",
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0203316",
+      "field": null,
+      "paper_type": "review",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0163477",
+      "field": null,
+      "paper_type": "review",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "other"
+        ],
+        "sec_5": [
+          "other"
+        ],
+        "sec_6": [
+          "discussion"
+        ],
+        "sec_7": [
+          "conclusion"
+        ],
+        "sec_8": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_4",
+        "sec_5",
+        "sec_8"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0036404",
+      "field": null,
+      "paper_type": "theoretical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "theorems"
+        ],
+        "sec_3": [
+          "discussion"
+        ],
+        "sec_4": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_4"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0039504",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0224365",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "method"
+        ],
+        "sec_5": [
+          "results"
+        ],
+        "sec_6": [
+          "other"
+        ],
+        "sec_7": [
+          "discussion"
+        ],
+        "sec_8": [
+          "conclusion"
+        ],
+        "sec_9": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_6",
+        "sec_9"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0021623",
+      "field": null,
+      "paper_type": "theoretical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "theorems"
+        ],
+        "sec_3": [
+          "discussion"
+        ],
+        "sec_4": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_4"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0113637",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "conclusion"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0196391",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "conclusion"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0029015",
+      "field": null,
+      "paper_type": "theoretical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "theorems"
+        ],
+        "sec_3": [
+          "discussion"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    },
+    {
+      "case_id": "0169548",
+      "field": null,
+      "paper_type": "review",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0096801",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "conclusion"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0214971",
+      "field": null,
+      "paper_type": "theoretical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "discussion"
+        ],
+        "sec_3": [
+          "conclusion"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    },
+    {
+      "case_id": "0169649",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0029715",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    },
+    {
+      "case_id": "0045254",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "results"
+        ],
+        "sec_3": [
+          "discussion"
+        ],
+        "sec_4": [
+          "method"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    },
+    {
+      "case_id": "0087987",
+      "field": null,
+      "paper_type": "review",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "discussion"
+        ],
+        "sec_5": [
+          "conclusion"
+        ],
+        "sec_6": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_6"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0177678",
+      "field": null,
+      "paper_type": "methods",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "related_work"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "conclusion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0229382",
+      "field": null,
+      "paper_type": "theoretical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "other"
+        ],
+        "sec_3": [
+          "other"
+        ],
+        "sec_4": [
+          "conclusion"
+        ],
+        "sec_5": [
+          "other"
+        ]
+      },
+      "ambiguous_sections": [
+        "sec_2",
+        "sec_3",
+        "sec_5"
+      ],
+      "error": null
+    },
+    {
+      "case_id": "0032037",
+      "field": null,
+      "paper_type": "empirical",
+      "section_roles": {
+        "abstract": [
+          "other"
+        ],
+        "sec_1": [
+          "introduction"
+        ],
+        "sec_2": [
+          "method"
+        ],
+        "sec_3": [
+          "results"
+        ],
+        "sec_4": [
+          "discussion"
+        ]
+      },
+      "ambiguous_sections": [],
+      "error": null
+    }
+  ]
+}

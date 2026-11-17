@@ -1,0 +1,1 @@
+"""Consultas do app extractor."""

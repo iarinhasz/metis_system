@@ -1,5 +1,9 @@
 # Convenções
 
+Revisão de 13/11/2026. As regras orientam o código atual e as etapas seguintes;
+os padrões de E4/integridade listados abaixo ainda são propostas de implementação.
+[Estado do módulo](status_and_metrics.md) identifica o que existe e o que está planejado.
+
 ## Princípios
 
 - **Prioridade:** correção > clareza > simplicidade > manutenibilidade.
@@ -9,7 +13,7 @@
 
 ## Organização
 
-O código é organizado por domínio (apps Django). Cada app tem `models.py`, `managers.py`, `services/`, `api.py`, `admin.py` e `tests/`. As regras de dependência entre módulos estão em [Arquitetura](architecture.md#apps-e-regras-de-dependência).
+O código é organizado por domínio (apps Django). Cada app tem `models.py`, `api/`, `admin.py` e `tests/`. Em `api/`, o `schemas.py` tem os contratos de entrada e saída e o `routes.py` tem as rotas. Os casos de uso ficam em `services/` do app, ou em `pipeline/services.py` quando iniciam ou retomam um run, e as consultas ao banco em `queries/<app>/`. As regras de dependência entre módulos estão em [Arquitetura](architecture.md#apps-e-regras-de-dependência).
 
 ## Regras do código
 
@@ -18,11 +22,12 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `m
 | O status de um Run só muda por `RunManagement` (valida + grava evento na mesma transação) | Um único dono da máquina de estados |
 | Tasks são publicadas só depois do commit (`transaction.on_commit`) | A task nunca lê estado que ainda não foi gravado |
 | A mensagem Celery leva só ids | O banco é a fonte da verdade |
+| Cada arquivo tem uma responsabilidade. A rota só recebe, chama o caso de uso e responde; schemas, regra de negócio e helpers ficam nos módulos próprios | A regra fica testável sem HTTP, e o arquivo de rotas mostra a API de relance |
 | Variáveis de ambiente só em `metis/config.py` (o ruff TID251 bloqueia o resto) | Nada de `os.getenv` espalhado, com nomes divergentes |
-| O Agno só é instanciado pela `AgentFactory` | Um ponto para modelos, retries, telemetria e fakes |
+| `Agent` e modelos Agno só são construídos em `agents/`; workflows ficam nos apps de domínio | Fábricas concentram modelos, retries, telemetria e fakes; E1 usa a fábrica sem Workflow |
 | APIs acadêmicas só por `scholarly/` | Rate limit, cache e chaves num lugar |
 | Status, estágios, vereditos e categorias são enums, nunca strings soltas | Erro de digitação vira erro de import |
-| Services e views acessam o ORM pelos managers | Consultas reaproveitáveis e testáveis |
+| Todo acesso ao banco (consultar ou criar) fica em `projects/correction/queries/<app>/`, num Management por model (`RunManagement`, `RunEventManagement`…). O model herda o Management, e o código chama o método na classe: `Run.get_with_events(run_id)`, nunca `Run.objects…`. Vale para API, pipeline, services e testes | Consultas num lugar só: reaproveitáveis, testáveis e fáceis de revisar (N+1, locks) |
 | Saídas são estruturadas (pydantic/JSON); nunca uma string que outra parte do código parseia | Parsear texto livre quebra quando o formato muda |
 | Nada de texto do manuscrito, dado pessoal ou segredo em log | Os manuscritos são inéditos e confidenciais |
 | Comandos de gestão rodam em dry-run por padrão e só gravam com `--execute` | Operação segura |
@@ -33,11 +38,11 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `m
 |---|---|---|
 | Factory | `ModelFactory(ModelSpec)` → modelo Agno; `AgentFactory` → profiler, describer, evaluator, judge, meta-revisor, adjudicadores | Único ponto que instancia o Agno; nos testes devolve fakes |
 | Registry + Factory | Método de avaliação → `EvaluationConfig` | Um método novo entra registrando o config, sem mexer no pipeline |
-| Builder | `ExtractedDocumentBuilder`, `EvaluationContextBuilder`, `RevisionPromptBuilder` | Objetos montados de várias fontes, validados no `build()` |
-| Strategy | `CandidateSource` (interno, citadas, S2, arXiv, OpenAlex), `SimilarityDetector` (léxico, semântico), modo de avaliação (`sectioned`, `whole_document`) | Várias implementações reais desde o início; os dois modos de avaliação são necessários para o A/B |
+| Builder (planejado) | `EvaluationContextBuilder`, `RevisionPromptBuilder` | Objetos montados de várias fontes, validados no `build()` |
+| Strategy (planejado) | `CandidateSource`, `SimilarityDetector`, modos `sectioned`/`whole_document` | Entra com os detectores e o A/B; não há essas estratégias reais na base atual |
 | Chain of Responsibility | Validadores antes do juiz; fallback da Question | Ordem explícita, cada elo testável |
 | Template Method | `StageTask` | Claim, persistência e eventos iguais em todo estágio |
-| Repository (managers) | `RunManagement`, `AttemptManagement`… | Status só via manager + evento |
+| Repository (Managements em `queries/<app>/`, herdados pelo model) | `ArticleManagement`, `AttemptManagement`, `RunManagement`, `RunEventManagement` | Status só via `RunManagement` + evento; consultas fora de `queries/` não existem |
 
 ## Prompts
 
@@ -53,7 +58,7 @@ O código é organizado por domínio (apps Django). Cada app tem `models.py`, `m
 
 - **Banco real:** pytest + pytest-django, com o Postgres do compose. Sem mock nem patch.
 - **LLM:** a `AgentFactory` devolve fakes que respondem conforme o `output_schema`, inclusive "inválido N vezes" e "quote inexistente".
-- **APIs externas:** respostas HTTP reais gravadas (cassetes).
+- **APIs externas:** fixtures de respostas e servidores HTTP locais; contratos com provedores reais marcados `llm`, fora do CI.
 - **Celery:** modo eager nos testes; o E2E roda com `docker compose`.
 - **Todo bug corrigido ganha teste de regressão.**
 - **Arquivos de teste pequenos**, um por módulo.

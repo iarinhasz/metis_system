@@ -1,0 +1,1148 @@
+{
+  "contract_version": "1.0",
+  "title": "Neural Modeling of Multi-Predicate Interactions for Japanese Predicate Argument Structure Analysis",
+  "authors": [],
+  "language": "en",
+  "abstract": "The accuracy of Japanese predicate argument structure (PAS) analysis has improved in recent years thanks to joint modeling of interactions between multiple predicates. However, this approach heavily relies on syntactic information predicted by parsers, and suffers from the error propagation. To remedy this problem, we introduce a model using grid-type recurrent neural networks (Grid-RNN), which automatically induces features sensitive to multi-predicate interactions from word sequence information of a sentence. The experiments on the NAIST Text Corpus show that our model exceeds the accuracy of the state-of-the-art Japanese PAS analyzer without syntactic information.",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "Seção 1",
+      "level": 1,
+      "parent_id": null,
+      "key": "secao_1",
+      "text": "1 000 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 061 062 063 064 065 066 067 068 069 070 071 072 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096 097 098 099",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_2",
+      "title": "1 Introduction",
+      "level": 1,
+      "parent_id": null,
+      "key": "1_introduction",
+      "text": "Predicate argument structure (PAS) analysis is a basic semantic analysis task, in which systems are required to identify semantic units of a sentence, such as who did what to whom. In pro-drop languages such as Japanese, Chinese and Italian, arguments are often omitted in text, and such argument omission is regarded as one of the most problematic issues of PAS analysis (Iida and Poesio, 2011; Sasano and Kurohashi, 2011). As an approach to the argument omission problem, in Japanese PAS analysis, joint modeling of interactions between multiple predicates has been gaining popularity and achieved the state-of-theart result (Ouchi et al., 2015; Shibata et al., 2016). This approach is based on the linguistic intuition that the predicates in a sentence are semantically related to each other and the interaction information can be a clue for PAS analysis. However, to model such multi-predicate interactions, this ap- proach heavily relies on syntactic information predicted by parsers and suffers from the error propagation caused by the pipeline processing. To remedy this problem, we propose a neural model which automatically induces features sensitive to multi-predicate interactions from word sequence information of a sentence. This model takes as input all predicates and their argument candidates in a sentence at a time, and captures the interactions using grid-type recurrent neural networks (Grid-RNN) without syntactic information. In this paper, we firstly introduce a basic model using RNNs, which independently estimates arguments of each predicate without considering the multi-predicate interactions (Sec. 3). Then, extending this model, we propose a neural model using Grid-RNNs (Sec. 4). Performing experiments on the NAIST Text Corpus (Iida et al., 2007), we demonstrate that our neural models exceed the accuracy of the stateof-the-art Japanese PAS analyzer (Ouchi et al., 2015). In particular, the neural model using GridRNNs achieves the best result, which suggests that our grid-type neural architecture effectively captures multi-predicate interactions. 1 1Our source code is publicly available at http:xxx 2 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 Figure 2: An overview of the neural models: (i) single-sequence and (ii) multi-sequence models.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_3",
+      "title": "2 Japanese Predicate Argument Structure Analysis",
+      "level": 1,
+      "parent_id": null,
+      "key": "2_japanese_predicate_argument_structure_analysis",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_4",
+      "title": "2.1 Task Description",
+      "level": 2,
+      "parent_id": "sec_3",
+      "key": "2_1_task_description",
+      "text": "In Japanese PAS analysis, we identify arguments taking part in the three major case roles, nominative (NOM), accusative (ACC) and dative (DAT) cases, for each predicate. Arguments can be divided into the following three categories according to the positions relative to their predicates (Hayashibe et al., 2011; Ouchi et al., 2015): Dep: The arguments that have direct syntactic dependency with the predicate. Zero: The arguments referred to by zero pronouns within the same sentence, which have no direct syntactic dependency with the predicate. Inter-Zero: The arguments referred to by zero pronouns out of the same sentence. For example, in Figure 1, the nominative argument “警察 (police)” for the predicate “逮捕した (arrested)” is regarded as a Dep argument since the argument has a direct syntactic dependency with the predicate. In contrast, the nominative argument “男 i (mani)” for the predicate “逃走した (escaped)” is regarded as a Zero argument since the argument has no direct syntactic dependency with the predicate. In this paper, we focus on the analysis for these intra-sentential arguments, i.e., Dep and Zero. In order to identify inter-sentential arguments (Inter-Zero), it is required to search a much broader space, such as the whole document, resulting in a much harder analysis than intrasentential arguments.2 Thus, Ouchi et al. (2015) 2The F-measure remains 10-20% (Taira et al., 2008; Imamura et al., 2009; Sasano and Kurohashi, 2011). and Shibata et al. (2016) focused on only intrasentential argument analysis. Following this trend, we focus on intra-sentential argument analysis.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_5",
+      "title": "2.2 Challenging Problem",
+      "level": 2,
+      "parent_id": "sec_3",
+      "key": "2_2_challenging_problem",
+      "text": "Arguments are often omitted in Japanese sentences. In Figure 1, ϕi represents the omitted argument, called zero pronoun. This zero pronoun ϕi refers to “男 i (mani)”. In Japanese PAS analysis, when an argument of the target predicate is omitted, we have to identify the antecedent of the omitted argument (Zero argument). The analysis for such Zero arguments is much more difficult than that forDep arguments because of the lack of direct syntactic dependencies. For Dep arguments, the syntactic dependency between an argument and its predicate is a strong clue. In the sentence in Figure 1, for the predicate “逮捕し た (arrested)”, the nominative argument is “警察 (police)”. This argument can easily be identified by relying on the syntactic dependency. In contrast, since the nominative argument “男 i (mani)” has no syntactic dependency with its predicate “逃 走した (escaped)”, we have to use other information for such zero argument identification. As an solution to this problem, we exploit two kinds of information: (i) context in the entire sentence and (ii) multi-predicate interactions. For the former, we introduce single-sequence model, which induces context-sensitive representations from a sequence of argument candidates of a predicate. For the latter, we introduce multi-sequence model, which induces predicate-sensitive representations from multiple sequences of argument candidates of all predicates in a sentence (shown in Figure 2). 3 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 Figure 3: The overall architecture of the single sequence model. This model consists of three components: (i) Input Layer, (ii) RNN Layer and (iii) Output Layer.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_6",
+      "title": "3 Single-Sequence Model",
+      "level": 1,
+      "parent_id": null,
+      "key": "3_single_sequence_model",
+      "text": "The single-sequence model exploits stacked bidirectional RNNs (Bi-RNN) (Schuster and Paliwal, 1997; Graves et al., 2005, 2013; Zhou and Xu, 2015). Figure 3 shows the overall architecture, which consists of the following three components: Input Layer: Map each word to a feature vector representation. RNN Layer: Produce high-level feature vectors using Bi-RNNs. Output Layer: Compute the probability of each case label for each word using the softmax function. In the following subsections, we describe each of them in more detail.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_7",
+      "title": "3.1 Input Layer",
+      "level": 2,
+      "parent_id": "sec_6",
+      "key": "3_1_input_layer",
+      "text": "Given an input sentence w1:T = (w1, · · · , wT) and a predicate p, each word wt is mapped to a feature representation xt, which is the concatenation (⊕) of three types of vectors: xt = x arg t ⊕ x pred t ⊕ xmarkt (1) where each vector is based on the following atomic features inspired by Zhou and Xu (2015): ARG: Word index of each word. PRED: Word index of the target predicate and words around the predicate. MARK: Binary index that represents whether the word is the predicate or not. Figure 4: An example of the feature extraction. The underlined word is the target predicate. From the sentence “彼女はパンを食べた。(She ate a bread.)”, the three types of features are extracted for the target predicate “食べた (ate)”. Figure 5: An example of the process of creating a feature vector. The extracted features are mapped to each vector, and all the vectors are concatenated into one feature vector. Figure 4 presents an example of the atomic features. As the ARG feature, we extract a word index xword ∈ V of each word. Similarly, as the PRED feature, we extract each word index xword of the C words taking the target predicate at the center, where C is the window size. The MARK feature xmark ∈ {0, 1} is a binary value that represents whether the word is the predicate or not. Then, using feature indices, we extract feature vector representations from each embedding matrix. Figure 5 shows the process of creating the feature vector x1 for the word w1 “彼女 (she)”. We set two embedding matrices: (i) word embedding matrix Eword ∈ Rdword×|V|, and (ii) mark embedding matrixEmark ∈ Rdmark×2. From each embedding matrix, we extract corresponding column vectors and concatenate them as a feature vector representation xt based on Eq. 1. 4 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 Each feature vector xt is multiplied with a parameter matrix Wx: h (0) t = Wx xt (2) The vector h(0)t is given to the first layer of the RNN layers as input.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_8",
+      "title": "3.2 RNN Layer",
+      "level": 2,
+      "parent_id": "sec_6",
+      "key": "3_2_rnn_layer",
+      "text": "In the RNN layers, feature vectors are updated recurrently using Bi-RNNs. Bi-RNNs process an input sequence from the left-to-right manner in odd-numbered layers and the opposite in evennumbered layers. By stacking these layers, we can construct the deeper network structures. Stacked Bi-RNNs consist of L layers, and the hidden state in the layer ℓ ∈ (1, · · · , L) is calculated as follows: h (ℓ) t = { g(ℓ)(h (ℓ−1) t , h (ℓ) t−1) (ℓ = odd) g(ℓ)(h (ℓ−1) t , h (ℓ) t+1) (ℓ = even) (3) Both of the odd and even-numbered layers receive h(ℓ−1)t , the t-th hidden state of the ℓ − 1 layer, as the first input of the function g(ℓ), which is an arbitrary function 3. As the second input of g(ℓ), odd-numbered layers receive h(ℓ)t−1 while even-numbered layers receive h(ℓ)t+1. By calculating the hidden states until the L-th layer, we obtain a hidden state sequence h(L)1:T = (h (L) 1 , · · · ,h (L) T ). Using each vector h(L)t , we calculate the probability of case labels for each word in the output layer.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_9",
+      "title": "3.3 Output Layer",
+      "level": 2,
+      "parent_id": "sec_6",
+      "key": "3_3_output_layer",
+      "text": "In the output layer, multi-class classification is performed using the softmax function: yt = softmax(Wy h (L) t ) where h(L)t is a vector representation propagated from the last RNN layer (Fig 3). Each element of yt is a probability value corresponding to each label. The label with the maximum probability among them is output as a result. In this task, there are five labels: NOM, ACC, DAT, PRED, null. The labels NOM, ACC and DAT indicate the nominative, accusative and dative case, respectively. PRED is the label for the predicate. null represents a word that does not play any case role. 3In this work, we use the Gated Recurrent Unit (GRU) (Cho et al., 2014) as the function g(ℓ).",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_10",
+      "title": "4 Multi-Sequence Model",
+      "level": 1,
+      "parent_id": null,
+      "key": "4_multi_sequence_model",
+      "text": "While the single-sequence model assumes the independence between predicates, the multisequence model assumes the multi-predicate interactions. To capture such interactions between all predicates in a sentence, we extend the singlesequence model to the multi-sequence model using Grid-RNNs (Graves and Schmidhuber, 2009; Kalchbrenner et al., 2016). Figure 6 presents the overall architecture of the multi-sequence model, which consists of three components: Input Layer: Map words to M sequences of feature vectors for M predicates. Grid Layer: Update the hidden states over different sequences using Grid-RNNs. Output Layer: Compute the probability of each case label for each word using the softmax function. In the following subsections, we describe them in more detail.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_11",
+      "title": "4.1 Input Layer",
+      "level": 2,
+      "parent_id": "sec_10",
+      "key": "4_1_input_layer",
+      "text": "The multi-sequence model takes as input a sentence w1:T = (w1, · · · , wT) and all predicates {pm}M1 in the sentence. For each predicate pm, the input layer creates a sequence of feature vectors Xm = (xm,1, · · · ,xm,T) by mapping each input word wt to a feature vector xm,t based on Eq 1. That is, for M predicates, M sequences of feature vectors {Xm}M1 are created. Then, using Eq. 2, each feature vector xm,t is mapped to h(0)m,t, and a feature sequence is created for a predicate pm, i.e.,H (0) m = (h (0) m,1, · · · ,h (0) m,T). Consequently, forM predicates, we obtainM feature sequences {H(0)m }M1 .",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_12",
+      "title": "4.2 Grid Layer",
+      "level": 2,
+      "parent_id": "sec_10",
+      "key": "4_2_grid_layer",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_13",
+      "title": "Inter-Sequence Connections",
+      "level": 1,
+      "parent_id": null,
+      "key": "inter_sequence_connections",
+      "text": "In the grid layers, we use Grid-RNNs to propagate the feature information over the different sequences (inter-sequence connections). The right figure in Figure 6 shows an odd-numbered layer of the Grid layers. The hidden state is recurrently calculated from upper-left (m = 1, t = 1) to lowerright (m = M, t = T). Formally, in the ℓ-th layer, the hidden state h(ℓ)m,t is calculated as follows: h (ℓ) m,t= { g(ℓ)(h (ℓ−1) m,t ⊕ h (ℓ) m−1,t,h (ℓ) m,t−1) (ℓ = odd) g(ℓ)(h (ℓ−1) m,t ⊕ h (ℓ) m+1,t,h (ℓ) m,t+1) (ℓ = even) 5 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 This equation is similar to Eq. 3. The main difference is that the hidden state of a neighboring sequence, h(ℓ)m−1,t (or h (ℓ) m+1,t), is concatenated (⊕) with the hidden state of the previous (ℓ− 1) layer, h (ℓ−1) m,t , and is taken as input of the function g (ℓ). In the right figure in Figure 6, the blue curve lines represent the inter-sequence connections. Taking as input the hidden states of neighboring sequences, the network propagates feature information over multiple sequences (predicates). By calculating the hidden states until the L-th layer, we obtain M sequences of the hidden states, i.e., {H(L)m }M1 , in which H (L) m = (h (L) m,1, · · · ,h (L) m,T).",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_14",
+      "title": "Residual Connections",
+      "level": 1,
+      "parent_id": null,
+      "key": "residual_connections",
+      "text": "As more layers are stacked, it gets more difficult to learn the model parameters due to some problems such as gradient vanishment (Pascanu et al., 2013). In this work, we integrate residual connections (He et al., 2015;Wu et al., 2016) with our networks to connect between layers. Specifically, the input vector h(ℓ−1)m,t of the ℓ-th layer is added to the output vector h(ℓ)m,t. Residual connections can also be applied to the single-sequence model, and thus we perform the experiments on both models with/without residual connections.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_15",
+      "title": "4.3 Output Layer",
+      "level": 2,
+      "parent_id": "sec_14",
+      "key": "4_3_output_layer",
+      "text": "Like the single-sequence model, using the softmax function, we calculate the probability of case labels of each word wt for each predicate pm: ym,t = softmax(Wy h (L) m,t) where h(L)m,t is a hidden state vector calculated in the last Grid Layer.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_16",
+      "title": "5 Related Work",
+      "level": 1,
+      "parent_id": null,
+      "key": "5_related_work",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_17",
+      "title": "5.1 Japanese PAS Analysis Approaches",
+      "level": 2,
+      "parent_id": "sec_16",
+      "key": "5_1_japanese_pas_analysis_approaches",
+      "text": "Existing approaches for Japanese PAS analysis are divided into two categories: (i) pointwise approach and (ii) joint approach. In the pointwise approach, we estimate the score of each argument candidate for one predicate, and select the argument candidate with the maximum score as an argument (Taira et al., 2008; Imamura et al., 2009; Hayashibe et al., 2011; Iida et al., 2016). In the joint approach, we select the score of all the predicate-argument combinations in one sentence, and select the combination with the highest score (Yoshikawa et al., 2011; Sasano and Kurohashi, 2011; Ouchi et al., 2015; Shibata et al., 2016). Compared with the pointwise approach, the joint approach has achieved better results.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_18",
+      "title": "5.2 Multi-Predicate Interactions",
+      "level": 2,
+      "parent_id": "sec_16",
+      "key": "5_2_multi_predicate_interactions",
+      "text": "Ouchi et al. (2015) reported that it is beneficial to Japanese PAS analysis to capture the interactions between all predicates in a sentence. This is based on the linguistic intuition that the predicates in a sentence are semantically related to each other, and the interaction information can be a clue for PAS analysis. Similarly, in semantic role labeling (SRL), Yang and Zong (2014) also reported that their reranking model capturing the multi-predicate interactions is effective for the English constituentbased SRL task (Carreras and Màrquez, 2005). Taking a step further in this direction, we propose the neural architecture that effectively models the multi-predicate interactions. 6 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 550 551 552 553 554 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_19",
+      "title": "5.3 Neural Approaches",
+      "level": 2,
+      "parent_id": "sec_16",
+      "key": "5_3_neural_approaches",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_20",
+      "title": "Japanese PAS",
+      "level": 1,
+      "parent_id": null,
+      "key": "japanese_pas",
+      "text": "In recent years, several attempts have been made to apply neural networks for Japanese PAS analysis (Shibata et al., 2016; Iida et al., 2016)4. Shibata et al. (2016) used a feed-forward neural network for the score calculation part of the joint model proposed by Ouchi et al. (2015). Iida et al. (2016) used multi-column convolutional neural networks for the zero anaphora resolution task. Both models exploited syntactic and selectional preference information as atomic features of neural networks. Using neural networks, the good performance was realized with mitigating the cost of manually designing combination features. In this work, we demonstrate that even without such syntactic information, our neural models realize the state-of-the-art performance by using word sequence information of a sentence.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_21",
+      "title": "English SRL",
+      "level": 1,
+      "parent_id": null,
+      "key": "english_srl",
+      "text": "Some neural models achieved high performance without syntactic information in English SRL. Collobert et al. (2011) worked on the English constituent-based SRL task (Carreras and Màrquez, 2005). Their model exploited a convolutional neural network and achieved 74.15% in F-measure without syntactic information. Zhou and Xu (2015) also worked on the same task using bidirectional RNNs with CRF and achieved the state-of-the-art result, 81.07% in F-measure. Our models can be regarded as an extension from their model. The main differences between Zhou and Xu (2015) and our work are: (i) the constituent vs dependency-based argument identification and (ii) the multi-predicate consideration. In the constituent-based SRL, since systems are required to identify the spans of arguments for each predicate, Zhou and Xu (2015) used CRF to capture the IOB label dependencies. In contrast, in Japanese dependency-based PAS analysis, since arguments are infrequently adjacent to each other, we replaced the CRF with the softmax function. Also, while the model of Zhou and Xu (2015) predicts arguments for each predicate independently, our multi-sequence model jointly predicts arguments for all predicates in a sentence at a time by considering the multi-predicate interactions. 4These previous studies used unpublished datasets and evaluated the performance with different experimental settings, so we cannot compare their models with ours.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_22",
+      "title": "6 Experiments",
+      "level": 1,
+      "parent_id": null,
+      "key": "6_experiments",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_23",
+      "title": "6.1 Experimental Settings",
+      "level": 2,
+      "parent_id": "sec_22",
+      "key": "6_1_experimental_settings",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_24",
+      "title": "Dataset",
+      "level": 1,
+      "parent_id": null,
+      "key": "dataset",
+      "text": "We use the NAIST Text Corpus 1.5, which consists of 40,000 sentences of Japanese newspaper text (Iida et al., 2007). In the experiments, we adopt the standard data splits (Taira et al., 2008; Imamura et al., 2009; Ouchi et al., 2015): Train: Articles: Jan 1-11, Editorials: Jan-Aug Dev: Articles: Jan 12-13, Editorials: Sept Test: Articles: Jan 14-17, Editorials: Oct-Dec We use the word boundaries annotated to the NAIST Text Corpus and the target predicates that have at least one argument in the same sentence. We do not use any external resources.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_25",
+      "title": "Learning",
+      "level": 1,
+      "parent_id": null,
+      "key": "learning",
+      "text": "We train the model parameters by minimizing the cross-entropy loss function: L(θ) = − ∑ n ∑ t logP (yt|xt) + λ 2 ||θ||2 where θ is a set of model parameters, and the hyper-parameter λ is the coefficient governing the L2 weight decay.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_26",
+      "title": "Implementation Details",
+      "level": 1,
+      "parent_id": null,
+      "key": "implementation_details",
+      "text": "We implement our neural models using Theano (Bastien et al., 2012). The number of epochs is set to 50, and we report the result of the test set in the epoch with the best F-measure of the development set. Parameter optimization is done by stochastic gradient descent method (SGD) using mini-batch, whose size is selected from {2, 4, 8}. The learning rate is automatically adjusted using Adam (Kingma and Ba, 2014). For the L2 weight decay, the hyper-parameter λ in Eq. 4 is selected from {0.001, 0.0005, 0.0001}. In the neural models, the number of the RNN and Grid layers are selected from {2, 4, 6, 8}. The window size C for the PRED feature (Sec. 3.1) is set to 5. Words with frequency 2 or more are mapped to each word index, and the remaining words are mapped to the unknown word index. The dimensions dword and dmark of the embeddings are set to 32. In the single-sequence model, the parameters of GRUs are set to 32× 32. In the multi-sequence model, the parameters of GRUs related to the input values are set to 64 × 32, and 7 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 665 666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 686 687 688 689 690 691 692 693 694 695 696 697 698 699 Dep Zero All Imamura+ 09 85.06 41.65 78.15 Ouchi+ 15 86.07 44.09 79.23 Single-Seq 88.10 46.10 81.15 Multi-Seq 88.17 † 47.12 † 81.42 † Table 1: F-measures in the test set. Single-Seq is the single-sequence model, and Multi-Seq is the multi-sequence model. Imamura+ 09 is the model of Imamura et al. (2009) reimplemented by Ouchi et al. (2015), and Ouchi+ 15 is the ALLCases Joint Model of Ouchi et al. (2015). The mark † denotes the significantly better results with the significance level p < 0.05 comparing between Single-Seq and Multi-Seq. others are 32× 32. The initial values of all the parameters are sampled according to the uniform distribution from [− √ 6√ row+col , √ 6√ row+col ], where row and col are the number of rows and columns of each matrix, respectively.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_27",
+      "title": "Baseline Models",
+      "level": 1,
+      "parent_id": null,
+      "key": "baseline_models",
+      "text": "We compare our models with the models in the previous works (Sec. 5.1) that use the NAIST Text Corpus 1.5. As a baseline of the pointwise approach, we use the pointwise model5 of Imamura et al. (2009). In addition, as a baseline of the joint approach, we use the model of Ouchi et al. (2015), which achieved the best result on the NAIST Text Corpus 1.5.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_28",
+      "title": "6.2 Results",
+      "level": 2,
+      "parent_id": "sec_27",
+      "key": "6_2_results",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_29",
+      "title": "Neural Models vs Baseline Models",
+      "level": 1,
+      "parent_id": null,
+      "key": "neural_models_vs_baseline_models",
+      "text": "Table 1 presents F-measures of our neural sequence models with 8 RNN or Grid layers and the baseline models on the test set, in which as the significent test, we used the bootstrap resampling method. In all the metrics, both of the single-sequence (Single-Seq) and multisequence model (Multi-Seq) outperformed the baseline models. This confirms that our neural sequence models realize high-performance even without syntactic information by learning contextual information effective for PAS analysis from a word sequence of the sentence. In particular, for zero arguments (Zero), our models achieved a considerable improvement compared with the state-of-the-art model of 5We compared the results of the model reimplemented by Ouchi et al. (2015). Ouchi et al. (2015), i.e., the single model improved around 2.0 points and the multi-sequence model improved around 3.0 points in F-measure. These results suggest that it is beneficial to Japanese PAS analysis, particularly to the zero argument identification, to model the context in the entire sentence using RNNs.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_30",
+      "title": "Effects of Multiple Predicate Consideration",
+      "level": 1,
+      "parent_id": null,
+      "key": "effects_of_multiple_predicate_consideration",
+      "text": "As Table 1 shows, the multi-sequence model significantly outperformed the single-sequence model in F-measure in total (81.42% vs 81.15%). This result demonstrates that the grid-type neural architecture can effectively capture the multipredicate interactions by connecting between the sequences of the argument candidates for all predicates in a sentence. Compared with the single-sequence model for different argument types, the multi-sequence model achieved slightly but significantly better result for the direct dependency arguments (Dep) (88.10% vs 88.17%). In addition, for zero arguments (Zero), which have no syntactic dependency with its predicate, the multi-sequence model significantly outperformed the single-sequence model by around 1.0 points in F-measure (46.10% vs 47.12%). This shows that capturing the multipredicate interactions is particularly effective for zero arguments, which is consistent with the results of Ouchi et al. (2015). 8 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799 Dep Zero NOM ACC DAT NOM ACC DAT NAIST Text Corpus 1.5 Imamura+ 09 86.50 92.84 30.97 45.56 21.38 0.83 Ouchi+ 15 88.13 92.74 38.39 48.11 24.43 4.80 Single-Seq 88.32 93.89 65.91 49.51 35.07 9.83 Multi-Seq 88.75 93.68 64.38 50.65 32.35 7.52 NAIST Text Corpus 1.4β Taira+ 08* 75.53 88.20 89.51 30.15 11.41 3.66 Imamura+ 09* 87.0 93.9 80.8 50.0 30.8 0.0 Sasano+ 11* - - - 39.5 17.5 8.9 Table 3: Performance comparison for different case roles on the test set in F-measures. NOM, ACC or DAT is the nominal, accusative or dative case, respectively. The mark * indicates that the model uses external resources.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_31",
+      "title": "Effects of Network Depth",
+      "level": 1,
+      "parent_id": null,
+      "key": "effects_of_network_depth",
+      "text": "Table 2 presents F-measures of the neural sequence models with different network depths and with/without residual connections. The performance tends to get better as the RNN or Grid layers get deeper with residual connections. In particular, the two models with 8 layers and residual connections achieved considerable improvements of around 1.0 point in F-measure compared the models without residual connections, which means that the residual connections contribute to the effective parameter learning of deeper models.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_32",
+      "title": "Comparison per Case Role",
+      "level": 1,
+      "parent_id": null,
+      "key": "comparison_per_case_role",
+      "text": "Table 3 shows F-measures for each case role. For reference, we show the results of the previous studies using NAIST Text Corpus 1.4β with external resources as well.6 Comparing between the models using the NAIST Text Corpus 1.5, the single-sequence and multi-sequence models outperformed the baseline models in all the metrics. In particular, for the dative case, the two neural models achieved much higher results by around 30 points. This suggests that although dative arguments appear infrequently compared with the other two case arguments, the neural models can robustly learn it. In addition, for zero arguments (Zero), the neural models achieved better results than the baseline models. Especially, for zero arguments of 6The major difference between NAIST Text Corpus 1.4β and 1.5 is the revision of the annotation criterion for the dative case (DAT) (corresponding to Japanese case marker “に”). Argument and adjunct usages of the case marker “に” are not distinguished in 1.4β, making the identification of the dative case seemingly easy (Ouchi et al., 2015). the nominative case (NOM), the multi-sequence model achieved a considerable improvement of around 2.5 points in F-measure compared with the state-of-the-art model of Ouchi et al. (2015). To achieve high accuracies for the analysis of such zero arguments, it is necessary to capture long distance dependencies (Iida et al., 2005; Sasano and Kurohashi, 2011; Iida et al., 2015). Therefore, the improvements of the results suggest that the neural models effectively capture long distance dependencies using RNNs that can encode the context in the entire sentence.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_33",
+      "title": "7 Conclusion",
+      "level": 1,
+      "parent_id": null,
+      "key": "7_conclusion",
+      "text": "In this work, we introduced neural sequence models that automatically induce effective feature representations from word sequence information of a sentence for Japanese PAS analysis. The experiments on NAIST Text Corpus 1.5 demonstrated that the models achieve the state-of-the-art result without syntactic information. In particular, our multi-sequence model improved the performance for zero argument identification, one of the problematic issues in Japanese PAS analysis, by considering the multi-predicate interactions using Grid-RNNs. Since our neural models are applicable to SRL, applying our models for multilingual SRL tasks is an interesting line of the future research. In addition, in this work, the model parameters were learned without any external resources. For future work, we plan to explore effective methods for exploiting large-scale unlabeled data to learn the neural models. 9 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Frédéric Bastien. Pascal Lamblin. Razvan Pascanu. James Bergstra. Ian J. Goodfellow. Arnaud Bergeron. Nicolas Bouchard. Yoshua Bengio.. Theano: new features and speed improvements. Deep Learning and Unsupervised Feature Learning. 2012",
+      "marker": null,
+      "authors": [
+        "Frédéric Bastien",
+        "Pascal Lamblin",
+        "Razvan Pascanu",
+        "James Bergstra",
+        "Ian J. Goodfellow",
+        "Arnaud Bergeron",
+        "Nicolas Bouchard",
+        "Yoshua Bengio."
+      ],
+      "title": "Theano: new features and speed improvements",
+      "year": "2012",
+      "venue": "Deep Learning and Unsupervised Feature Learning",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Xavier Carreras. Lluı́s Màrquez. Introduction to the conll-2005 shared task: Semantic role labeling. In Proceedings of CoNLL. 2005",
+      "marker": null,
+      "authors": [
+        "Xavier Carreras",
+        "Lluı́s Màrquez"
+      ],
+      "title": "Introduction to the conll-2005 shared task: Semantic role labeling",
+      "year": "2005",
+      "venue": "In Proceedings of CoNLL",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Kyunghyun Cho. Bart van Merrienboer. Caglar Gulcehre. Dzmitry Bahdanau. Fethi Bougares. Holger Schwenk. Yoshua Bengio.. Learning phrase representations using rnn encoder–decoder for statistical machine translation. Proceedings. 2014",
+      "marker": null,
+      "authors": [
+        "Kyunghyun Cho",
+        "Bart van Merrienboer",
+        "Caglar Gulcehre",
+        "Dzmitry Bahdanau",
+        "Fethi Bougares",
+        "Holger Schwenk",
+        "Yoshua Bengio."
+      ],
+      "title": "Learning phrase representations using rnn encoder–decoder for statistical machine translation",
+      "year": "2014",
+      "venue": "Proceedings",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "Ronan Collobert. Jason Weston. Leon Bottou. Michael Karlen. Koray Kavukcuoglu. Pavel Kuksa.. Natural language processing (almost) from scratch. Journal of Machine Learning Research .. 2011",
+      "marker": null,
+      "authors": [
+        "Ronan Collobert",
+        "Jason Weston",
+        "Leon Bottou",
+        "Michael Karlen",
+        "Koray Kavukcuoglu",
+        "Pavel Kuksa."
+      ],
+      "title": "Natural language processing (almost) from scratch",
+      "year": "2011",
+      "venue": "Journal of Machine Learning Research .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Alan Graves. Navdeep Jaitly. Abdel-rahman Mohamed.. Hybrid speech recognition with deep bidirectional lstm. Proceedings of Automatic Speech Recognition and Understanding (ASRU), 2013 IEEE Workshop.. 2013",
+      "marker": null,
+      "authors": [
+        "Alan Graves",
+        "Navdeep Jaitly",
+        "Abdel-rahman Mohamed."
+      ],
+      "title": "Hybrid speech recognition with deep bidirectional lstm",
+      "year": "2013",
+      "venue": "Proceedings of Automatic Speech Recognition and Understanding (ASRU), 2013 IEEE Workshop.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "Alex Graves. Santiago Fernández. Jürgen Schmidhuber.. Bidirectional lstm networks for improved phoneme classification and recognition. Proceedings of International Conference on Artificial Neural Networks. pages 799–804.. 2005",
+      "marker": null,
+      "authors": [
+        "Alex Graves",
+        "Santiago Fernández",
+        "Jürgen Schmidhuber."
+      ],
+      "title": "Bidirectional lstm networks for improved phoneme classification and recognition",
+      "year": "2005",
+      "venue": "Proceedings of International Conference on Artificial Neural Networks. pages 799–804.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Alex Graves. Jürgen Schmidhuber.. Offline handwriting recognition with multidimensional recurrent neural networks. Proceedings of NIPS. pages 545–552.. 2009",
+      "marker": null,
+      "authors": [
+        "Alex Graves",
+        "Jürgen Schmidhuber."
+      ],
+      "title": "Offline handwriting recognition with multidimensional recurrent neural networks",
+      "year": "2009",
+      "venue": "Proceedings of NIPS. pages 545–552.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Yuta Hayashibe. Mamoru Komachi. Yuji Matsumoto.. Japanese predicate argument structure analysis exploiting argument position and type. Proceedings of IJCNLP. pages 201–209.. 2011",
+      "marker": null,
+      "authors": [
+        "Yuta Hayashibe",
+        "Mamoru Komachi",
+        "Yuji Matsumoto."
+      ],
+      "title": "Japanese predicate argument structure analysis exploiting argument position and type",
+      "year": "2011",
+      "venue": "Proceedings of IJCNLP. pages 201–209.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Kaiming He. Xiangyu Zhang. Shaoqing Ren. Jian Sun.. Deep residual learning for image recognition. arXiv preprint arXiv:1512.03385 .. 2015",
+      "marker": null,
+      "authors": [
+        "Kaiming He",
+        "Xiangyu Zhang",
+        "Shaoqing Ren",
+        "Jian Sun."
+      ],
+      "title": "Deep residual learning for image recognition",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1512.03385 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Ryu Iida. Kentaro Inui. Yuji Matsumoto.. Anaphora resolution by antecedent identification followed by anaphoricity determination. ACM Transactions on Asian Language Information Processing (TALIP) 4(4):417–434.. 2005",
+      "marker": null,
+      "authors": [
+        "Ryu Iida",
+        "Kentaro Inui",
+        "Yuji Matsumoto."
+      ],
+      "title": "Anaphora resolution by antecedent identification followed by anaphoricity determination",
+      "year": "2005",
+      "venue": "ACM Transactions on Asian Language Information Processing (TALIP) 4(4):417–434.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Ryu Iida. Mamoru Komachi. Kentaro Inui. Yuji Matsumoto.. Annotating a japanese text corpus with predicate-argument and coreference relations. Proceedings of the Linguistic Annotation Workshop. pages 132–139.. 2007",
+      "marker": null,
+      "authors": [
+        "Ryu Iida",
+        "Mamoru Komachi",
+        "Kentaro Inui",
+        "Yuji Matsumoto."
+      ],
+      "title": "Annotating a japanese text corpus with predicate-argument and coreference relations",
+      "year": "2007",
+      "venue": "Proceedings of the Linguistic Annotation Workshop. pages 132–139.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Ryu Iida. Massimo Poesio.. A cross-lingual ilp solution to zero anaphora resolution. Proceedings of ACL-HLT . pages 804–813.. 2011",
+      "marker": null,
+      "authors": [
+        "Ryu Iida",
+        "Massimo Poesio."
+      ],
+      "title": "A cross-lingual ilp solution to zero anaphora resolution",
+      "year": "2011",
+      "venue": "Proceedings of ACL-HLT . pages 804–813.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Ryu Iida. Kentaro Torisawa. Chikara Hashimoto. JongHoon Oh. Julien Kloetzer.. Intrasentential zero anaphora resolution using subject sharing recognition. Proceedings of EMNLP. pages 2179–2189.. 2015",
+      "marker": null,
+      "authors": [
+        "Ryu Iida",
+        "Kentaro Torisawa",
+        "Chikara Hashimoto",
+        "JongHoon Oh",
+        "Julien Kloetzer."
+      ],
+      "title": "Intrasentential zero anaphora resolution using subject sharing recognition",
+      "year": "2015",
+      "venue": "Proceedings of EMNLP. pages 2179–2189.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Ryu Iida. Kentaro Torisawa. Jong-Hoon Oh. Canasai Kruengkrai. Julien Kloetzer.. Intrasentential subject zero anaphora resolution using multi-column convolutional neural network. Proceedings of EMNLP. pages 1244–1254.. 2016",
+      "marker": null,
+      "authors": [
+        "Ryu Iida",
+        "Kentaro Torisawa",
+        "Jong-Hoon Oh",
+        "Canasai Kruengkrai",
+        "Julien Kloetzer."
+      ],
+      "title": "Intrasentential subject zero anaphora resolution using multi-column convolutional neural network",
+      "year": "2016",
+      "venue": "Proceedings of EMNLP. pages 1244–1254.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Kenji Imamura. Kuniko Saito. Tomoko Izumi.. Discriminative approach to predicateargument structure analysis with zero-anaphora resolution. Proceedings of ACL-IJCNLP. pages 85–. 2009",
+      "marker": null,
+      "authors": [
+        "Kenji Imamura",
+        "Kuniko Saito",
+        "Tomoko Izumi."
+      ],
+      "title": "Discriminative approach to predicateargument structure analysis with zero-anaphora resolution",
+      "year": "2009",
+      "venue": "Proceedings of ACL-IJCNLP. pages 85–",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Nal Kalchbrenner. Ivo Danihelka. Alex Graves.. Grid long short-term memory. Proceedings of ICLR.. 2016",
+      "marker": null,
+      "authors": [
+        "Nal Kalchbrenner",
+        "Ivo Danihelka",
+        "Alex Graves."
+      ],
+      "title": "Grid long short-term memory",
+      "year": "2016",
+      "venue": "Proceedings of ICLR.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "D.P. Kingma. J. Ba.. Adam: A method for stochastic optimization. arXiv preprint arXiv: 1412.6980.. 2014",
+      "marker": null,
+      "authors": [
+        "D.P. Kingma",
+        "J. Ba."
+      ],
+      "title": "Adam: A method for stochastic optimization",
+      "year": "2014",
+      "venue": "arXiv preprint arXiv: 1412.6980.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Hiroki Ouchi. Hiroyuki Shindo. Kevin Duh. Yuji Matsumoto.. Joint case argument identification for japanese predicate argument structure analysis. Proceedings of ACL-IJCNLP. pages 961– 970.. 2015",
+      "marker": null,
+      "authors": [
+        "Hiroki Ouchi",
+        "Hiroyuki Shindo",
+        "Kevin Duh",
+        "Yuji Matsumoto."
+      ],
+      "title": "Joint case argument identification for japanese predicate argument structure analysis",
+      "year": "2015",
+      "venue": "Proceedings of ACL-IJCNLP. pages 961– 970.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Razvan Pascanu. Tomas Mikolov. Yoshua Bengio.. On the difficulty of training recurrent neural networks. Proceedings of ICML.. 2013",
+      "marker": null,
+      "authors": [
+        "Razvan Pascanu",
+        "Tomas Mikolov",
+        "Yoshua Bengio."
+      ],
+      "title": "On the difficulty of training recurrent neural networks",
+      "year": "2013",
+      "venue": "Proceedings of ICML.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_20",
+      "raw": "Ryohei Sasano. Sadao Kurohashi.. A discriminative approach to japanese zero anaphora resolution with large-scale lexicalized case frames. Proceedings of IJCNLP. pages 758–766.. 2011",
+      "marker": null,
+      "authors": [
+        "Ryohei Sasano",
+        "Sadao Kurohashi."
+      ],
+      "title": "A discriminative approach to japanese zero anaphora resolution with large-scale lexicalized case frames",
+      "year": "2011",
+      "venue": "Proceedings of IJCNLP. pages 758–766.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_21",
+      "raw": "Mike Schuster. Kuldip K Paliwal.. Bidirectional recurrent neural networks. IEEE Transactions on Signal Processing pages 2673–2681.. 1997",
+      "marker": null,
+      "authors": [
+        "Mike Schuster",
+        "Kuldip K Paliwal."
+      ],
+      "title": "Bidirectional recurrent neural networks",
+      "year": "1997",
+      "venue": "IEEE Transactions on Signal Processing pages 2673–2681.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_22",
+      "raw": "Tomohide Shibata. Daisuke Kawahara. Sadao Kurohashi.. Neural network-based model for japanese predicate argument structure analysis. Proceedings of ACL. pages 1235–1244.. 2016",
+      "marker": null,
+      "authors": [
+        "Tomohide Shibata",
+        "Daisuke Kawahara",
+        "Sadao Kurohashi."
+      ],
+      "title": "Neural network-based model for japanese predicate argument structure analysis",
+      "year": "2016",
+      "venue": "Proceedings of ACL. pages 1235–1244.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_23",
+      "raw": "Hirotoshi Taira. Sanae Fujita. Masaaki Nagata.. A japanese predicate argument structure analysis using decision lists. Proceedings of EMNLP. pages 523–532.. 2008",
+      "marker": null,
+      "authors": [
+        "Hirotoshi Taira",
+        "Sanae Fujita",
+        "Masaaki Nagata."
+      ],
+      "title": "A japanese predicate argument structure analysis using decision lists",
+      "year": "2008",
+      "venue": "Proceedings of EMNLP. pages 523–532.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_24",
+      "raw": "Haitong Yang. Chengqing Zong.. Multipredicate semantic role labeling. Proceedings of EMNLP. pages 363–373.. 2014",
+      "marker": null,
+      "authors": [
+        "Haitong Yang",
+        "Chengqing Zong."
+      ],
+      "title": "Multipredicate semantic role labeling",
+      "year": "2014",
+      "venue": "Proceedings of EMNLP. pages 363–373.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_25",
+      "raw": "Katsumasa Yoshikawa. Masayuki Asahara. Yuji Matsumoto.. Jointly extracting japanese predicate-argument relation with markov logic. Proceedings of IJCNLP. pages 1125–1133.. 2011",
+      "marker": null,
+      "authors": [
+        "Katsumasa Yoshikawa",
+        "Masayuki Asahara",
+        "Yuji Matsumoto."
+      ],
+      "title": "Jointly extracting japanese predicate-argument relation with markov logic",
+      "year": "2011",
+      "venue": "Proceedings of IJCNLP. pages 1125–1133.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_26",
+      "raw": "Jie Zhou. Wei Xu.. End-to-end learning of semantic role labeling using recurrent neural networks. Proceedings of ACL-IJCNLP.. 2015",
+      "marker": null,
+      "authors": [
+        "Jie Zhou",
+        "Wei Xu."
+      ],
+      "title": "End-to-end learning of semantic role labeling using recurrent neural networks",
+      "year": "2015",
+      "venue": "Proceedings of ACL-IJCNLP.",
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citation_mentions": [
+    {
+      "reference_id": "ref_12",
+      "marker": null,
+      "sentence": "In pro-drop languages such as Japanese, Chinese and Italian, arguments are often omitted in text, and such argument omission is regarded as one of the most problematic issues of PAS analysis (Iida and Poesio, 2011; Sasano and Kurohashi, 2011).",
+      "section_id": "sec_2",
+      "start_offset": 181,
+      "end_offset": 424
+    },
+    {
+      "reference_id": "ref_20",
+      "marker": null,
+      "sentence": "In pro-drop languages such as Japanese, Chinese and Italian, arguments are often omitted in text, and such argument omission is regarded as one of the most problematic issues of PAS analysis (Iida and Poesio, 2011; Sasano and Kurohashi, 2011).",
+      "section_id": "sec_2",
+      "start_offset": 181,
+      "end_offset": 424
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "As an approach to the argument omission problem, in Japanese PAS analysis, joint modeling of interactions between multiple predicates has been gaining popularity and achieved the state-of-theart result (Ouchi et al., 2015; Shibata et al., 2016).",
+      "section_id": "sec_2",
+      "start_offset": 425,
+      "end_offset": 670
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "As an approach to the argument omission problem, in Japanese PAS analysis, joint modeling of interactions between multiple predicates has been gaining popularity and achieved the state-of-theart result (Ouchi et al., 2015; Shibata et al., 2016).",
+      "section_id": "sec_2",
+      "start_offset": 425,
+      "end_offset": 670
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Performing experiments on the NAIST Text Corpus (Iida et al., 2007), we demonstrate that our neural models exceed the accuracy of the stateof-the-art Japanese PAS analyzer (Ouchi et al.",
+      "section_id": "sec_2",
+      "start_offset": 1711,
+      "end_offset": 1896
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": ", 2007), we demonstrate that our neural models exceed the accuracy of the stateof-the-art Japanese PAS analyzer (Ouchi et al., 2015).",
+      "section_id": "sec_2",
+      "start_offset": 1771,
+      "end_offset": 1904
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "Arguments can be divided into the following three categories according to the positions relative to their predicates (Hayashibe et al., 2011; Ouchi et al., 2015):",
+      "section_id": "sec_4",
+      "start_offset": 170,
+      "end_offset": 332
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "Arguments can be divided into the following three categories according to the positions relative to their predicates (Hayashibe et al., 2011; Ouchi et al., 2015):",
+      "section_id": "sec_4",
+      "start_offset": 170,
+      "end_offset": 332
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": ", 2008; Imamura et al., 2009; Sasano and Kurohashi, 2011). and Shibata et al. (2016) focused on only intrasentential argument analysis.",
+      "section_id": "sec_4",
+      "start_offset": 1394,
+      "end_offset": 1529
+    },
+    {
+      "reference_id": "ref_21",
+      "marker": null,
+      "sentence": "The single-sequence model exploits stacked bidirectional RNNs (Bi-RNN) (Schuster and Paliwal, 1997; Graves et al., 2005, 2013; Zhou and Xu, 2015).",
+      "section_id": "sec_6",
+      "start_offset": 0,
+      "end_offset": 146
+    },
+    {
+      "reference_id": "ref_26",
+      "marker": null,
+      "sentence": "The single-sequence model exploits stacked bidirectional RNNs (Bi-RNN) (Schuster and Paliwal, 1997; Graves et al., 2005, 2013; Zhou and Xu, 2015).",
+      "section_id": "sec_6",
+      "start_offset": 0,
+      "end_offset": 146
+    },
+    {
+      "reference_id": "ref_26",
+      "marker": null,
+      "sentence": "where each vector is based on the following atomic features inspired by Zhou and Xu (2015):",
+      "section_id": "sec_7",
+      "start_offset": 217,
+      "end_offset": 308
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "To capture such interactions between all predicates in a sentence, we extend the singlesequence model to the multi-sequence model using Grid-RNNs (Graves and Schmidhuber, 2009; Kalchbrenner et al., 2016).",
+      "section_id": "sec_10",
+      "start_offset": 143,
+      "end_offset": 347
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "To capture such interactions between all predicates in a sentence, we extend the singlesequence model to the multi-sequence model using Grid-RNNs (Graves and Schmidhuber, 2009; Kalchbrenner et al., 2016).",
+      "section_id": "sec_10",
+      "start_offset": 143,
+      "end_offset": 347
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": "In this work, we integrate residual connections (He et al., 2015;Wu et al., 2016) with our networks to connect between layers.",
+      "section_id": "sec_14",
+      "start_offset": 154,
+      "end_offset": 280
+    },
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "In the pointwise approach, we estimate the score of each argument candidate for one predicate, and select the argument candidate with the maximum score as an argument (Taira et al., 2008; Imamura et al., 2009; Hayashibe et al., 2011; Iida et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 127,
+      "end_offset": 380
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "In the pointwise approach, we estimate the score of each argument candidate for one predicate, and select the argument candidate with the maximum score as an argument (Taira et al., 2008; Imamura et al., 2009; Hayashibe et al., 2011; Iida et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 127,
+      "end_offset": 380
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "In the pointwise approach, we estimate the score of each argument candidate for one predicate, and select the argument candidate with the maximum score as an argument (Taira et al., 2008; Imamura et al., 2009; Hayashibe et al., 2011; Iida et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 127,
+      "end_offset": 380
+    },
+    {
+      "reference_id": "ref_14",
+      "marker": null,
+      "sentence": "In the pointwise approach, we estimate the score of each argument candidate for one predicate, and select the argument candidate with the maximum score as an argument (Taira et al., 2008; Imamura et al., 2009; Hayashibe et al., 2011; Iida et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 127,
+      "end_offset": 380
+    },
+    {
+      "reference_id": "ref_25",
+      "marker": null,
+      "sentence": "In the joint approach, we select the score of all the predicate-argument combinations in one sentence, and select the combination with the highest score (Yoshikawa et al., 2011; Sasano and Kurohashi, 2011; Ouchi et al., 2015; Shibata et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 381,
+      "end_offset": 629
+    },
+    {
+      "reference_id": "ref_20",
+      "marker": null,
+      "sentence": "In the joint approach, we select the score of all the predicate-argument combinations in one sentence, and select the combination with the highest score (Yoshikawa et al., 2011; Sasano and Kurohashi, 2011; Ouchi et al., 2015; Shibata et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 381,
+      "end_offset": 629
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "In the joint approach, we select the score of all the predicate-argument combinations in one sentence, and select the combination with the highest score (Yoshikawa et al., 2011; Sasano and Kurohashi, 2011; Ouchi et al., 2015; Shibata et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 381,
+      "end_offset": 629
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "In the joint approach, we select the score of all the predicate-argument combinations in one sentence, and select the combination with the highest score (Yoshikawa et al., 2011; Sasano and Kurohashi, 2011; Ouchi et al., 2015; Shibata et al., 2016).",
+      "section_id": "sec_17",
+      "start_offset": 381,
+      "end_offset": 629
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": ", 2016; Iida et al., 2016)4. Shibata et al. (2016) used a feed-forward neural network for the score calculation part of the joint model proposed by Ouchi et al.",
+      "section_id": "sec_20",
+      "start_offset": 115,
+      "end_offset": 275
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": ", 2016; Iida et al., 2016)4. Shibata et al. (2016) used a feed-forward neural network for the score calculation part of the joint model proposed by Ouchi et al. (2015). Iida et al.",
+      "section_id": "sec_20",
+      "start_offset": 115,
+      "end_offset": 295
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": ", 2016; Iida et al., 2016)4. Shibata et al. (2016) used a feed-forward neural network for the score calculation part of the joint model proposed by Ouchi et al. (2015). Iida et al. (2016) used multi-column convolutional neural networks for the zero anaphora resolution task.",
+      "section_id": "sec_20",
+      "start_offset": 115,
+      "end_offset": 389
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "5, which consists of 40,000 sentences of Japanese newspaper text (Iida et al., 2007).",
+      "section_id": "sec_24",
+      "start_offset": 31,
+      "end_offset": 116
+    },
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "In the experiments, we adopt the standard data splits (Taira et al., 2008; Imamura et al., 2009; Ouchi et al., 2015):",
+      "section_id": "sec_24",
+      "start_offset": 117,
+      "end_offset": 234
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "In the experiments, we adopt the standard data splits (Taira et al., 2008; Imamura et al., 2009; Ouchi et al., 2015):",
+      "section_id": "sec_24",
+      "start_offset": 117,
+      "end_offset": 234
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "In the experiments, we adopt the standard data splits (Taira et al., 2008; Imamura et al., 2009; Ouchi et al., 2015):",
+      "section_id": "sec_24",
+      "start_offset": 117,
+      "end_offset": 234
+    },
+    {
+      "reference_id": "ref_17",
+      "marker": null,
+      "sentence": "The learning rate is automatically adjusted using Adam (Kingma and Ba, 2014).",
+      "section_id": "sec_26",
+      "start_offset": 337,
+      "end_offset": 414
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "Imamura+ 09 is the model of Imamura et al. (2009) reimplemented by Ouchi et al.",
+      "section_id": "sec_26",
+      "start_offset": 1625,
+      "end_offset": 1704
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "Imamura+ 09 is the model of Imamura et al. (2009) reimplemented by Ouchi et al. (2015), and Ouchi+ 15 is the ALLCases Joint Model of Ouchi et al.",
+      "section_id": "sec_26",
+      "start_offset": 1625,
+      "end_offset": 1770
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "Imamura+ 09 is the model of Imamura et al. (2009) reimplemented by Ouchi et al. (2015), and Ouchi+ 15 is the ALLCases Joint Model of Ouchi et al. (2015). The mark † denotes the significantly better results with the significance level p < 0.",
+      "section_id": "sec_26",
+      "start_offset": 1625,
+      "end_offset": 1865
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "As a baseline of the pointwise approach, we use the pointwise model5 of Imamura et al. (2009). In addition, as a baseline of the joint approach, we use the model of Ouchi et al.",
+      "section_id": "sec_27",
+      "start_offset": 107,
+      "end_offset": 284
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "As a baseline of the pointwise approach, we use the pointwise model5 of Imamura et al. (2009). In addition, as a baseline of the joint approach, we use the model of Ouchi et al. (2015), which achieved the best result on the NAIST Text Corpus 1.",
+      "section_id": "sec_27",
+      "start_offset": 107,
+      "end_offset": 351
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "This shows that capturing the multipredicate interactions is particularly effective for zero arguments, which is consistent with the results of Ouchi et al. (2015).",
+      "section_id": "sec_30",
+      "start_offset": 789,
+      "end_offset": 953
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "4β, making the identification of the dative case seemingly easy (Ouchi et al., 2015).",
+      "section_id": "sec_32",
+      "start_offset": 982,
+      "end_offset": 1067
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": "To achieve high accuracies for the analysis of such zero arguments, it is necessary to capture long distance dependencies (Iida et al., 2005; Sasano and Kurohashi, 2011; Iida et al., 2015).",
+      "section_id": "sec_32",
+      "start_offset": 1255,
+      "end_offset": 1444
+    },
+    {
+      "reference_id": "ref_20",
+      "marker": null,
+      "sentence": "To achieve high accuracies for the analysis of such zero arguments, it is necessary to capture long distance dependencies (Iida et al., 2005; Sasano and Kurohashi, 2011; Iida et al., 2015).",
+      "section_id": "sec_32",
+      "start_offset": 1255,
+      "end_offset": 1444
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": null,
+      "sentence": "To achieve high accuracies for the analysis of such zero arguments, it is necessary to capture long distance dependencies (Iida et al., 2005; Sasano and Kurohashi, 2011; Iida et al., 2015).",
+      "section_id": "sec_32",
+      "start_offset": 1255,
+      "end_offset": 1444
+    },
+    {
+      "reference_id": "ref_14",
+      "marker": null,
+      "sentence": "4β, making the identification of the dative case seemingly easy (Ouchi et al., 2015). the nominative case (NOM), the multi-sequence model achieved a considerable improvement of around 2.5 points in F-measure compared with the state-of-the-art model of Ouchi et al. (2015). To achieve high accuracies for the analysis of such zero arguments, it is necessary to capture long distance dependencies (Iida et al.",
+      "section_id": "sec_32",
+      "start_offset": 982,
+      "end_offset": 1389
+    }
+  ],
+  "figures": [],
+  "hidden_text_findings": []
+}

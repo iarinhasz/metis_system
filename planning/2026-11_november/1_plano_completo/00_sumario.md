@@ -1,9 +1,19 @@
 # Metis: plano completo do projeto
 
-**Situação:** M0 implementado até a etapa 0.3 (API de submissão), localmente; o CI com Postgres está pendente. O código fica em `projects/correction/`. Próximo passo: as pendências da 0.3 e a etapa 0.4 ([04](04_etapas_m0_restante.md))
-**Data:** 05/11/2026
+**Situação revisada em 16/11/2026 (base `13bf6d1`):** plataforma, E1, E2,
+curadoria e Questions iniciais, E4 (3.1–3.10), E5, rubric check, custo no admin e base de evals
+implementados. O E3 roda enxuto desde 15/11 (texto oculto, regras de risco e gate humano); a trilha de Integridade entregou o `scholarly/` (4.1), o corpus (4.3) e o MinHash (4.5), ainda fora do E3. **Com modelos reais, o pipeline chega ao fim** (ver a 3.10): depois de ajustar as validações do E4 às respostas reais, o ICLR 410 chegou a `done` em 16/11; a qualidade da avaliação ainda precisa ser medida. Recortes, A/B,
+benchmarks de avaliação/integridade e as checagens das referências (5.1–5.3) continuam pendentes.
+O código fica em `projects/correction/`. O [estado do módulo e as metas revistas](../../../docs/status_and_metrics.md)
+registram números, condições e evidências sem declarar os marcos completos.
+Conferido em 16/11: a CI inteira (756 testes), os 5 testes com o Gemini e a OpenAI de verdade e, no Docker, um run limpo até o E5 e um PDF com instrução escondida parando no gate e seguindo depois do "continuar".
+
+**Objetivo daqui em diante (15/11):** o pipeline completo, para comparar as nossas avaliações com as reais do PeerRead (notas por critério do ACL 2017, decisão e revisões do ICLR 2017): se a nota acompanha a dos revisores, se a IA é rígida demais e que pontos ela não viu. Para isso, a Plataforma fecha a trilha com as dependências: a 1.7 e o E3 enxuto, sem plágio (feitos em 15/11). A trilha de Avaliação fez o contrato `ExtractedDocument` (1.1 e 1.11) e o E4 (3.1–3.10, em 16/11); falta medir a qualidade contra as revisões reais. A retenção (Q7) saiu do escopo. Os modelos são só `gemini-2.5-flash`, `gpt-5.6-luna` e `gpt-5.4-nano` (Q1).
+
+**Data original:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)
 **Fluxo no Agno:** [docs/agents.md](../../../docs/agents.md); em diagramas, com as entidades e as ligações: [docs/flow_graph.md](../../../docs/flow_graph.md)
+**Equipe (07/11):** 4 módulos, um por integrante, com uma branch por etapa e PR para a `dev`: [divisão em módulos](../2_divisao_equipe/divisao_em_modulos.html) (abra no navegador)
 
 ---
 
@@ -33,6 +43,11 @@ As decisões D1–D13 continuam valendo, com os ajustes indicados abaixo.
 
 O detalhe de cada uma está em [docs/agents.md](../../../docs/agents.md) e nos docs ajustados.
 
+**Aplicação atual da D16:** E2 e E5 têm Workflow Agno; E1 usa sessão e
+`bounded_map` sem Workflow. E3/E4 permanecem stubs. A fronteira de `Agent` e
+modelos em `agents/` está implementada e testada; os esboços não comprovam
+implementação de todos os workflows.
+
 ## Visão do caminho
 
 ```text
@@ -55,7 +70,7 @@ Continua o que estava fora no desenho inicial: detector de texto gerado por IA, 
 | [02_fluxo_agno.md](02_fluxo_agno.md) | O fluxo no Agno do ponto de vista da construção: qual etapa cria cada peça, e em que ordem |
 | [03_roteiro_e_trilhas.md](03_roteiro_e_trilhas.md) | Marcos M0–M6, dependências, 3 trilhas e pontos de integração |
 | [04_etapas_m0_restante.md](04_etapas_m0_restante.md) | Pendências da 0.3 e etapas 0.4–0.7 |
-| [05_etapas_m1_extracao.md](05_etapas_m1_extracao.md) | M1: contrato, spike do Agno, `agents/`, `LLMCall`, GROBID, Docling, figuras, E1 |
+| [05_etapas_m1_extracao.md](05_etapas_m1_extracao.md) | M1: contrato, spike do Agno, `agents/`, `LLMCall`, divisão do artigo pelo modelo (1.5, feita), figuras, E1 |
 | [06_etapas_m2_perfil.md](06_etapas_m2_perfil.md) | M2: taxonomia, critérios, profiler, papéis das seções, curadoria |
 | [07_etapas_m3_avaliacao.md](07_etapas_m3_avaliacao.md) | M3: avaliadores, validadores, juiz, revisão, E5, rubric check, A/B |
 | [08_etapas_m4_integridade_fase1.md](08_etapas_m4_integridade_fase1.md) | M4: `scholarly/`, referências, corpus, funil de similaridade, regras, gate |

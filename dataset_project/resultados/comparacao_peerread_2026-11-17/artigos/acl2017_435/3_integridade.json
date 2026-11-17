@@ -1,0 +1,778 @@
+{
+    "run_id": "01a1e77d-b1b9-75a5-b69b-44a040d42563",
+    "risk": "low",
+    "rules_version": "v1",
+    "coverage": {
+        "hidden_text": true
+    },
+    "findings": [
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "yc",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "F",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "rr",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "tt:",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "rt",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "l",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "l",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "tr",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "l",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "tf",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "tt",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "lf",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "it",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "f",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "rtr",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "li",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "ff",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "fr",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "r",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "t",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 7: em fonte minúscula.",
+            "evidence": {
+                "page": 7,
+                "text": "i",
+                "reasons": [
+                    "size"
+                ]
+            }
+        }
+    ]
+}

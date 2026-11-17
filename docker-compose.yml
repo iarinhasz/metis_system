@@ -1,0 +1,109 @@
+# Serviços descritos em docs/infrastructure.md. A configuração vem do .env (cp .env.example .env).
+name: metis
+
+x-common-env: &common-env
+  # Na rede do compose, banco e broker são os serviços abaixo, não o localhost do .env.
+  METIS_POSTGRES_HOST: postgres
+  METIS_POSTGRES_PORT: "5432"
+  METIS_REDIS_URL: redis://redis:6379/0
+  METIS_MEDIA_ROOT: /data/media
+
+x-app: &app
+  build: .
+  image: metis:dev
+  env_file: .env
+  environment: *common-env
+  volumes:
+    - media:/data/media
+  restart: unless-stopped
+
+# Workers, beat e flower sobem depois que o web aplicou as migrações e respondeu ao /health/.
+x-celery: &celery
+  <<: *app
+  depends_on:
+    web:
+      condition: service_healthy
+  healthcheck:
+    disable: true
+
+services:
+  web:
+    <<: *app
+    command: >-
+      sh -c "python manage.py migrate --noinput
+      && exec gunicorn projects.correction.metis.wsgi:application"
+    ports:
+      - "${METIS_WEB_PORT:-8100}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-extraction:
+    <<: *celery
+    command: >-
+      celery -A projects.correction.metis.celery worker
+      -Q extraction -n extraction@%h --concurrency 1 --loglevel INFO
+    mem_limit: 2g
+
+  worker-integrity:
+    <<: *celery
+    command: >-
+      celery -A projects.correction.metis.celery worker
+      -Q integrity -n integrity@%h --concurrency 2 --loglevel INFO
+
+  worker-evaluation:
+    <<: *celery
+    command: >-
+      celery -A projects.correction.metis.celery worker
+      -Q evaluation,default -n evaluation@%h --concurrency 4 --loglevel INFO
+
+  beat:
+    <<: *celery
+    command: >-
+      celery -A projects.correction.metis.celery beat
+      --schedule /tmp/celerybeat-schedule --loglevel INFO
+
+  flower:
+    <<: *celery
+    build:
+      context: .
+      args:
+        UV_SYNC_ARGS: --extra flower
+    image: metis-flower:dev
+    # O flower lê as opções pelo parser do tornado, que exige o "=".
+    command: celery -A projects.correction.metis.celery flower --port=5555
+    ports:
+      - "127.0.0.1:${METIS_FLOWER_PORT:-5556}:5555"
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_DB: ${METIS_POSTGRES_DB:-metis}
+      POSTGRES_USER: ${METIS_POSTGRES_USER:-metis}
+      POSTGRES_PASSWORD: ${METIS_POSTGRES_PASSWORD:-metis}
+    volumes:
+      # O Postgres 18 mudou o layout do PGDATA na imagem oficial: o volume fica um nível acima.
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:${METIS_POSTGRES_PUBLISHED_PORT:-5440}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:

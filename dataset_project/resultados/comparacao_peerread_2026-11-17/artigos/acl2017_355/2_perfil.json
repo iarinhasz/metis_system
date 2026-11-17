@@ -1,0 +1,647 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T10181",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "Neural Modeling of Multi-Predicate Interactions for Japanese Predicate Argument Structure Analysis",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "page": 1,
+        "label": "Figure 1",
+        "caption": "Figure 1: An example of Japanese PAS. The up- per edges denote dependency relations, and the under edges denote case arguments. “NOM” and \"ACC\" represent the nominative and accusative ar- guments, respectively. “i” is a zero pronoun, re- ferring to the antecedent “男¿ (man)”."
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "page": 2,
+        "label": "Figure 2",
+        "caption": "Figure 2: An overview of the neural models: (i) single-sequence and (ii) multi-sequence models."
+      },
+      {
+        "id": "fig_3",
+        "kind": "figure",
+        "page": 3,
+        "label": "Figure 3",
+        "caption": "Figure 3: The overall architecture of the single se- quence model. This model consists of three com- ponents: (i) Input Layer, (ii) RNN Layer and (iii) Output Layer."
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "page": 3,
+        "label": "Figure 5",
+        "caption": "Figure 5: An example of the process of creating a feature vector. The extracted features are mapped to each vector, and all the vectors are concatenated into one feature vector."
+      },
+      {
+        "id": "fig_5",
+        "kind": "figure",
+        "page": 5,
+        "label": "Figure 6",
+        "caption": "Figure 6: The overall architecture of the multi-sequence model: an example of three sequences."
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 1",
+        "caption": "Table 1: F-measures in the test set. Single-Seq is the single-sequence model, and Multi-Seq is the multi-sequence model. Imamura+ 09 is the model of Imamura et al. (2009) reimplemented by Ouchi et al. (2015), and Ouchi+ 15 is the ALL- Cases Joint Model of Ouchi et al. (2015). The mark † denotes the significantly better results with the significance level p < 0.05 comparing be- tween Single-Seq and Multi-Seq."
+      },
+      {
+        "id": "fig_7",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 2",
+        "caption": "Table 2: Performance comparison for different numbers of layers on the development set in F- measures. L is the number of the RNN or Grid lay- ers. +res. or -res. indicates whether the model has the residual connections (+) or not (-)."
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 3",
+        "caption": "Table 3: Performance comparison for different case roles on the test set in F-measures. NOM, ACC or DAT is the nominal, accusative or dative case, respectively. The mark * indicates that the model uses external resources."
+      }
+    ],
+    "abstract": "The accuracy of Japanese predicate ar-gument structure (PAS) analysis has im-proved in recent years thanks to jointmodeling of interactions between multiplepredicates. However, this approach heav-ily relies on syntactic information pre-dicted by parsers, and suffers from theerror propagation. To remedy this prob-lem, we introduce a model using grid-typer\nrecurrent neural networks (Grid-RNN),which automatically induces features sen-sitive to multi-predicate interactions fromword sequence information of a sentence.The experiments on the NAIST Text Cor-pus show that our model exceeds the accu-racy of the state-of-the-art Japanese PASanalyzer without syntactic information.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 Introduction",
+        "first_sentence": "Predicate argument structure (PAS) analysis is a basic semantic analysis task, in which systems are required to identify semantic units of a sentence, such as who did what to whom."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "method"
+        ],
+        "title": "2 Japanese Predicate Argument Structure Analysis",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "2.1 Task Description",
+        "first_sentence": "In Japanese PAS analysis, we identify arguments taking part in the three major case roles, nominative (NOM), accusative (ACC) and dative (DAT) cases, for each predicate."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "introduction"
+        ],
+        "title": "2.2 Challenging Problem",
+        "first_sentence": "Arguments are often omitted in Japanese sen-tences."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "method"
+        ],
+        "title": "3 Single-Sequence Model",
+        "first_sentence": "The single-sequence model exploits stacked bidirectional RNNs (Bi-RNN) (Schuster and Paliwal, 1997; Graves et al., 2005, 2013; Zhou and Xu, 2015)."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "method"
+        ],
+        "title": "3.1 Input Layer",
+        "first_sentence": "Given an input sentence W1:T = (w1,……,wT) and a predicate p, each word wt is mapped to a feature representation xt, which is the concatena- tion (⊕) of three types of vectors:\n\nxt = xargt ⊕ xpredt ⊕ xmarkt\n\nwhere each vector is based on the following atomic features inspired by Zhou and Xu (2015):\n\nARG: Word index of each word."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2 RNN Layer",
+        "first_sentence": "In the RNN layers, feature vectors are updated recurrently using Bi-RNNs."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method"
+        ],
+        "title": "3.3 Output Layer",
+        "first_sentence": "In the output layer, multi-class classification is performed using the softmax function:\n\nyt = softmax(Wy h(L))\n\nwhere h(L) is a vector representation propagated from the last RNN layer (Fig 3)."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "method"
+        ],
+        "title": "4 Multi-Sequence Model",
+        "first_sentence": "While the single-sequence model assumes the independence between predicates, the multi-sequence model assumes the multi-predicate interactions."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "method"
+        ],
+        "title": "4.1 Input Layer",
+        "first_sentence": "The multi-sequence model takes as input a sen- tence W1:T = (w1,……,wτ) and all predicates {pm} in the sentence."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "method"
+        ],
+        "title": "4.2 Grid Layer",
+        "first_sentence": "In the grid layers, we use Grid-RNNs to propa- gate the feature information over the different se- quences (inter-sequence connections)."
+      },
+      {
+        "id": "sec_13",
+        "roles": [
+          "method"
+        ],
+        "title": "4.3 Output Layer",
+        "first_sentence": "Like the single-sequence model, using the softmax function, we calculate the probability of case la- bels of each word wt for each predicate pm:\n\nym,t = softmax(Wy h(L)m,t)\n\nwhere h(L)m,t is a hidden state vector calculated in the last Grid Layer."
+      },
+      {
+        "id": "sec_14",
+        "roles": [
+          "related_work"
+        ],
+        "title": "5 Related Work",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_15",
+        "roles": [
+          "related_work"
+        ],
+        "title": "5.1 Japanese PAS Analysis Approaches",
+        "first_sentence": "Existing approaches for Japanese PAS analysis are divided into two categories: (i) pointwise ap- proach and (ii) joint approach."
+      },
+      {
+        "id": "sec_16",
+        "roles": [
+          "related_work"
+        ],
+        "title": "5.2 Multi-Predicate Interactions",
+        "first_sentence": "Ouchi et al."
+      },
+      {
+        "id": "sec_17",
+        "roles": [
+          "method"
+        ],
+        "title": "5.3 Neural Approaches",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_18",
+        "roles": [
+          "related_work"
+        ],
+        "title": "Japanese PAS",
+        "first_sentence": "In recent years, several attempts have been made to apply neural networks for Japanese PAS analysis (Shibata et al., 2016; Iida et al., 2016)."
+      },
+      {
+        "id": "sec_19",
+        "roles": [
+          "related_work"
+        ],
+        "title": "English SRL",
+        "first_sentence": "Some neural models achieved high perfor-mance without syntactic information in En-glish SRL."
+      },
+      {
+        "id": "sec_20",
+        "roles": [
+          "method"
+        ],
+        "title": "6 Experiments",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_21",
+        "roles": [
+          "method"
+        ],
+        "title": "6.1 Experimental Settings",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_22",
+        "roles": [
+          "method"
+        ],
+        "title": "Dataset",
+        "first_sentence": "We use the NAIST Text Corpus 1.5, which con-sists of 40,000 sentences of Japanese newspapertext (Iida et al., 2007)."
+      },
+      {
+        "id": "sec_23",
+        "roles": [
+          "method"
+        ],
+        "title": "Learning",
+        "first_sentence": "We train the model parameters by minimizing the cross-entropy loss function:\n\nC(0) = - ΣΣ log P(Yt/Pr) + 1/||0||2\n\nwhere @ is a set of model parameters, and the hyper-parameter A is the coefficient governing the L2 weight decay."
+      },
+      {
+        "id": "sec_24",
+        "roles": [
+          "method"
+        ],
+        "title": "Implementation Details",
+        "first_sentence": "We implement our neural models using Theano (Bastien et al., 2012)."
+      },
+      {
+        "id": "sec_25",
+        "roles": [
+          "results"
+        ],
+        "title": "6.2 Results",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_26",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "Neural Models vs Baseline Models",
+        "first_sentence": "Table 1 presents F-measures of our neural se- quence models with 8 RNN or Grid layers and the baseline models on the test set, in which as the significent test, we used the bootstrap resampling method."
+      },
+      {
+        "id": "sec_27",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "Effects of Multiple Predicate Consideration",
+        "first_sentence": "As Table 1 shows, the multi-sequence model significantly outperformed the single-sequence model in F-measure in total (81.42% vs 81.15%)."
+      },
+      {
+        "id": "sec_28",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "Effects of Network Depth",
+        "first_sentence": "Table 2 presents F-measures of the neural se- quence models with different network depths and with/without residual connections."
+      },
+      {
+        "id": "sec_29",
+        "roles": [
+          "results"
+        ],
+        "title": "Comparison per Case Role",
+        "first_sentence": "Table 3 shows F-measures for each case role."
+      },
+      {
+        "id": "sec_30",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "7 Conclusion",
+        "first_sentence": "In this work, we introduced neural sequence mod- els that automatically induce effective feature rep- resentations from word sequence information of a sentence for Japanese PAS analysis."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "neural modeling",
+      "predicate argument structure",
+      "recurrent neural networks",
+      "japanese language processing",
+      "natural language processing"
+    ],
+    "language": "en",
+    "confidence": 0.9,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_13"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_14"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_15"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_16"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_17"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_18"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_19"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_20"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_21"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_22"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_23"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_24"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_25"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_26"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_27"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_28"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_29"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_30"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "neural modeling",
+      "predicate argument structure",
+      "recurrent neural networks",
+      "japanese language processing",
+      "natural language processing"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T10181",
+        "name": "Natural Language Processing Techniques",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.9,
+    "paper_type": "empirical",
+    "secondary_areas": [],
+    "field_confidence": 0.9,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.95
+  }
+}

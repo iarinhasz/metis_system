@@ -1,0 +1,25 @@
+{% if integrity_panel %}
+  <fieldset class="module">
+    <h2>Integridade (E3): risco {{ integrity_panel.risk }}</h2>
+    <p class="help">Regras {{ integrity_panel.rules_version }}. Conferido:
+      {% for check, done in integrity_panel.coverage.items %}{{ check }} {% if done %}sim{% else %}não{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    </p>
+    {% if integrity_panel.findings %}
+      <table style="width: 100%">
+        <thead><tr><th>Gravidade</th><th>Achado</th><th>No artigo</th><th>Na fonte</th></tr></thead>
+        <tbody>
+          {% for finding in integrity_panel.findings %}
+            <tr>
+              <td>{{ finding.severity }}</td>
+              <td>{{ finding.message }}</td>
+              <td>{% if finding.evidence.text %}{{ finding.evidence.text }}{% elif finding.evidence.raw %}{{ finding.evidence.raw }}{% else %}—{% endif %}</td>
+              <td>{% if finding.evidence.found %}{{ finding.evidence.found }}{% else %}—{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Nenhum achado.</p>
+    {% endif %}
+  </fieldset>
+{% endif %}

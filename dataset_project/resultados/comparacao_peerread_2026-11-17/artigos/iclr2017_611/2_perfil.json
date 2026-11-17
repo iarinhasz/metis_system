@@ -1,0 +1,333 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T10203",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1710",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "COLLABORATIVE DEEP EMBEDDING VIA DUAL NETWORKS",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "page": 4,
+        "label": "Figure 1",
+        "caption": "Figure 1: This figure shows three different designs of the dual networks. Here, indicates dot product and indicates summation. (a) The basic design adopts the MLP structure for each network. (b) The multi-level design integrates the dot products of embeddings at different levels to produce the prediction. (c) In the branching design, the embeddings (except those of the top level) used in the dot products are produced by transform branches. In this way, the main abstraction paths won't be directly twisted."
+      },
+      {
+        "id": "fig_2",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 1",
+        "caption": "Table 1: Comparison of performance on three datasets. The performances are measure with the metric Recall@ M. We report the results where M are set to 50, 100, and 200."
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 2",
+        "caption": "Table 2: Comparison for out-matrix predictions on CiteULike"
+      },
+      {
+        "id": "fig_4",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 3",
+        "caption": "Table 3: Comparison of different network architecture designs on CiteULike"
+      }
+    ],
+    "abstract": "Despite the long history of research on recommender systems, current approaches still face a number of challenges in practice, e.g. the difficulties in handling new items, the high diversity of user interests, and the noisiness and sparsity of observations. Many of such difficulties stem from the lack of expressive power to capture the complex relations between items and users. This paper presents a new method to tackle this problem, called Collaborative Deep Embedding. In this method, a pair of dual networks, one for encoding items and the other for users, are jointly trained in a collaborative fashion. Particularly, both networks produce embeddings at multiple aligned levels, which, when combined together, can accurately predict the matching between items and users. Compared to existing methods, the proposed one not only provides greater expressive power to capture complex matching relations, but also generalizes better to unseen items or users. On multiple real-world datasets, this method outperforms the state of the art.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 INTRODUCTION",
+        "first_sentence": "What do consumers really want?"
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "related_work"
+        ],
+        "title": "2 RELATED WORK",
+        "first_sentence": "Existing methods for recommendation roughly fall into two categories: content-based methods (Paz- zani & Billsus, 2007) and collaborative filtering (CF) (Mnih & Salakhutdinov, 2008; Hu et al., 2008; Yu et al., 2009)."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "3 COLLABORATIVE DEEP EMBEDDING",
+        "first_sentence": "At the heart of a recommender system is matching model, namely, a model that can predict whether a given item matches the interest of a given user."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "method"
+        ],
+        "title": "3.1 DUAL EMBEDDING",
+        "first_sentence": "To motivate our approach, we begin with a brief revisit of collaborative filtering (CF), which is widely adopted in practical recommender systems."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2 NETWORK ARCHITECTURE DESIGNS",
+        "first_sentence": "Our model consists of two networks, namely the item-network f and the user-network g."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "method"
+        ],
+        "title": "4 TRAINING WITH DUAL MINI-BATCHES",
+        "first_sentence": "A distinctive aspect of our training algorithm is the use of dual mini-batches."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "method"
+        ],
+        "title": "5 EXPERIMENTS",
+        "first_sentence": "We tested our method on three real-world datasets with different kinds of items and matching relations:\n\n1."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method"
+        ],
+        "title": "5.1 EVALUATION",
+        "first_sentence": "The performance of a recommender system can be assessed from different perspective."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "method"
+        ],
+        "title": "5.2 COMPARISON WITH OTHER METHODS",
+        "first_sentence": "We compared our method, which we refer to as DualNet with two representative methods in previous work: (1) Weighted Matrix Factorization (WMF) (Hu et al., 2008), a representative method for for collaborative filtering (CF), and (2) Collaborative deep learning (CDL) (Wang et al., 2015), a hybrid method that combines deep encoding of the items and CF, which represents the latest advances in recommendation techniques."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "5.3 DETAILED STUDY",
+        "first_sentence": "We conducted additional experiments on CiteULike to further study the proposed algorithm."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "6 CONCLUSIONS AND FUTURE WORK",
+        "first_sentence": "This paper presented a new method for predicting the interactions between users and items, called Collaborative Deep Embedding."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [],
+    "language": "en",
+    "confidence": 0.98,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    }
+  ],
+  "classification": {
+    "keywords": [],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1710",
+        "name": "Information Systems",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T10203",
+        "name": "Recommender Systems and Techniques",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.95,
+    "paper_type": "empirical",
+    "secondary_areas": [],
+    "field_confidence": 0.98,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.95
+  }
+}

@@ -29,13 +29,16 @@ jobs:
       METIS_POSTGRES_USER: metis
       METIS_POSTGRES_PASSWORD: metis
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: "0.13.8"
           enable-cache: true
       - run: uv python install 3.14
       - run: uv sync --locked --all-groups
       - run: uv run ruff check
       - run: uv run ruff format --check
+      - name: Conferir migrações versionadas
+        run: uv run python manage.py makemigrations --check --dry-run
       - run: uv run mypy projects/correction
       - run: uv run pytest

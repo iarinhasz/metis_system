@@ -11,3 +11,5 @@ __pycache__/
 staticfiles/
 media/
 raw/
+celerybeat-schedule*
+projects/correction/evals/results/*.json

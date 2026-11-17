@@ -1,5 +1,12 @@
 # Avaliadores, juiz e consolidação (E4 e E5)
 
+**Revisão de 16/11/2026:** o workflow E4 integra os executors das etapas 3.3
+(passes por seção), 3.4 (checagens entre seções), 3.5 (síntese por avaliador),
+3.6 (`whole_document`), 3.7 (validadores), 3.8 (juiz) e 3.9 (revisão parcial).
+O E5 consome as últimas rodadas finalizadas. A/B, correlação com notas humanas e
+custo médio por artigo continuam pendentes.
+[Evidências e metas](status_and_metrics.md).
+
 ## Visão geral
 
 ```text
@@ -25,7 +32,7 @@ por avaliador (A, B e C, independentes):
 
 Cada passe por seção tem uma tarefa pequena e um checklist próprio. Mas parte da avaliação está entre as seções, e por isso existem três peças com visão mais ampla: as checagens entre seções, o mapa do documento em todo passe e o juiz com o artigo inteiro.
 
-**Dois modos de avaliação.** O fluxo por seção (`sectioned`) é a proposta. O artigo inteiro numa chamada por avaliador (`whole_document`) fica como linha de base. Os dois são estratégias do método, escolhidas por config, e o A/B do M3 decide qual vira padrão (ver [Como decidir o modo](#como-decidir-o-modo-ab-no-m3)).
+**Dois modos de avaliação.** O fluxo por seção (`sectioned`) é a proposta. O artigo inteiro numa chamada por avaliador (`whole_document`) fica como linha de base. `METIS_EVALUATION_MODE` escolhe o modo para novos Runs; o valor é salvo no `config_snapshot` e seleciona a strategy do avaliador. O padrão continua `sectioned`. O A/B do M3 decide qual vira padrão (ver [Como decidir o modo](#como-decidir-o-modo-ab-no-m3)).
 
 ## O que cada chamada recebe
 
@@ -39,7 +46,7 @@ Cada passe por seção tem uma tarefa pequena e um checklist próprio. Mas parte
 - **Mapa do documento.** Montado em código no E2, sem LLM (ver [Perfil e Questions](questions_and_profiling.md#papéis-das-seções-e-mapa-do-documento)): abstract, seções com papel e primeira frase, legendas de figuras e tabelas.
   - Com ele, cada passe sabe o que existe fora da sua seção.
   - Na dúvida, o passe marca a observação como `possibly_elsewhere` em vez de afirmar que algo falta.
-- **O artigo é dado, não instrução.** Todo trecho do artigo vai entre delimitadores, com a regra explícita de que nada dentro dele é comando. É a segunda defesa contra prompt injection; a primeira é o scan do E1.
+- **O artigo é dado, não instrução.** Payloads delimitados e conferência de evidência são defesas previstas para E4. Desde 15/11, o E1 procura texto oculto no PDF (1.7), e o E3 transforma o achado em risco.
 - **Ordem do prompt.** O conteúdo do artigo vem antes da tarefa, como prefixo estável, para aproveitar o caching de prompt. Isso pesa sobretudo no juiz, que recebe o artigo inteiro em toda rodada.
 
 ## Papéis e critérios
@@ -63,7 +70,7 @@ Cada papel de seção avalia só os critérios que dependem dele. A tabela é a 
 
 - **Três slots**, cada um com um `ModelSpec` (provedor, modelo, parâmetros). A configuração fica nos settings, e o Run guarda um snapshot.
   - Hoje há chave da OpenAI e do Google (D14): A = GPT, B = Gemini, C = outro modelo de uma das duas famílias, de tamanho ou geração diferente.
-  - O slot C troca de provedor só por config (ex.: OpenRouter ou Ollama) quando houver chave de uma 3ª família.
+  - Hoje o slot C troca entre OpenAI e Google por config. OpenRouter/Ollama e uma terceira família exigem ampliar `Provider`, `Family`, a fábrica e os testes.
 - **Independência.** Cada avaliador faz os próprios passes, checagens e síntese. Só o mapa do documento é compartilhado, e ele é extraído em código, sem nenhuma opinião.
 - **Por que famílias diferentes:** os erros ficam menos correlacionados. Três execuções do mesmo modelo tendem a errar igual, e aí nem o juiz nem a mediana pegam. Com duas famílias em três slots, a correlação é maior (risco R13): o A/B do M3 mede a concordância entre os slots da mesma família à parte.
 
@@ -129,15 +136,16 @@ O que roda de novo depende de onde está o problema:
 | Síntese de um critério | Só a síntese daquele critério |
 
 - O pedido de revisão (`RevisionPromptBuilder`) leva o item anterior, o trecho apontado e o motivo.
-- O avaliador responde `accept` (corrige) ou `rebut` (mantém e traz nova evidência do artigo). O juiz reavalia na rodada seguinte.
+- O avaliador responde `accept` com um item substituto ou `rebut` com evidência nova, conferida no artigo. A réplica preserva o item avaliado; observações e checagens incorporam a evidência à rodada, enquanto a síntese `sectioned` mantém citações por ID.
+- A nova rodada copia os vereditos válidos que não dependem de itens alterados. Observações e checagens revisadas atualizam apenas as sínteses que as referenciam; o juiz recebe somente itens sem veredito.
 - **Por que existe a réplica.** LLMs tendem a ceder a qualquer crítica (bajulação). Sem a opção de defender a resposta, quem definiria a nota seria, na prática, o juiz.
 
 ## O loop
 
 - **Forma (D17):** a rodada 1 é validada e julgada antes do loop. Se sobrar item pendente, cada iteração do loop é "revisar → validar → julgar", então a última revisão sempre passa pelo juiz.
-- **Limite:** `Loop(max_iterations=2)` no Agno, dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
+- **Limite:** `Loop(max_iterations=settings.max_revision_rounds)` no Agno (padrão 2), dentro de um `Condition` que só entra no loop se houver pendência. O `end_condition` consulta o estado persistido (há itens pendentes?).
 - **Itens que esgotam as rodadas** viram `unresolved`:
-  - uma observação `unresolved` sai das sínteses;
+  - uma observação `unresolved` exclui da agregação cada critério que depende dela;
   - um critério `unresolved` sai da agregação;
   - os dois aparecem no relatório final, sinalizados para revisão humana.
 - **Persistência:** `ReviewRound` (o estado da revisão do avaliador naquela rodada) + `JudgeVerdict` (um por item verificado). É a trilha de auditoria: guarda o trecho que tornou a avaliação inconsistente e o motivo dado pelo juiz.
@@ -187,7 +195,8 @@ O esboço em código (E4 e E5), com a tabela do que cada passo lê, grava e pula
 
 **Meta-revisor (agente).** Une as sínteses e as observações dos 3 avaliadores em pontos fortes, pontos fracos e sugestões acionáveis, citando os critérios e as evidências que usa. **Não altera notas.**
 
-**`FinalReport`.** JSON estruturado, renderizado em Markdown/PDF. Nunca é uma string que outra parte do sistema precise parsear.
+**`FinalReport`.** JSON estruturado, com render Markdown implementado. PDF é
+planejado. O contrato JSON é consumido diretamente, sem parsear a narrativa.
 
 | Campo | Conteúdo |
 |---|---|
@@ -200,7 +209,82 @@ O esboço em código (E4 e E5), com a tabela do que cada passo lê, grava e pula
 | `figures` | Problemas encontrados nas figuras (`issues`) |
 | `versions` | Modelos, versões de prompt, modo de avaliação, versão da Question e da taxonomia |
 
+### Consolidação implementada (3.11)
+
+O app `evaluation` inclui os contratos, a persistência de rodadas e os workflows
+reais do E4 e E5. O E5 exige três rodadas persistidas, julgadas e finalizadas;
+sem elas, interrompe com `waiting_setup` em vez de produzir um relatório vazio.
+
+`ReviewRound.store` exige posse do E4 e valida a escala do snapshot do método.
+Após registrar os `JudgeVerdict`, `ReviewRound.finalize` verifica a cobertura de
+vereditos, os ids e as pendências. Uma rodada finalizada não é alterada; revisões
+seguintes criam outra rodada. O E5 usa a última rodada de cada slot, nunca uma
+rodada antiga pronta quando existe uma mais nova ainda incompleta. Exige os três
+slots, o mesmo modo e todas as sínteses dos critérios ativos.
+
+A política inicial `median-v1` usa:
+
+- Mediana das notas válidas; com duas notas, a média aritmética.
+- Exclusão de critério `unresolved`, de voto sem veredito válido e de síntese
+  apoiada em observação/checagem pendente. A exclusão se aplica ao voto daquele
+  slot; os votos válidos dos outros avaliadores continuam disponíveis.
+- Dispersão `max − min` quando há pelo menos dois votos válidos.
+- Total como média ponderada pelas definições do método. Um critério sem votos
+  fica com nota `null` e seu peso sai do denominador. Critério de peso zero não
+  afeta o total; critério inativo nem participa da agregação.
+- Concordância geral como média ponderada de `1 − dispersão/amplitude_da_escala`,
+  apenas nos critérios com dois ou mais votos. É um indicador descritivo, não
+  kappa nem uma estimativa de independência dos modelos. Sem pares, fica `null`.
+- Faixas de desenvolvimento: `≥4 accept`, `≥3 minor`, `≥2 major`, abaixo de 2
+  `reject`. Os limiares são provisórios, versionados no snapshot e aguardam
+  calibração no A/B do M3. Não há arredondamento antes da escolha da faixa.
+
+Sem nota válida em nenhum critério, total, concordância e recomendação ficam
+`null`; o relatório exige revisão humana. Votos excluídos e pouca cobertura
+também ficam sinalizados. A integridade aparece como `not_checked`, com risco
+desconhecido, enquanto o E3 for pass-through.
+
+O E5 congela os inputs, a política, o ModelSpec do meta-revisor e seu template
+no primeiro processamento. Usa o `evaluation_config` do Run; para rodadas legadas
+sem esse snapshot, captura o método registrado e identifica a origem como
+`registry_at_consolidation`. Novos executores do E4 devem guardar esse config
+antes das chamadas. Agregação, tentativas de narrativa e narrativa validada têm
+checkpoints em `Run.consolidation`, protegidos pela posse da task.
+
+O meta-revisor recebe somente a agregação e o catálogo validado. Os ids são
+qualificados, como `a:observation:obs-1`, evitando colisões entre os slots.
+Sua saída não aceita notas. Referência desconhecida ou schema inválido recebe
+uma nova tentativa; se persistir, o ponto inteiro é removido e a ocorrência fica
+no relatório. Uma falha de transporte usa o retry do Celery sem reiniciar o
+orçamento de duas respostas nem repetir uma narrativa já guardada. Tokens e
+custo passam pelo mesmo `DatabaseUsageSink` dos outros estágios.
+
+O JSON inclui `criteria`, `sections`, `evidence`, `integrity`, `figures`, narrativa,
+pendências e `versions`. O catálogo `evidence` permite resolver os ids citados.
+Versões incluem Question em snapshot, taxonomia, modo, rodadas escolhidas,
+ModelSpecs e todos os hashes de prompt registrados. Os Decimals são serializados
+como strings para preservar precisão; as colunas auxiliares no banco usam seis
+casas, sem alterar os valores do JSON. O relatório é único por Run e imutável.
+
+O endpoint autenticado aceita:
+
+```text
+GET /api/runs/{id}/report
+GET /api/runs/{id}/report?format=markdown
+```
+
+Retorna `409` antes de `done`, inclusive se o relatório foi salvo mas a task ainda
+não concluiu a transição. Run inexistente ou interno (`rubric_check`, `ab_test`)
+retorna `404`. JSON e Markdown usam `Cache-Control: private, no-store`; Markdown
+é baixado como arquivo, com texto do manuscrito e do modelo escapado. O admin
+expõe rodadas, vereditos e relatório apenas para leitura. A saída em PDF continua
+fora do escopo desta etapa, que exige render Markdown.
+
 ## Custo
+
+As quantidades e tempos desta tabela são **estimativas do desenho de E4**,
+sem benchmark real. `LLMCall` e o painel de custo já permitem registrar uma
+medição futura; o alerta de orçamento não bloqueia chamadas.
 
 | | `whole_document` | `sectioned` (proposta) |
 |---|---|---|

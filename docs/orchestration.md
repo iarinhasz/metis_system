@@ -2,6 +2,10 @@
 
 Como o pipeline anda, falha e se recupera. Os estados citados aqui estão definidos em [Modelos de dados](data_models.md#estados-do-run).
 
+**Estado de 16/11/2026:** E1, E2, E4 e E5 reais; E3 enxuto (texto oculto, regras
+de risco e gate humano). Risco alto leva o run a `waiting_human_review`. E5 sem
+rodadas completas para em `waiting_setup`. [Evidências](status_and_metrics.md).
+
 ## Princípios
 
 - **O banco é a fonte da verdade.** A mensagem Celery leva só o `run_id`; a task lê o que precisa do Postgres e grava o que produz.
@@ -21,6 +25,15 @@ Como o pipeline anda, falha e se recupera. Os estados citados aqui estão defini
 
 O E2 roda na fila `evaluation` porque é uma chamada de LLM, não um parse.
 
+Nos runs internos `purpose=rubric_check`, E1 usa a extração em cache ligada na
+criação, E2 usa o rascunho congelado e E3 é pulado. `RunManagement` registra a
+transição de `profiled` para `integrity_checked` com `skipped=true` antes de
+publicar E4 após o commit. O desvio só é permitido para esse propósito; mensagens
+de E3 para rubric checks têm o claim negado. A publicação normal e o reconciliador
+passam pela mesma regra. Ver [Rubric check no admin](questions_and_profiling.md#rubric-check-no-admin-312).
+
+A fila e o nome da task de cada estágio ficam no `STAGES` (`attempts/status.py`). As rotas do Celery (`CELERY_TASK_ROUTES`) e a publicação (`pipeline/publishing.py`) são geradas a partir dele.
+
 ## Ciclo de uma task de estágio
 
 Todas as tasks seguem a mesma base, `StageTask` (Template Method). Cada estágio implementa só o `execute()`:
@@ -39,9 +52,9 @@ claim ──▶ execute() ──▶ complete ──▶ publica o próximo estág
    - se o run está no checkpoint do estágio, passa para o status "rodando" e grava `stage`, `current_task_id` e `stage_started_at`;
    - se já está rodando **com o mesmo id de task**, retoma (é um retry ou uma reentrega);
    - em qualquer outro caso, sai sem efeito.
-2. **`execute()`.** O trabalho do estágio, em código ou num workflow Agno. Cada passo persiste o que produz.
+2. **`execute()`.** O trabalho do estágio, em código ou num workflow Agno. Recebe um `StageContext(run_id, attempt_id, task_id, stage)` e devolve um `StageOutcome(payload, halt)`. Cada passo persiste o que produz.
 3. **Complete.** Só fecha se a task ainda for a dona: status "rodando" + `current_task_id` igual ao dela. Se perdeu a posse no meio do caminho (chegou uma versão nova do artigo, ou o reconciliador liberou o estágio), encerra sem efeito.
-4. **Publicação.** Registra no `on_commit` a task do estágio seguinte, se houver. O E3 pode terminar em `waiting_human_review`, e aí nada é publicado.
+4. **Publicação.** Registra no `on_commit` a task do estágio seguinte, se houver. O E3 pode terminar em `waiting_human_review` (`halt=True` no `StageOutcome`), e aí nada é publicado.
 
 ### Por que a posse é pelo id da task
 
@@ -52,7 +65,7 @@ O Celery mantém o mesmo id da task em `retry()` e na reentrega depois da morte 
 | Exceção | Exemplo | Retry automático | Status final | Como sai |
 |---|---|---|---|---|
 | `LLMUnavailable` (passageiro) | 429 ou 5xx do provedor de LLM | sim, com backoff | `error_llm` | "Reprocessar" no admin |
-| `TransientStageError` (passageiro) | GROBID fora do ar, timeout no Crossref | sim, com backoff | `error_external` | "Reprocessar" |
+| `TransientStageError` (passageiro) | Timeout no Crossref | sim, com backoff | `error_external` | "Reprocessar" |
 | `InvalidSubmission` (permanente) | PDF sem texto, sem abstract, criptografado | não | `rejected_invalid_submission` | Final: o autor envia uma versão nova |
 | `SetupRequired` (permanente) | Nenhuma Question disponível, nem a genérica | não | `waiting_setup` | Configurar e "Reprocessar" |
 | Qualquer outra | Bug | não | `error_unexpected` | Corrigir e "Reprocessar" |
@@ -63,7 +76,22 @@ O Celery mantém o mesmo id da task em `retry()` e na reentrega depois da morte 
 
 - **Backoff:** exponencial com jitter completo, calculado pelo próprio Celery (`get_exponential_backoff_interval`). Valores iniciais: 3 retries, base de 60 s, teto de 15 min.
 - **Registro:** cada retry gera um `RunEvent` `retry_scheduled` com o erro e o tempo de espera.
-- **Dentro do Agno:** `Step(max_retries=0)`, porque o retry de step do Agno não tem backoff. O retry de uma chamada fica no modelo (`retries` + `exponential_backoff=True`, só para 429/5xx), e o do estágio inteiro fica no Celery.
+- **Dentro do Agno:** `Step(max_retries=0)`, porque o retry de step não tem backoff. O modelo trata falhas transitórias (429/5xx, timeout/conexão), com retry da SDK desligado; o retry do estágio fica no Celery. E1 mantém zero retry do modelo.
+
+## Gate humano e reprocessamento
+
+Os casos de uso ficam em `pipeline/services.py` e mudam o status pelo `RunManagement`. A publicação do estágio seguinte sai no `on_commit`, como no ciclo da task.
+
+| Ação | De | Para | Publica |
+|---|---|---|---|
+| Continuar avaliação | `waiting_human_review` | `integrity_checked` | o E4 |
+| Encerrar | `waiting_human_review` | `closed_by_reviewer` | nada |
+| Reprocessar | `error_*`, `waiting_setup` | checkpoint do estágio que falhou | esse estágio |
+
+- **Onde:** na página do run no admin, que mostra só as ações do estado atual. A decisão do gate também tem `POST /api/runs/{id}/decision`.
+- **Fora do estado certo**, a ação é recusada (409 na API, mensagem no admin) e nada muda.
+- **Quem:** no admin, usuário com permissão de alterar o Run. O grupo "revisores" (Q8) entra na 4.9.
+- **Auditoria:** o `RunEvent` da transição grava o ator (`admin:<usuário>` ou `service-api`), a decisão e a nota.
 
 ## Reconciliador
 
@@ -77,6 +105,12 @@ Uma task do beat (`pipeline.reconcile_runs`, a cada 5 min) cobre duas situaçõe
 Por que é seguro:
 - O claim e a posse impedem processamento duplo, mesmo que a mensagem antiga ainda esteja na fila.
 - 45 min é mais que o hard limit da task (30 min). Quando o reconciliador libera um estágio, a task antiga já foi morta.
+- Cada run é tratado na própria transação, com a linha travada e a condição conferida de novo. Um run que andou entre a consulta e a ação fica como está.
+- Um run com problema não para a passada: o erro vai para o log, e a próxima passada tenta de novo.
+
+Ao desistir (`Run.abandon`), o run vai para `error_unexpected` com o motivo em `last_error`. Se estava parado num checkpoint, ele passa a registrar o estágio que deveria começar ali, para o "Reprocessar" voltar a esse mesmo checkpoint. O "Reprocessar" zera `stage_claims` e `publish_count`, porque é uma retomada decidida por alguém.
+
+O código fica em `pipeline/reconciler.py`. A task `pipeline.reconcile_runs` está no `CELERY_BEAT_SCHEDULE`, na fila `default`.
 
 ## Tempos e validação na subida
 
@@ -97,8 +131,8 @@ O `metis/config.py` recusa subir com valores contraditórios:
 
 | Fila | Worker | Concorrência inicial | Por quê |
 |---|---|---|---|
-| `extraction` | `worker-extraction` | baixa (1–2), com limite de memória | GROBID e Docling são pesados em CPU e memória |
-| `integrity` | `worker-integrity` | 2 | Rede (APIs acadêmicas com rate limit) + embeddings locais |
+| `extraction` | `worker-extraction` | baixa (1–2), com limite de memória | Cada E1 já faz até `max_parallel_calls` chamadas ao modelo ao mesmo tempo |
+| `integrity` | `worker-integrity` | 2 | Hoje stub; rede e embeddings planejados para E3 |
 | `evaluation` | `worker-evaluation` | 4 | Chamadas de LLM, limitadas por I/O |
 | `default` | `worker-evaluation` | — | Manutenção (reconciliador) |
 
@@ -106,7 +140,9 @@ Todos usam a mesma imagem, com `prefetch_multiplier=1` e `acks_late`.
 
 ## Agno dentro dos estágios
 
-O `execute()` de cada estágio monta o Workflow Agno do estágio e chama `workflow.run()`. O desenho completo (fronteiras, `agents/`, catálogo de agentes, workflow por estágio, estado, concorrência, custo e testes) está em [Agentes e workflows](agents.md). As regras que tocam a orquestração:
+E2, E4 e E5 montam o Workflow Agno e chamam `workflow.run()`. E1 executa sessão e
+`bounded_map`, sem Workflow; E3 ainda não tem executores reais. O desenho e
+as regras estão em [Agentes e workflows](agents.md). Para os workflows implementados:
 
 - **Construção por task.** O workflow e os agentes são criados dentro de cada task, nunca como singletons de módulo: o cliente HTTP do modelo fica preso ao event loop em que nasceu. Cada ramo de um `Parallel` recebe uma instância própria de Agent.
 - **Execução síncrona.** `workflow.run()` nos workers prefork. O `background=True` do Agno não é usado: o Celery já é a camada de background.
@@ -124,7 +160,7 @@ O `execute()` de cada estágio monta o Workflow Agno do estágio e chama `workfl
 | API | Unicidade de (artigo, sha256): o reenvio idêntico devolve 200 com a attempt existente |
 | Publicação | `on_commit` + reconciliador para a janela "commitou, mas não publicou" |
 | Claim | Lock da linha + checkpoint ou posse pelo id da task |
-| Passos de um estágio | Cada passo persiste e pula o que já existe (ex.: um passe por seção que já tem observações na rodada não é chamado de novo) |
+| Passos de um estágio | E1 reaproveita `ExtractionStep`; E2, E4 e E5 pulam checkpoints persistidos. O E4 retoma também rodadas parciais |
 | Eventos | `event_key` único: `{run}:{version}` nas transições, `{run}:retry:{task}:{n}` nos retries |
 
 ## Auditoria e custo

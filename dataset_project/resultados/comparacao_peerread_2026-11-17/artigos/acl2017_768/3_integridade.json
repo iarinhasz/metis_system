@@ -1,0 +1,145 @@
+{
+    "run_id": "01a1e74d-f270-74e6-afce-1e04fe64a842",
+    "risk": "low",
+    "rules_version": "v1",
+    "coverage": {
+        "hidden_text": true
+    },
+    "findings": [
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "0.3",
+                "reasons": [
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "0.6-0.1",
+                "reasons": [
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "1.5",
+                "reasons": [
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "-2.5",
+                "reasons": [
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "0",
+                "reasons": [
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: da cor do fundo, atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "-1",
+                "reasons": [
+                    "color",
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: da cor do fundo, atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "0.2",
+                "reasons": [
+                    "color",
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 2: da cor do fundo, atrás de uma imagem.",
+            "evidence": {
+                "page": 2,
+                "text": "1.8",
+                "reasons": [
+                    "color",
+                    "under_image"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 4: da cor do fundo.",
+            "evidence": {
+                "page": 4,
+                "text": "Word : Study",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 4: da cor do fundo.",
+            "evidence": {
+                "page": 4,
+                "text": "Example : he made several studies before the ﬁnal",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 4: da cor do fundo.",
+            "evidence": {
+                "page": 4,
+                "text": "painting",
+                "reasons": [
+                    "color"
+                ]
+            }
+        }
+    ]
+}

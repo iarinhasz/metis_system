@@ -1,0 +1,84 @@
+{
+  "domains": [],
+  "fields": [],
+  "subfields": [
+    {
+      "id": "https://openalex.org/subfields/1502",
+      "display_name": "Bioengineering",
+      "domain": {
+        "id": "https://openalex.org/domains/3",
+        "display_name": "Physical Sciences"
+      },
+      "field": {
+        "id": "https://openalex.org/fields/15",
+        "display_name": "Chemical Engineering"
+      }
+    }
+  ],
+  "topics": [
+    {
+      "id": "https://openalex.org/T10001",
+      "display_name": "Geological and Geochemical Analysis",
+      "domain": {
+        "id": "https://openalex.org/domains/3",
+        "display_name": "Physical Sciences"
+      },
+      "field": {
+        "id": "https://openalex.org/fields/19",
+        "display_name": "Earth and Planetary Sciences"
+      },
+      "subfield": {
+        "id": "https://openalex.org/subfields/1906",
+        "display_name": "Geochemistry and Petrology"
+      }
+    },
+    {
+      "id": "https://openalex.org/T10002",
+      "display_name": "Advanced Chemical Physics Studies",
+      "domain": {
+        "id": "https://openalex.org/domains/3",
+        "display_name": "Physical Sciences"
+      },
+      "field": {
+        "id": "https://openalex.org/fields/31",
+        "display_name": "Physics and Astronomy"
+      },
+      "subfield": {
+        "id": "https://openalex.org/subfields/3107",
+        "display_name": "Atomic and Molecular Physics, and Optics"
+      }
+    },
+    {
+      "id": "https://openalex.org/T10003",
+      "display_name": "Innovation and Knowledge Management",
+      "domain": {
+        "id": "https://openalex.org/domains/2",
+        "display_name": "Social Sciences"
+      },
+      "field": {
+        "id": "https://openalex.org/fields/14",
+        "display_name": "Business, Management and Accounting"
+      },
+      "subfield": {
+        "id": "https://openalex.org/subfields/1408",
+        "display_name": "Strategy and Management"
+      }
+    },
+    {
+      "id": "https://openalex.org/T10004",
+      "display_name": "Soil Carbon and Nitrogen Dynamics",
+      "domain": {
+        "id": "https://openalex.org/domains/1",
+        "display_name": "Life Sciences"
+      },
+      "field": {
+        "id": "https://openalex.org/fields/11",
+        "display_name": "Agricultural and Biological Sciences"
+      },
+      "subfield": {
+        "id": "https://openalex.org/subfields/1111",
+        "display_name": "Soil Science"
+      }
+    }
+  ]
+}

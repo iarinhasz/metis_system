@@ -25,6 +25,8 @@ Caminhos relativos a `projects/correction/`.
 
 ## Etapa 3.2 — Schemas e models das rodadas
 
+**Situação (13/11/2026):** implementada pela trilha de Agentes, junto da 3.11, porque o E5 precisava dela: os schemas em `agents/schemas/evaluation.py`, os models `ReviewRound` e `JudgeVerdict` e o `evaluation/tests/test_models.py`.
+
 **O que fazer**
 - `agents/schemas/evaluation.py`: `Observation`, `SectionObservations`, `CrossCheckResult`, `CriterionSynthesis`, `CriteriaSynthesis`, `RevisionResponse`, `JudgeReport` (com `ItemVerdict` e `Issue`), com os campos de [Avaliadores e juiz](../../../docs/evaluators_and_judge.md#os-avaliadores).
 - Models `ReviewRound` (único por run, slot e rodada) e `JudgeVerdict` (único por rodada, tipo e item; com `source` = `validator` ou `judge`).
@@ -48,6 +50,14 @@ Caminhos relativos a `projects/correction/`.
 - Rodar de novo não chama o agente.
 - Uma observação `missing` incerta vem com `possibly_elsewhere`.
 
+**Implementação nesta branch:** `SectionPassStep` executa os passes por seção
+com concorrência limitada, usa o `ModelSpec` congelado no Run, valida e
+checkpointa observações em `ReviewRound(round=1)`, e retoma sem repetir seções
+já concluídas. Cada subseção extraída é uma unidade de avaliação; quando o texto
+de uma unidade excede o limite, os trechos terminam preferencialmente no último
+parágrafo que couber, com fallback para linha, palavra e limite exato. O executor
+é testável isoladamente; sua conexão ao workflow E4 fica para a etapa 3.10.
+
 **Commit sugerido:** `feat: run section passes for each evaluator`
 
 ---
@@ -59,6 +69,13 @@ Caminhos relativos a `projects/correction/`.
 - Agente `cross_checker(slot, kind)` e executor `CrossCheckStep(slot)`, com só as seções envolvidas na entrada.
 
 **Teste** (`evaluation/tests/test_cross_checks.py`): cada tipo recebe só as seções certas; resultado gravado na rodada.
+
+**Implementação nesta branch:** a lista inicial fica fixada nos três tipos acima,
+com pares de papéis ajustados ao tipo de artigo. A checagem de figuras usa apenas
+seções ligadas às figuras pela extração. Tipos sem evidência suficiente são
+ignorados; os resultados válidos são checkpointados e não são chamados de novo
+no retry. O executor pode ser testado isoladamente; a conexão ao workflow E4
+continua para a etapa 3.10.
 
 **Commit sugerido:** `feat: add cross-section checks`
 
@@ -85,6 +102,13 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add whole-document evaluation mode`
 
+**Implementação nesta branch:** `WholeDocumentStep` envia o documento inteiro
+uma vez por avaliador, exige uma síntese por critério com evidência direta em
+seções existentes e checkpointa a rodada no modo `whole_document`. O modo é
+configurável por `METIS_EVALUATION_MODE`, congelado no snapshot do Run, e a
+strategy escolhe entre os passos sectioned (3.3–3.5) e whole-document. A ligação
+ao workflow E4 continua para 3.10.
+
 ---
 
 ## Etapa 3.7 — Validadores determinísticos
@@ -96,6 +120,14 @@ Caminhos relativos a `projects/correction/`.
 **Teste** (`evaluation/tests/test_validators.py`): um caso por validador; quote com hifenização diferente passa; quote inventado é recusado.
 
 **Commit sugerido:** `feat: add deterministic validators for evaluator output`
+
+**Implementação nesta branch:** `ValidatorChain` valida o schema antes das
+regras determinísticas de escala, critérios, evidências, referências e
+justificativas; `ValidateStep` grava `JudgeVerdict(source=validator)` por item
+recusado e retoma sem regravar vereditos. A evidência é conferida em ambos os
+modos, com referências por ID em `sectioned` e trechos diretos em
+`whole_document`. Critérios ativos ausentes impedem a etapa porque não há um
+item persistido ao qual associar um veredito.
 
 ---
 
@@ -112,6 +144,14 @@ Caminhos relativos a `projects/correction/`.
 - Itens já julgados na rodada não vão de novo.
 
 **Commit sugerido:** `feat: add the judge with cross-family assignment`
+
+**Implementação nesta branch:** `JudgeStep` envia ao juiz cruzado somente itens
+sem veredito; itens recusados pelos validadores da 3.7 seguem diretamente para a
+revisão. O juiz recebe o artigo inteiro, a revisão do slot e dicas calculadas de
+divergência. O `excerpt` de cada apontamento é conferido como substring do item;
+uma saída com trecho incorreto recebe uma chamada corretiva, e apontamentos ainda
+inválidos são descartados. Vereditos e snapshot do modelo julgador são persistidos
+por item com checkpoints de posse e retomada.
 
 ---
 
@@ -132,6 +172,15 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add partial revision loop with rebuttal`
 
+**Implementação nesta branch:** `RevisionStep` abre rodadas imutáveis para itens
+recusados por validador ou juiz. `accept` substitui o item com a mesma identidade;
+`rebut` mantém a avaliação e acrescenta evidência conferida no artigo. Vereditos
+válidos independentes são copiados sem nova chamada; a revisão de observação ou
+checagem atualiza somente as sínteses dependentes. O limite `METIS_MAX_REVISION_ROUNDS`
+tem padrão 2; `MarkUnresolvedStep` marca as recusas restantes, e a agregação exclui
+critérios que dependam de observações unresolved. A integração ao Workflow E4 segue
+para a etapa 3.10.
+
 ---
 
 ## Etapa 3.10 — Workflow do E4
@@ -148,9 +197,27 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: run the evaluation stage as an Agno workflow`
 
+**Implementação (16/11/2026):** `EvaluationStage` executa o workflow Agno do E4
+com a estratégia do snapshot (`sectioned` ou `whole_document`), checkpoints
+retomáveis, validação e juiz por rodada, loop de revisão limitado, marcação de
+`unresolved` e finalização das rodadas mais recentes dos slots A/B/C. Reentregas
+retomam os checkpoints, inclusive uma rodada de revisão parcialmente gravada. O
+E5 continua no mesmo módulo sem compartilhar seu estado com E4.
+
+**Verificação:** 113 testes de avaliação e pipeline passaram com PostgreSQL 18;
+Ruff e formatação passaram (263 arquivos); mypy passou nos quatro módulos alterados.
+Os testes medem o fluxo com agentes falsos e comparam sua duração ao soft limit de
+25 minutos; não medem tempo de provedor real nem qualidade das avaliações.
+
+**Run real (16/11/2026, ICLR 410 no Docker):** No Docker, com modelos reais (ICLR 410, 16/11), o E4 ainda não chega a `done`: as respostas dos modelos não passam em validações feitas para as respostas dos fakes. Já corrigidos: o schema da revisão recusado pela OpenAI, a nota 1–5 recusada pelo Gemini, o passe por seção (seção, papel e critério agora fixados pelo código) e a revisão fora das regras (o item segue para `unresolved`). Depois do run real, o E4 passou a aceitar o que os modelos erram de leve: a síntese descarta critério repetido ou não pedido, citações no lugar dos ids e ids inexistentes, e pede de novo só os critérios que faltaram (uma vez); a checagem entre seções fixa o tipo e descarta critério e evidência fora do pedido; o juiz não julga uma rodada incompleta e ignora o que vem fora das regras (item repetido ou não pedido, apontamento num item válido, recusa sem justificativa), pedindo de novo os itens que faltaram; e a retomada, da rodada 1 e das de revisão, não trava mais a rodada. O modo `whole_document` recebeu o mesmo tratamento. Tudo coberto com modelos falsos que repetem os desvios vistos. Em 16/11, depois desses ajustes, o ICLR 410 chegou a `done` no Docker com os modelos reais: E4 em cerca de 12 min, com 3 rodadas por avaliador, e relatório com recomendação `major`, nota 2,88 e concordância 0,62 (o artigo foi aceito no ICLR 2017). Custo do run: US$ 0,95 sem o E1, que foi reaproveitado. A qualidade ainda é baixa: 52 itens ficaram `unresolved` e muitos votos foram excluídos por `evidence_not_validated` (a citação do modelo não bate com o texto), e só um critério teve nota de todos os avaliadores. A mensagem de erro do
+estágio agora traz o erro de cada passo interno do workflow (antes, só "passos incompletos").
+Custo dos três runs de teste: cerca de US$ 1,96.
+
 ---
 
 ## Etapa 3.11 — Consolidação e relatório final
+
+**Situação (16/11/2026):** implementada em 13/11. O E4 (3.10) já está ligado ao estágio, mas com modelos reais ainda não fecha as rodadas (ver a 3.10), e por isso um PDF real ainda não chega ao relatório.
 
 **O que fazer**
 - `evaluation/aggregation.py`: mediana das notas válidas (com 2, a média), dispersão, total ponderado, faixa → recomendação; itens `unresolved` fora da agregação.
@@ -165,20 +232,59 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: consolidate evaluations into the final report`
 
+**Implementação (13/11/2026):** E5 real em `evaluation/workflow.py`, agregação
+determinística, narrativa com ids validados e uma retentativa, checkpoints com
+posse e relatório único/imutável. Inclui os contratos e models necessários da
+3.2 (`ReviewRound`, `JudgeVerdict`), pois ainda não existiam nesta branch.
+E4 continua stub e, sem três últimas rodadas finalizadas, E5 usa `waiting_setup`.
+O relatório explicita integridade não verificada e faixas ainda não calibradas.
+Endpoint autenticado JSON/Markdown, `409` antes de `done`, `404` para Runs internos.
+Persistência e constraints cobertas por testes em PostgreSQL 18; agentes usam fakes.
+
+Validação: **594 testes passaram**, com 5 contratos ao vivo excluídos; mypy
+aprovou 219 arquivos, Ruff/formatação aprovados (221 arquivos), checks do Django
+sem problemas e `makemigrations --check --dry-run` sem alterações pendentes.
+As migrations `attempts/0005_run_consolidation.py` e `evaluation/0001_initial.py`
+foram aplicadas pelo pytest em banco PostgreSQL 18 novo. Para atualizar o banco
+de desenvolvimento, executar `uv run python manage.py migrate`.
+
 ---
 
 ## Etapa 3.12 — Rubric check
+
+**Situação (13/11/2026):** implementada. Os relatórios lado a lado esperam o E4 (3.10).
 
 **O que fazer**
 - Ação no admin da Question: "Rodar rubric check" com N attempts de amostra → cria Runs com `purpose=rubric_check` e a Question rascunho no `config_snapshot` (D18).
 - Esses runs reaproveitam a extração do cache, pulam o E3 e rodam E2 (com a Question do snapshot), E4 e E5.
 - Tela de resultado: os `FinalReport` lado a lado.
 
-**Teste** (`questions/tests/test_rubric_check.py`)
+**Teste** (`questions/tests/test_rubric_check.py`,
+`questions/tests/test_rubric_check_workflow.py`)
 - O rubric check não muda a Question ativa nem outros runs.
 - O run usa a Question rascunho, e não a resolvida pela árvore.
+- O fluxo integrado de E2/E4/E5 finaliza as rodadas e gera relatórios, pulando E3.
 
 **Commit sugerido:** `feat: run rubric checks with draft questions`
+
+**Implementação (13/11/2026):** ação e formulário no admin para amostras de 1–20
+attempts com cache do E1, criação atômica e idempotente de lotes internos,
+snapshot do rascunho e da configuração de avaliação, desvio auditado do E3 e
+comparação dos relatórios lado a lado. A Question ativa e avaliações anteriores
+permanecem intactas. O desvio também vale para a retomada pelo reconciliador.
+
+**Integração concluída (16/11/2026):** com o E4 da etapa 3.10 integrado, o
+rubric check percorre E2, E4 e E5 usando a Question em rascunho congelada no Run.
+O teste de integração executa as etapas reais com respostas falsas coerentes:
+gera e julga rodadas para A/B/C, produz os relatórios finais e confere que E3
+foi pulado. Um teste separado preserva o estado `waiting_setup` quando E4 não
+produz rodadas. Os agentes falsos substituem somente as chamadas aos provedores.
+Ver [operação no admin](../../../docs/questions_and_profiling.md#rubric-check-no-admin-312).
+
+**Verificação da integração:** os 4 testes de
+`questions/tests/test_rubric_check_workflow.py` passaram com PostgreSQL 18;
+Ruff e mypy passaram no arquivo alterado. Os testes não medem a qualidade das
+avaliações produzidas por provedores reais.
 
 ---
 
@@ -186,13 +292,29 @@ Caminhos relativos a `projects/correction/`.
 
 **O que fazer**
 - Comando `ab_evaluation_mode`: cria Runs `purpose=ab_test` nos dois modos para o mesmo conjunto (~10–20 artigos: PeerRead + artigos da equipe) e 3 execuções por avaliador.
-- Métricas de [Avaliadores e juiz](../../../docs/evaluators_and_judge.md#como-decidir-o-modo-ab-no-m3): variação da nota, concordância, taxa de invalidação pelo juiz, correlação com o PeerRead, custo e tempo.
+- Métricas de [Avaliadores e juiz](../../../docs/evaluators_and_judge.md#como-decidir-o-modo-ab-no-m3): variação da nota, concordância, taxa de invalidação pelo juiz, custo e tempo; medir previsão de aprovação contra o veredito aceito/rejeitado do PeerRead. Correlação de notas humanas por critério é complementar e opcional.
 - Com duas famílias, a concordância entre A e C (mesma família ou não) fica separada das outras (R13).
 - Registrar a decisão (Q12) e o custo por artigo (Q2) no planejamento.
 
 **Pronto quando:** o modo padrão está decidido e registrado.
 
 **Commit sugerido:** `feat: compare evaluation modes with an A/B command`
+
+**Implementação local (16/11):** criado o comando em dry-run por padrão, com
+`--execute` para enfileirar Runs pareados e `--report` para gerar métricas de
+lotes concluídos. O manifesto referencia Runs avaliados com snapshots E1/E2
+atuais; extração e profiling são reaproveitados. A versão 2 acrescenta previsão estrita/potencial de aprovação usando o veredito binário humano, e mantém notas por critério opcionais. Os testes de evals e Run
+management passaram (41 testes); Ruff, mypy dos arquivos alterados e `manage.py
+check` também passaram. A decisão Q12 e os custos Q2 continuam pendentes da
+execução com a amostra curada, portanto a etapa ainda não atende ao critério
+final de conclusão.
+
+**Amostra e preparo:** catálogo piloto versionado em
+`projects/correction/evals/data/peerread_iclr2017_test_candidates.json` (10 PDFs,
+5 aceitos/5 rejeitados, revisão PeerRead fixada por commit e hashes). O comando
+`peerread_ab_manifest` resolve cada caso por `external_id` e SHA-256 depois que
+os Runs do fluxo normal estiverem concluídos; a execução integral da amostra e
+a escolha do modo padrão permanecem para a etapa operacional.
 
 ---
 

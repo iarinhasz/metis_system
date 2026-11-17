@@ -1,0 +1,1534 @@
+{
+  "sha256": "b65d585abfe589b5e337f7fa275ed76239610d2609c6bb5412c3c58cdc7dcf2c",
+  "version": "9f84af14c2cc6f2c",
+  "created_at": "2026-11-17T04:03:55.150105+00:00",
+  "article": {
+    "title": "INCREMENTAL NETWORK QUANTIZATION: TOWARDS LOSSLESS CNNS WITH LOW-PRECISION WEIGHTS",
+    "authors": [
+      "Aojun Zhou",
+      "Anbang Yao",
+      "Yiwen Guo",
+      "Lin Xu",
+      "Yurong Chen"
+    ],
+    "language": "en",
+    "model": "google/gemini-2.5-flash",
+    "sections": [
+      {
+        "id": "sec_1",
+        "title": "ABSTRACT",
+        "level": 1,
+        "parent_id": null,
+        "key": "abstract",
+        "text": "This paper presents incremental network quantization (INQ), a novel method, tar-geting to efficiently convert any pre-trained full-precision convolutional neural network (CNN) model into a low-precision version whose weights are constrained to be either powers of two or zero. Unlike existing methods which are struggled in noticeable accuracy loss, our INQ has the potential to resolve this issue, as benefiting from two innovations. On one hand, we introduce three interdependent operations, namely weight partition, group-wise quantization and re-training. A well-proven measure is employed to divide the weights in each layer of a pre-trained CNN model into two disjoint groups. The weights in the first group are responsible to form a low-precision base, thus they are quantized by a variable-length encoding method. The weights in the other group are responsible to com-pensate for the accuracy loss from the quantization, thus they are the ones to be re-trained. On the other hand, these three operations are repeated on the latest re-trained group in an iterative manner until all the weights are converted into low-precision ones, acting as an incremental network quantization and accura-cy enhancement procedure. Extensive experiments on the ImageNet classification task using almost all known deep CNN architectures including AlexNet, VGG-16, GoogleNet and ResNets well testify the efficacy of the proposed method. Specifi-cally, at 5-bit quantization (a variable-length encoding: 1 bit for representing zero value, and the remaining 4 bits represent at most 16 different values for the pow-ers of two) , our models have improved accuracy than the 32-bit floating-point references. Taking ResNet-18 as an example, we further show that our quantized models with 4-bit, 3-bit and 2-bit ternary weights have improved or very simi-lar accuracy against its 32-bit floating-point baseline. Besides, impressive results with the combination of network pruning and INQ are also reported. We believe that our method sheds new insights on how to make deep CNNs to be applicable on mobile or embedded devices. The code will be made publicly available.",
+        "has_footnotes": false,
+        "coverage": 0.9865047233468286,
+        "fidelity": 0.9889791183294664
+      },
+      {
+        "id": "sec_2",
+        "title": "1 INTRODUCTION",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015). Re-gardless of the availability of significantly improved training resources such as abundant annotated data, powerful computational platforms and diverse training frameworks, the promising results of deep CNNs are mainly attributed to the large number of learnable parameters, ranging from tens of millions to even hundreds of millions. Recent progress further shows clear evidence that CNNs could easily enjoy the accuracy gain from the increased network depth and width (He et al., 2016; Szegedy et al., 2015; 2016). However, this in turn lays heavy burdens on the memory and other computational resources. For instance, ResNet-152, a specific instance of the latest residual net-work architecture wining ImageNet classification challenge in 2015, has a model size of about 230 MB and needs to perform about 11.3 billion FLOPs to classify a $224 \\times 224$ image crop. Therefore, it is very challenging to deploy deep CNNs on the devices with limited computation and power budgets.\n\nSubstantial efforts have been made to the speed-up and compression on CNNs during training, feed-forward test or both of them. Among existing methods, the category of network quantization meth-ods attracts great attention from researches and developers. Some network quantization works try to compress pre-trained full-precision CNN models directly. Gong et al. (2014) address the storage problem of AlexNet (Krizhevsky et al., 2012) with vector quantization techniques. By replacing the weights in each of the three fully connected layers with respective floating-point centroid values obtained from the clustering, they can get over $20\\times$ model compression at about 1% loss in top-5 recognition rate. HashedNet (Chen et al., 2015b) uses a hash function to randomly map pre-trained weights into hash buckets, and all the weights in the same hash bucket are constrained to share a single floating-point value. In HashedNet, only the fully connected layers of several shallow CNN models are considered. For better compression, Han et al. (2016) present deep compression method which combines the pruning (Han et al., 2015), vector quantization and Huffman coding, and re-duce the model storage by $35\\times$ on AlexNet and $49\\times$ on VGG-16 (Simonyan & Zisserman, 2015). Vanhoucke et al. (2011) use an SSE 8-bit fixed-point implementation to improve the computation of neural networks on the modern Intel x86 CPUs in feed-forward test, yielding $3\\times$ speed-up over an optimized floating-point baseline. Training CNNs by substituting the 32-bit floating-point represen-tation with the 16-bit fixed-point representation has also been explored in Gupta et al. (2015). Other seminal works attempt to restrict CNNs into low-precision versions during training phase. Soudry et al. (2014) propose expectation backpropagation (EBP) to estimate the posterior distribution of deterministic network weights. With EBP, the network weights can be constrained to +1 and -1 during feed-forward test in a probabilistic way. BinaryConnect (Courbariaux et al., 2015) further extends the idea behind EBP to binarize network weights during training phase directly. It has two versions of network weights: floating-point and binary. The floating-point version is used as the reference for weight binarization. BinaryConnect achieves state-of-the-art accuracy using shallow CNNs for small datasets such as MNIST (LeCun et al., 1998) and CIFAR-10. Later on, a series of efforts have been invested to train CNNs with low-precision weights, low-precision activations and even low-precision gradients, including but not limited to BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), ternary weight network (TWN) (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and quantized neural network (QNN) (Hubara et al., 2016).\n\nDespite these tremendous advances, CNN quantization still remains an open problem due to two crit-ical issues which have not been well resolved yet, especially under scenarios of using low-precision weights for quantization. The first issue is the non-negligible accuracy loss for CNN quantization methods, and the other issue is the increased number of training iterations for ensuring convergence. In this paper, we attempt to address these two issues by presenting a novel incremental network quantization (INQ) method.\n\nIn our INQ, there is no assumption on the CNN architecture, and its basic goal is to efficiently convert any pre-trained full-precision (i.e., 32-bit floating-point) CNN model into a low-precision version whose weights are constrained to be either powers of two or zero. The advantage of such kind of low-precision models is that the original floating-point multiplication operations can be replaced by cheaper binary bit shift operations on dedicated hardware like FPGA. We noticed that most existing network quantization methods adopt a global strategy in which all the weights are simultaneously converted to low-precision ones (that are usually in the floating-point types). That is, they have not considered the different importance of network weights, leaving the room to retain network accu-racy limited. In sharp contrast to existing methods, our INQ makes a very careful handling for the model accuracy drop from network quantization. To be more specific, it incorporates three interde-pendent operations: weight partition, group-wise quantization and re-training. Weight partition uses a pruning-inspired measure (Han et al., 2015; Guo et al., 2016) to divide the weights in each layer of a pre-trained full-precision CNN model into two disjoint groups which play complementary roles in our INQ. The weights in the first group are quantized to be either powers of two or zero by a variable-length encoding method, forming a low-precision base for the original model. The weights in the other group are re-trained while keeping the quantized weights fixed, compensating for the accuracy loss resulted from the quantization. Furthermore, these three operations are repeated on the latest re-trained weight group in an iterative manner until all the weights are quantized, acting as an incremental network quantization and accuracy enhancement procedure (as illustrated in Figure 1).\n\nThe main insight of our INQ is that a compact combination of the proposed weight partition, group-wise quantization and re-training operations has the potential to get a lossless low-precision CNN model from any full-precision reference. We conduct extensive experiments on the ImageNet large scale classification task using almost all known deep CNN architectures to validate the effective-ness of our method. We show that: (1) For AlexNet, VGG-16, GoogleNet and ResNets with 5-bit quantization, INQ achieves improved accuracy in comparison with their respective full-precision baselines. The absolute top-1 accuracy gain ranges from 0.13% to 2.28%, and the absolute top-5 accuracy gain is in the range of 0.23% to 1.65%. (2) INQ has the property of easy convergence in training. In general, re-training with less than 8 epochs could consistently generate a lossless model with 5-bit weights in the experiments. (3) Taking ResNet-18 as an example, our quantized models with 4-bit, 3-bit and 2-bit ternary weights also have improved or very similar accuracy compared with its 32-bit floating-point baseline. (4) Taking AlexNet as an example, the combination of our network pruning and INQ outperforms deep compression method (Han et al., 2016) with significant margins.",
+        "has_footnotes": true,
+        "coverage": 0.8408944658944659,
+        "fidelity": 0.9949494949494949
+      },
+      {
+        "id": "sec_3",
+        "title": "2 INCREMENTAL NETWORK QUANTIZATION",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "In this section, we clarify the insight of our INQ, describe its key components, and detail its imple-mentation.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_4",
+        "title": "2.1 WEIGHT QUANTIZATION WITH VARIABLE-LENGTH ENCODING",
+        "level": 2,
+        "parent_id": "sec_3",
+        "key": null,
+        "text": "Suppose a pre-trained full-precision (i.e., 32-bit floating-point) CNN model can be represented by\n$\\{W_l : 1 \\le l \\le L\\}$, where $W_l$ denotes the weight set of the $l^{th}$ layer, and $L$ denotes the number\nof learnable layers in the model. To simplify the explanation, we only consider convolutional layers\nand fully connected layers. For CNN models like AlexNet, VGG-16, GoogleNet and ResNets as\ntested in this paper, $W_l$ can be a 4D tensor for the convolutional layer, or a 2D matrix for the fully\nconnected layer. For simplicity, here the dimension difference is not considered in the expression.\nGiven a pre-trained full-precision CNN model, the main goal of our INQ is to convert all 32-bit\nfloating-point weights to be either powers of two or zero without loss of model accuracy. Besides,\nwe also attempt to explore the limit of the expected bit-width under the premise of guaranteeing\nlossless network quantization. Here, we start with our basic network quantization method on how to\nconvert $W_l$ to be a low-precision version $\\tilde{W_l}$, and each of its entries is chosen from\n$P_l = \\{\\pm 2^{n_1}, \\ldots, \\pm 2^{n_2}, 0\\}$,\nwhere $n_1$ and $n_2$ are two integer numbers, and they satisfy $n_2 < n_1$. Mathematically, $n_1$ and $n_2$\nhelp to bound $P_l$ in the sense that its non-zero elements are constrained to be in the range of either\n$[-2^{n_1}, -2^{n_2}]$ or $[2^{n_2}, 2^{n_1}]$. That is, network weights with absolute values smaller than $2^{n_2}$ will\nbe pruned away (i.e., set to zero) in the final low-precision model. Obviously, the problem is how\nto determine $n_1$ and $n_2$. In our INQ, the expected bit-width $b$ for storing the indices in $P_l$ is set\nbeforehand, thus the only hyper-parameter shall be determined is $n_1$ because $n_2$ can be naturally\ncomputed once $b$ and $n_1$ are available. Here, $n_1$ is calculated by using a tricky yet practically\neffective formula as\n$n_1 = \\text{floor}(\\text{log}_2(4s/3))$,\nwhere floor() indicates the round down operation and $s$ is calculated by using\n$s = \\text{max}(\\text{abs}(W_l))$,\nwhere abs() is an element-wise operation and max($\\cdot$) outputs the largest element of its input. In\nfact, Equation (2) helps to match the rounding power of 2 for $s$, and it could be easily implemented\nin practical programming. After $n_1$ is obtained, $n_2$ can be naturally determined as $n_2 = n_1 + 1 -\n2^{(b-1)/2}$. For instance, if $b = 3$ and $n_1 = -1$, it is easy to get $n_2 = -2$.\nOnce $P_l$ is determined, we further use the ladder of powers to convert every entry of $W_l$ into a\nlow-precision one by using\n$\\tilde{W_l}(i, j) = \\begin{cases} \\text{sgn}(W_l(i, j)) & \\text{if } (\\alpha + \\beta)/2 \\le \\text{abs}(W_l(i, j)) < 3\\beta/2 \\\\ 0 & \\text{otherwise,} \\end{cases}$\nwhere $\\alpha$ and $\\beta$ are two adjacent elements in the sorted $P_l$, making the above equation as a numerical\nrounding to the quantum values. It should be emphasized that factor 4/3 in Equation (2) is set to\nmake sure that all the elements in $P_l$ correspond with the quantization rule defined in Equation (4).\nIn other words, factor 4/3 in Equation (2) highly correlates with factor 3/2 in Equation (4).\nHere, an important thing we want to clarify is the definition of the expected bit-width $b$. Taking 5-bit\nquantization as an example, since zero value cannot be written as the power of two, we use 1 bit to\nrepresent zero value, and the remaining 4 bits to represent at most 16 different values for the powers\nof two. That is, the number of candidate quantum values is at most $2^{b-1} + 1$, so our quantization\nmethod actually adopts a variable-length encoding scheme. It is clear that the quantization described\nabove is performed in a linear scale. An alternative solution is to perform the quantization in the log\nscale. Although it may also be effective, it should be a little bit more difficult in implementation and\nmay cause some extra computational overhead in comparison to our method.",
+        "has_footnotes": false,
+        "coverage": 0.9077123050259965,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_5",
+        "title": "2.2 INCREMENTAL QUANTIZATION STRATEGY",
+        "level": 2,
+        "parent_id": "sec_3",
+        "key": null,
+        "text": "We can naturally use the above described method to quantize any pre-trained full-precision CNN model. However, noticeable accuracy loss appeared in the experiments when using small bit-width values (e.g., 5-bit, 4-bit, 3-bit and 2-bit).\n\nIn the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016). Similar to our basic network quantization method, they also suffer from non-negligible accuracy loss on deep CNNs, especially when being applied on the ImageNet large scale classification dataset. For all these methods, a common fact is that they adopt a global strategy in which all the weights are simultaneously converted into low-precision ones, which in turn causes accuracy loss. Compared with the methods focusing on the pre-trained models, accuracy loss becomes worse for the methods such as XNOR-Net, TWN, DoReFa-Net and QNN which intend to train low-precision CNNs from scratch.\n\nRecall that our main goal is to achieve lossless low-precision quantization for any pre-trained full-precision CNN model with no assumption on its architecture. To this end, our INQ makes a special handling of the strategy for suppressing resulting quantization loss in model accuracy. We are partially inspired by the latest progress in network pruning (Han et al., 2015; Guo et al., 2016). In these methods, the accuracy loss from removing less important network weights of a pre-trained neural network model could be well compensated by following re-training steps. Therefore, we conjecture that the nature of changing network weight importance is critical to achieve lossless network quantization.\n\nBase on this assumption, we present INQ which incorporates three interdependent operations: weight partition, group-wise quantization and re-training. Weight partition is to divide the weights in each layer of a pre-trained full-precision CNN model into two disjoint groups which play complementary roles in our INQ. The weights in the first group are responsible for forming a low-precision base for the original model, thus they are quantized by using Equation (4). The weights in the second group adapt to compensate for the loss in model accuracy, thus they are the ones to be re-trained. Once the first run of the quantization and re-training operations is finished, all the three operations are further conducted on the second weight group in an iterative manner, until all the weights are converted to be either powers of two or zero, acting as an incremental network quantization and accuracy enhancement procedure. As a result, accuracy loss under low-precision CNN quantization can be well suppressed by our INQ. Illustrative results at iterative steps of our INQ are provided in Figure 2.\n\nFor the $l$th layer, weight partition can be defined as\n$$A_l^{(1)} \\cup A_l^{(2)} = \\{W_l(i,j)\\}, \\text{ and } A_l^{(1)} \\cap A_l^{(2)} = \\emptyset,\\tag{5}$$\nwhere $A_l^{(1)}$ denotes the first weight group that needs to be quantized, and $A_l^{(2)}$ denotes the other weight group that needs to be re-trained. We leave the strategies for group partition to be chosen in the experiment section. Here, we define a binary matrix $T_l$ to help distinguish above two categories of weights. That is, $T_l(i, j) = 0$ means $W_l(i,j) \\in A_l^{(1)}$, and $T_l(i, j) = 1$ means $W_l(i, j) \\in A_l^{(2)}$.",
+        "has_footnotes": false,
+        "coverage": 0.8114309553608677,
+        "fidelity": 0.9927035330261137
+      },
+      {
+        "id": "sec_6",
+        "title": "2.3 INCREMENTAL NETWORK QUANTIZATION ALGORITHM",
+        "level": 2,
+        "parent_id": "sec_3",
+        "key": null,
+        "text": "Now, we come to the training method. Taking the $l$th layer as an example, the basic optimization problem of making its weights to be either powers of two or zero can be expressed as\n$$\\min_{W_l} E (W_l) = L(W_l) + \\lambda R(W_l)$$\ns.t. $W_l(i, j) \\in P_l, 1 \\le l \\le L$,\nwhere $L(W_l)$ is the network loss, $R(W_l)$ is the regularization term, $\\lambda$ is a positive coefficient, and the constraint term indicates each weight entry $W_l(i, j)$ should be chosen from the set $P_l$ consisting of a fixed number of the values of powers of two plus zero. Direct solving above optimization problem in training from scratch is challenging since it is very easy to undergo convergence problem.\n\nBy performing weight partition and group-wise quantization operations beforehand, the optimiza- tion problem defined in (6) can be reshaped into a easier version. That is, we only need to optimize the following objective function\n$$\\min_{W_l} E (W_l) = L(W_l) + \\lambda R(W_l)$$\ns.t. $W_l(i, j) \\in P_l$, if $T_l(i, j) = 0, 1 \\le l \\le L$,\nwhere $P_l$ is determined at group-wise quantization operation, and the binary matrix $T_l$ acts as a mask which is determined by weight partition operation. Since $P_l$ and $T_l$ are known, the optimiza- tion problem (7) can be solved using popular stochastic gradient decent (SGD) method. That is, in INQ, we can get the update scheme for the re-training as\n$$W_l(i, j) \\leftarrow W_l(i, j) - \\gamma \\frac{\\partial E}{\\partial W_l(i, j)} T_l(i, j),$$\nwhere $\\gamma$ is a positive learning rate. Note that the binary matrix $T_l$ forces zero update to the weights that have been quantized. That is, only the weights still keep with floating-point values are updated, akin to the latest pruning methods (Han et al., 2015; Guo et al., 2016) in which only the weights that are not currently removed are re-trained to enhance network accuracy. The whole procedure of our INQ is summarized as Algorithm 1.\n\nWe would like to highlight that the merits of our INQ are in three aspects: (1) Weight partition in- troduces the importance-aware weight quantization. (2) Group-wise weight quantization introduces much less accuracy loss than simultaneously quantizing all the network weights, thus making re- training have larger room to recover model accuracy. (3) By integrating the operations of weight partition, group-wise quantization and re-training into a nested loop, our INQ has the potential to obtain lossless low-precision CNN model from the pre-trained full-precision reference.\n\nAlgorithm 1 Incremental network quantization for lossless CNNs with low-precision weights.\n\nInput: X: the training data, {W$_l$ : $1 \\le l \\le L$}: the pre-trained full-precision CNN model, {$\\sigma_1, \\sigma_2, \\ldots, \\sigma_N$}: the accumulated portions of weights quantized at iterative steps\nOutput: {W$_l$: $1 \\le l \\le L$}: the final low-precision model with the weights constrained to be either powers of two or zero\n1: Initialize $A_l^{(1)} \\leftarrow \\emptyset$, $A_l^{(2)} \\leftarrow \\{W_l(i, j)\\}$, $T_l \\leftarrow 1$, for $1 \\le l \\le L$\n2: for $n = 1, 2, \\ldots, N$ do\n3: Reset the base learning rate and the learning policy\n4: According to $\\sigma_n$, perform layer-wise weight partition and update $A_l^{(1)}$, $A_l^{(2)}$ and $T_l$\n5: Based on $A_l^{(1)}$, determine $P_l$ layer-wisely\n6: Quantize the weights in $A_l^{(1)}$ by Equation (4) layer-wisely\n7: Calculate feed-forward loss, and update weights in {A$_l^{(2)}$ : $1 \\le l \\le L$} by Equation (8)\n8: end for",
+        "has_footnotes": false,
+        "coverage": 0.842211055276382,
+        "fidelity": 0.9994435169727324
+      },
+      {
+        "id": "sec_7",
+        "title": "3 EXPERIMENTAL RESULTS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "To analyze the performance of our INQ, we perform extensive experiments on the ImageNet large scale classification task, which is known as the most challenging image classification benchmark so far. ImageNet dataset has about 1.2 million training images and 50 thousand validation images. Each image is annotated as one of 1000 object classes. We apply our INQ to AlexNet, VGG-16, GoogleNet, ResNet-18 and ResNet-50, covering almost all known deep CNN architectures. Using the center crops of validation images, we report the results with two standard measures: top-1 error rate and top-5 error rate. For fair comparison, all pre-trained full-precision (i.e., 32-bit floating- point) CNN models except ResNet-18 are taken from the Caffe model zoo. Note that He et al. (2016) do not release their pre-trained ResNet-18 model to the public, so we use a publicly available re-implementation by Facebook. Since our method is implemented with Caffe, we make use of an open source tool to convert the pre-trained ResNet-18 model from Torch to Caffe.",
+        "has_footnotes": true,
+        "coverage": 0.9671641791044776,
+        "fidelity": 0.9299754299754299
+      },
+      {
+        "id": "sec_8",
+        "title": "3.1 RESULTS ON IMAGENET",
+        "level": 2,
+        "parent_id": "sec_7",
+        "key": null,
+        "text": "Table 1: Our INQ well converts diverse full-precision deep CNN models (including AlexNet, VGG-16, GoogleNet, ResNet-18 and ResNet-50) to 5-bit low-precision versions with consistently improved model accuracy.\n\nSetting expected bit-width to 5, the first set of experiments is performed to testify the efficacy of our INQ on different CNN architectures. Regarding weight partition, there are several candidate strate-gies as we tried in our previous work for efficient network pruning (Guo et al., 2016). In Guo et al.(2016), we found random partition and pruning-inspired partition are the two best choices compared with the others. Thus in this paper, we directly compare these two strategies for weight partition. In random strategy, the weights in each layer of any pre-trained full-precision deep CNN model are randomly split into two disjoint groups. In pruning-inspired strategy, the weights are divided into two disjoint groups by comparing their absolute values with layer-wise thresholds which are auto-matically determined by a given splitting ratio. Here we directly use pruning-inspired strategy and the experimental results in Section 3.2 will show why. After the re-training with no more than 8 epochs over each pre-trained full-precision model, we obtain the results as shown in Table 1. It can be concluded that the 5-bit CNN models generated by our INQ show consistently improved top-1 and top-5 recognition rates compared with respective full-precision references. Parameter settings are described below.\n\nAlexNet: AlexNet has 5 convolutional layers and 3 fully-connected layers. We set the accumulated portions of quantized weights at iterative steps as {0.3, 0.6, 0.8, 1}, the batch size as 256, the weight decay as 0.0005, and the momentum as 0.9.\n\nVGG-16: Compared with AlexNet, VGG-16 has 13 convolutional layers and more parameters. We set the accumulated portions of quantized weights at iterative steps as {0.5, 0.75, 0.875, 1}, the batch size as 32, the weight decay as 0.0005, and the momentum as 0.9.\n\nGoogleNet: Compared with AlexNet and VGG-16, GoogleNet is more difficult to quantize due to a smaller number of parameters and the increased network width. We set the accumulated portions of quantized weights at iterative steps as {0.2, 0.4, 0.6, 0.8, 1}, the batch size as 80, the weight decay as 0.0002, and the momentum as 0.9.\n\nResNet-18: Different from above three networks, ResNets have batch normalization layers and relief the vanishing gradient problem by using shortcut connections. We first test the 18-layer version for exploratory purpose and test the 50-layer version later on. The network architectures of ResNet-18 and ResNet-34 are very similar. The only difference is the number of filters in every convolutional layer. We set the accumulated portions of quantized weights at iterative steps as {0.5, 0.75, 0.875, 1}, the batch size as 80, the weight decay as 0.0005, and the momentum as 0.9.\n\nResNet-50: Besides significantly increased network depth, ResNet-50 has a more complex network architecture in comparison to ResNet-18. However, regarding network architecture, ResNet-50 is very similar to ResNet-101 and ResNet-152. The only difference is the number of filters in every convolutional layer. We set the accumulated portions of quantized weights at iterative steps as {0.5, 0.75, 0.875, 1}, the batch size as 32, the weight decay as 0.0005, and the momentum as 0.9.",
+        "has_footnotes": true,
+        "coverage": 0.923481308411215,
+        "fidelity": 0.9834278238116005
+      },
+      {
+        "id": "sec_9",
+        "title": "3.2 ANALYSIS OF WEIGHT PARTITION STRATEGIES",
+        "level": 2,
+        "parent_id": "sec_7",
+        "key": null,
+        "text": "In our INQ, the first operation is weight partition whose result will directly affect the following group-wise quantization and re-training operations. Therefore, the second set of experiments is conducted to analyze two candidate strategies for weight partition. As mentioned in the previous section, we use pruning-inspired strategy for weight partition. Unlike random strategy in which all the weights have equal probability to fall into the two disjoint groups, pruning-inspired strategy considers that the weights with larger absolute values are more important than the smaller ones to form a low-precision base for the original CNN model. We use ResNet-18 as a test case to compare the performance of these two strategies. In the experiments, the parameter settings are completely the same as described in Section 3.1. We set 4 epochs for weight re-training. Table 2 summarizes the results of our INQ with 5-bit quantization. It can be seen that our INQ achieves top-1 error rate of 32.11% and top-5 error rate of 11.73% by using random partition. Comparatively, pruning-inspired partition brings 1.09% and 0.83% decrease in top-1 and top-5 error rates, respectively. Apparently, pruning-inspired partition is better than random partition, and this is the reason why we use it in this paper. For future works, weight partition based on quantization error could also be an option worth exploring.\n\nTable 2: Comparison of two different strategies for weight partition on ResNet-18.\n\nStrategy Bit-width Top-1 error Top-5 error\nRandom partition 5 32.11% 11.73%\nPruning-inspired partition 5 31.02% 10.90%",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_10",
+        "title": "3.3 THE TRADE-OFF BETWEEN EXPECTED BIT-WIDTH AND MODEL ACCURACY",
+        "level": 2,
+        "parent_id": "sec_7",
+        "key": null,
+        "text": "The third set of experiments is performed to explore the limit of the expected bit-width under which our INQ can still achieve lossless network quantization. Similar to the second set of experiments, we also use ResNet-18 as a test case, and the parameter settings for the batch size, the weight decay and the momentum are completely the same. Finally, lower-precision models with 4-bit, 3-bit and even 2-bit ternary weights are generated for comparisons. As the expected bit-width goes down, the number of candidate quantum values will be decreased significantly, thus we shall increase the number of iterative steps accordingly for enhancing the accuracy of final low-precision model. Specifically, we set the accumulated portions of quantized weights at iterative steps as `{0.3, 0.5, 0.8, 0.9, 0.95, 1}`, `{0.2, 0.4, 0.6, 0.7, 0.8, 0.9, 0.95, 1}` and `{0.2, 0.4, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.975, 1}` for 4-bit, 3-bit and 2-bit ternary models, respectively. The required number of epochs also increases when the expected bit-width goes down, and it reaches 30 when training our 2-bit ternary model. Although our 4-bit model shows slightly decreased accuracy when compared with the 5-bit model, its accuracy is still better than that of the pre-trained full-precision model. Comparatively, even when the expected bit-width goes down to 3, our low-precision model shows only 0.19% and 0.33% losses in top-1 and top-5 recognition rates, respectively. As for our 2-bit ternary model, although it incurs 2.25% decrease in top-1 error rate and 1.56% decrease in top-5 error rate in comparison to the pre-trained full-precision reference, its accuracy is considerably better than state-of-the-art results reported for binary-weight network (BWN) (Rastegari et al., 2016) and ternary weight network (TWN) (Li & Liu, 2016). Detailed results are summarized in Table 3 and Table 4.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_11",
+        "title": "3.4 Low-BIT DEEP COMPRESSION",
+        "level": 2,
+        "parent_id": "sec_7",
+        "key": null,
+        "text": "In the literature, recently proposed deep compression method (Han et al., 2016) reports so far best results on network compression without loss of model accuracy. Therefore, the last set of experi- ments is conducted to explore the potential of our INQ for much better deep compression. Note that Han et al. (2016) is a hybrid network compression solution combining three different techniques, namely network pruning (Han et al., 2015), vector quantization (Gong et al., 2014) and Huffman coding. Taking AlexNet as an example, network pruning gets 9× compression, however this re- sult is mainly obtained from the fully connected layers. Actually its compression performance on the convolutional layers is less than 3× (as can be seen in the Table 4 of Han et al. (2016)). Be- sides, network pruning is realized by separately performing pruning and re-training in an iterative way, which is very time-consuming. It will cost at least several weeks for compressing AlexNet. We solved this problem by our dynamic network surgery (DNS) method (Guo et al., 2016) which achieves about 7× speed-up in training and improves the performance of network pruning from 9× to 17.7×. In Han et al. (2016), after network pruning, vector quantization further improves com- pression ratio from 9× to 27×, and Huffman coding finally boosts compression ratio up to 35×. For fair comparison, we combine our proposed INQ and DNS, and compare the resulting method with Han et al. (2016). Detailed results are summarized in Table 5. When combing our proposed INQ and DNS, we achieve much better compression results compared with Han et al. (2016). Specif- ically, with 5-bit quantization, we can achieve 53× compression with slightly larger gains both in top-5 and top-1 recognition rates, yielding 51.43%/96.30% absolute improvement in compression performance compared with full version/fair version (i.e., the combination of network pruning and vector quantization) of Han et al. (2016), respectively. Consistently better results have also obtained for our 4-bit and 3-bit models.\n\nBesides, we also perform a set of experiments on AlexNet to compare the performance of our INQ and vector quantization (Gong et al., 2014). For fair comparison, re-training is also used to enhance the performance of vector quantization, and we set the number of cluster centers for all of 5 convo- lutional layers and 3 fully connect layers to 32 (i.e., 5-bit quantization). In the experiment, vector quantization incurs over 3% loss in model accuracy. When we change the number of cluster centers for convolutional layers from 32 to 128, it gets an accuracy loss of 0.98%. This is consistent with the results reported in (Gong et al., 2014). Comparatively, vector quantization is mainly proposed to compress the parameters in the fully connected layers of a pre-trained full-precision CNN model, while our INQ addresses all network layers simultaneously and has no accuracy loss for 5-bit and 4-bit quantization. Therefore, it is evident that our INQ is much better than vector quantization. Last but not least, the final weights for vector quantization (Gong et al., 2014), network pruning (Han et al., 2015) and deep compression (Han et al., 2016) are still floating-point values, but the final weights for our INQ are in the form of either powers of two or zero. The direct advantage of our INQ is that the original floating-point multiplication operations can be replaced by cheaper binary bit shift operations on dedicated hardware like FPGA.",
+        "has_footnotes": false,
+        "coverage": 0.9193045028979046,
+        "fidelity": 0.9933872152828802
+      },
+      {
+        "id": "sec_12",
+        "title": "4 CONCLUSIONS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "In this paper, we present INQ, a new network quantization method, to address the problem of how to convert any pre-trained full-precision (i.e., 32-bit floating-point) CNN model into a lossless low-precision version whose weights are constrained to be either powers of two or zero. Unlike existing methods which usually quantize all the network weights simultaneously, INQ is a more compact quantization framework. It incorporates three interdependent operations: weight partition, group-wise quantization and re-training. Weight partition splits the weights in each layer of a pre-trained full-precision CNN model into two disjoint groups which play complementary roles in INQ. The weights in the first group is directly quantized by a variable-length encoding method, forming a low-precision base for the original CNN model. The weights in the other group are re-trained while keeping all the quantized weights fixed, compensating for the accuracy loss from network quantization. More importantly, the operations of weight partition, group-wise quantization and re-training are repeated on the latest re-trained weight group in an iterative manner until all the weights are quantized, acting as an incremental network quantization and accuracy enhancement procedure. On the ImageNet large scale classification task, we conduct extensive experiments and show that our quantized CNN models with 5-bit, 4-bit, 3-bit and even 2-bit ternary weights have improved or at least comparable accuracy against their full-precision baselines, including AlexNet, VGG-16, GoogleNet and ResNets. As for future works, we plan to extend incremental idea behind INQ from low-precision weights to low-precision activations and low-precision gradients (we have actually already made some good progress on it, as shown in our supplementary materials). We will also investigate computation and power efficiency by implementing our low-precision CNN models on hardware platforms.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_13",
+        "title": "REFERENCES",
+        "level": 1,
+        "parent_id": null,
+        "key": "references",
+        "text": "Liang-Chieh Chen, George Papandreou, Iasonas Kokkinos, Kevin Murphy, and L. Yuille Alan. Se-mantic image segmentation with deep convolutional nets and fully connected crfs. In ICLR,2015a.\n\nWenlin Chen, James T. Wilson, Stephen Tyree, Kilian Q. Weinberger, and Yixin Chen. Compressingneural networks with the hashing trick. In ICML, 2015b.\n\nMatthieu Courbariaux, Bengio Yoshua, and David Jean-Pierre. Binaryconnect: Training deep neuralnetworks with binary weights during propagations. In NIPS, 2015.\n\nMatthieu Courbariaux, Itay Hubara, Daniel Soudry, Ran El-Yaniv, and Yoshua Bengio. Binarizedneural networks: Training deep neural networks with weights and activations constrained to +1or -1. arXiv preprint arXiv:1602.02830v3, 2016.\n\nRoss Girshick. Fast r-cnn. In ICCV, 2015.\n\nYunchao Gong, Liu Liu, Ming Yang, and Lubomir Bourdev. Compressing deep concolutional net-works using vector quantization. arXiv preprint arXiv:1412.6115v1, 2014.\n\nYiwen Guo, Anbang Yao, and Yurong Chen. Dynamic network surgery for efficient dnns. In NIPS,2016.\n\nSuyog Gupta, Ankur Agrawal, Kailash Gopalakrishnan, and Pritish Narayanan. Deep learning withlimited numerical precision. In ICML, 2015.\n\nSong Han, Jeff Pool, John Tran, and William J. Dally. Learning both weights and connections forefficient neural networks. In NIPS, 2015.\n\nSong Han, Jeff Pool, John Tran, and William J. Dally. Deep compression: Compressing deep neuralnetworks with pruning, trained quantization and huffman coding. In ICLR, 2016.\n\nKaiming He, Zhang Xiangyu, Ren Shaoqing, and Sun Jian. Deep residual learning for image recog-nition. In CVPR, 2016.\n\nItay Hubara, Matthieu Courbariaux, Daniel Soudry, Ran El-Yaniv, and Yoshua Bengio. Quantizedneural networks: Training neural networks with low precision weights and activations. arXivpreprint arXiv:1609.07061v1, 2016.\n\nAlex Krizhevsky, Sutskever Ilya, and E. Hinton Geoffrey. Imagenet classification with deep convo-lutional neural networks. In NIPS, 2012.\n\nYann LeCun, Bottou Leon, Yoshua Bengio, and Patrick Hadner. Gradient-based learning applied todocumentrecognition. In NIPS, 1998.\n\nFengfu Li and Bin Liu. Ternary weight networks. arXiv preprint arXiv:1605.04711v1, 2016.\n\nJonathan Long, Evan Shelhamer, and Trevor Darrell. Fully convolutional networks for semanticsegmentation. In CVPR, 2015.\n\nMohammad Rastegari, Vicente Ordonez, Joseph Redmon, and Ali Farhadi. Xnor-net: Imagenetclassification using binary convolutional neural networks. arXiv preprint arXiv:1603.05279v4,2016.\n\nShaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun. Faster r-cnn: Towards real-time objectdetection with region proposal networks. In NIPS, 2015.\n\nKaren Simonyan and Andrew Zisserman. Very deep convolutional networks for large-scale imagerecognition. In ICLR, 2015.\n\nDaniel Soudry, Itay Hubara, and Ron Meir. Expectation backpropagation: Parameter-free trainingof multilayer neural networks with continuous or discrete weights. In NIPS, 2014.\n\nYi Sun, Xiaogang Wang, and Xiaoou Tang. Deep learning face representation from predicting10,000 classes. In CVPR, 2014.\n\nChristian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Du-mitru Erhan, Vincent Vanhoucke, and Andrew Rabinovich. Going deeper with convolutions. InCVPR, 2015.\n\nChristian Szegedy, Sergey Ioffe, and Vincent Vanhoucke. Inception-v4, inception-resnet and theimpact of residual connections on learning. arXiv preprint arXiv:1602.07261v1, 2016.",
+        "has_footnotes": false,
+        "coverage": 0.8283828382838284,
+        "fidelity": 0.982536066818527
+      },
+      {
+        "id": "sec_14",
+        "title": "A APPENDIX 1: STATISTICAL ANALYSIS OF THE QUANTIZED WEIGHTS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Taking our 5-bit AlexNet model as an example, we analyze the distribution of the quantized weights. Detailed statistical results are summarized in Table 6. We can find: (1) in the 1st and 2nd convolu-tional layers, the values of $\\{-2^{-6}, -2^{-5}, -2^{-4}, 2^{-6}, 2^{-5}, 2^{-4}\\}$ and $\\{-2^{-8}, -2^{-7}, -2^{-6}, -2^{-5}, 0,2^{-8}, 2^{-7}, 2^{-6}, 2^{-5}\\}$ occupy over 60% and 94% of all quantized weights, respectively; (2) the distributions of the quantized weights in the 3rd, 4th and 5th convolutional layers are similar to that of the 2nd convolutional layer, and more weights are quantized into zero in the 2nd, 3rd, 4th and 5th convolutional layers compared with the 1st convolutional layer; (3) in the 1st fully connected layer, the values of $\\{-2^{-10}, -2^{-9}, -2^{-8}, -2^{-7}, 0, 2^{-10}, 2^{-9}, 2^{-8}, 2^{-7}\\}$ occupy about 98% of all quantized weights, and similar results can be seen for the 2nd fully connected layer; (4) general-ly, the distributions of the quantized weights in the convolutional layers are usually more scattered compared with the fully connected layers. This may be partially the reason why it is much easier to get good compression performance on fully connected layers in comparison to convolutional layers, when using methods such as network hashing (Chen et al., 2015b) and vector quantization (Gong et al., 2014); (5) for 5-bit AlexNet model, the required bit-width for each layer is actually 4 but not 5.\n\nTable 6: A statistical distribution of the quantized weights in our 5-bit AlexNet model.\n\nWeight Conv1 Conv2 Conv3 Conv4 Conv5 FC6 FC7 FC8\n-2-10 - - - - 8.95% 6.37% 3.86%\n-2-9 - - - - 12.29% 9.58% 6.19%\n-2-8 5.04% 10.55% 11.58% 10.09% 9.88% 16.48% 16.13% 12.90%\n-2-7 6.56% 12.09% 14.34% 14.24% 14.68% 10.84% 17.87% 19.51%\n-2-6 9.22% 13.08% 15.26% 18.49% 20.66% 0.79% 3.43% 11.09%\n-2-5 10.52% 8.73% 5.92% 7.77% 9.79% 0.002% 0.004% 0.40%\n-2-4 9.75% 2.70% 0.49% 0.38% 0.55% - -\n-2-3 4.61% 0.39% 0.02% 0.01% 0.004% - -\n-2-2 0.67% 0.01% 1e-4% - - - -\n0 5.51% 11.30% 12.24% 9.70% 8.97% 8.86% 6.17% 3.62%\n2-10 - - - - 8.30% 5.81% 3.40%\n2-9 - - - - 10.51% 7.84% 4.69%\n2-8 5.20% 9.70% 10.44% 8.60% 7.69% 12.91% 11.30% 8.08%\n2-7 6.79% 11.01% 11.66% 10.33% 8.95% 8.95% 11.90% 10.94%\n2-6 9.99% 11.05% 11.86% 12.25% 10.67% 1.12% 3.54% 12.56%\n2-5 11.15% 6.57% 5.22% 6.81% 6.37% 0.01% 0.06% 2.75%\n2-4 10.14% 2.26% 0.86% 1.24% 1.62% 1e-5% 2e-5% 0.01%\n2-3 4.26% 0.53% 0.09% 0.08% 0.16% - -\n2-2 0.60% 0.05% 0.01% 0.003% 0.01% - -\n2-1 - 3e-4% 2e-4% 3e-4% - - -\nTotal 100% 100% 100% 100% 100% 100% 100% 100%\nBit-width 4 4 4 4 4 4 4 4",
+        "has_footnotes": false,
+        "coverage": 0.9800210304942166,
+        "fidelity": 0.9863760217983651
+      },
+      {
+        "id": "sec_15",
+        "title": "B APPENDIX 2: LOSSLESS CNNS WITH LOW-PRECISION WEIGHTS AND LOW-PRECISION ACTIVATIONS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "B APPENDIX 2: LOSSLESS CNNS WITH LOW-PRECISION WEIGHTS AND LOW-PRECISION ACTIVATIONS\n\nTable 7: Comparison of our VGG-16 model with 5-bit weights and 4-bit activations, and the pre-trained reference with 32-bit floating-point weights and 32-bit float-point activations.\n\nNetwork Bit-width forweight/activation Top-1 error Top-5 error Decrease in top-1/top-5 error\nVGG-16 ref 32/32 31.46% 11.35%\nVGG-16 5/4 29.82% 10.19% 1.64%/1.16%\n\nRecently, we have made some good progress on developing our INQ for lossless CNNs with both low-precision weights and low-precision activations. According to the results summarized in Table 7, it can be seen that our VGG-16 model with 5-bit weights and 4-bit activations shows improved top-5 and top-1 recognition rates in comparison to the pre-trained reference with 32-bit floating-point weights and 32-bit floating-point activations. To the best of our knowledge, this should be the best results reported on VGG-16 architecture so far.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 0.9341500765696784
+      }
+    ],
+    "references": [
+      {
+        "id": "ref_1",
+        "raw": "Liang-Chieh Chen, George Papandreou, Iasonas Kokkinos, Kevin Murphy, and L. Yuille Alan. Se-mantic image segmentation with deep convolutional nets and fully connected crfs. In ICLR,2015a.",
+        "marker": null,
+        "authors": [
+          "Liang-Chieh Chen",
+          "George Papandreou",
+          "Iasonas Kokkinos",
+          "Kevin Murphy",
+          "L. Yuille Alan"
+        ],
+        "title": "Semantic image segmentation with deep convolutional nets and fully connected crfs",
+        "year": "2015a",
+        "venue": "ICLR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_2",
+        "raw": "Wenlin Chen, James T. Wilson, Stephen Tyree, Kilian Q. Weinberger, and Yixin Chen. Compressingneural networks with the hashing trick. In ICML, 2015b.",
+        "marker": null,
+        "authors": [
+          "Wenlin Chen",
+          "James T. Wilson",
+          "Stephen Tyree",
+          "Kilian Q. Weinberger",
+          "Yixin Chen"
+        ],
+        "title": "Compressingneural networks with the hashing trick",
+        "year": "2015b",
+        "venue": "ICML",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_3",
+        "raw": "Matthieu Courbariaux, Bengio Yoshua, and David Jean-Pierre. Binaryconnect: Training deep neuralnetworks with binary weights during propagations. In NIPS, 2015.",
+        "marker": null,
+        "authors": [
+          "Matthieu Courbariaux",
+          "Bengio Yoshua",
+          "David Jean-Pierre"
+        ],
+        "title": "Binaryconnect: Training deep neuralnetworks with binary weights during propagations",
+        "year": "2015",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_4",
+        "raw": "Matthieu Courbariaux, Itay Hubara, Daniel Soudry, Ran El-Yaniv, and Yoshua Bengio. Binarizedneural networks: Training deep neural networks with weights and activations constrained to +1or -1. arXiv preprint arXiv:1602.02830v3, 2016.",
+        "marker": null,
+        "authors": [
+          "Matthieu Courbariaux",
+          "Itay Hubara",
+          "Daniel Soudry",
+          "Ran El-Yaniv",
+          "Yoshua Bengio"
+        ],
+        "title": "Binarizedneural networks: Training deep neural networks with weights and activations constrained to +1or -1",
+        "year": "2016",
+        "venue": "arXiv preprint",
+        "doi": null,
+        "arxiv_id": "1602.02830v3"
+      },
+      {
+        "id": "ref_5",
+        "raw": "Ross Girshick. Fast r-cnn. In ICCV, 2015.",
+        "marker": null,
+        "authors": [
+          "Ross Girshick"
+        ],
+        "title": "Fast r-cnn",
+        "year": "2015",
+        "venue": "ICCV",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_6",
+        "raw": "Yunchao Gong, Liu Liu, Ming Yang, and Lubomir Bourdev. Compressing deep concolutional net-works using vector quantization. arXiv preprint arXiv:1412.6115v1, 2014.",
+        "marker": null,
+        "authors": [
+          "Yunchao Gong",
+          "Liu Liu",
+          "Ming Yang",
+          "Lubomir Bourdev"
+        ],
+        "title": "Compressing deep concolutional net-works using vector quantization",
+        "year": "2014",
+        "venue": "arXiv preprint",
+        "doi": null,
+        "arxiv_id": "1412.6115v1"
+      },
+      {
+        "id": "ref_7",
+        "raw": "Yiwen Guo, Anbang Yao, and Yurong Chen. Dynamic network surgery for efficient dnns. In NIPS,2016.",
+        "marker": null,
+        "authors": [
+          "Yiwen Guo",
+          "Anbang Yao",
+          "Yurong Chen"
+        ],
+        "title": "Dynamic network surgery for efficient dnns",
+        "year": "2016",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_8",
+        "raw": "Suyog Gupta, Ankur Agrawal, Kailash Gopalakrishnan, and Pritish Narayanan. Deep learning withlimited numerical precision. In ICML, 2015.",
+        "marker": null,
+        "authors": [
+          "Suyog Gupta",
+          "Ankur Agrawal",
+          "Kailash Gopalakrishnan",
+          "Pritish Narayanan"
+        ],
+        "title": "Deep learning withlimited numerical precision",
+        "year": "2015",
+        "venue": "ICML",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_9",
+        "raw": "Song Han, Jeff Pool, John Tran, and William J. Dally. Learning both weights and connections forefficient neural networks. In NIPS, 2015.",
+        "marker": null,
+        "authors": [
+          "Song Han",
+          "Jeff Pool",
+          "John Tran",
+          "William J. Dally"
+        ],
+        "title": "Learning both weights and connections forefficient neural networks",
+        "year": "2015",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_10",
+        "raw": "Song Han, Jeff Pool, John Tran, and William J. Dally. Deep compression: Compressing deep neuralnetworks with pruning, trained quantization and huffman coding. In ICLR, 2016.",
+        "marker": null,
+        "authors": [
+          "Song Han",
+          "Jeff Pool",
+          "John Tran",
+          "William J. Dally"
+        ],
+        "title": "Deep compression: Compressing deep neuralnetworks with pruning, trained quantization and huffman coding",
+        "year": "2016",
+        "venue": "ICLR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_11",
+        "raw": "Kaiming He, Zhang Xiangyu, Ren Shaoqing, and Sun Jian. Deep residual learning for image recog-nition. In CVPR, 2016.",
+        "marker": null,
+        "authors": [
+          "Kaiming He",
+          "Zhang Xiangyu",
+          "Ren Shaoqing",
+          "Sun Jian"
+        ],
+        "title": "Deep residual learning for image recog-nition",
+        "year": "2016",
+        "venue": "CVPR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_12",
+        "raw": "Itay Hubara, Matthieu Courbariaux, Daniel Soudry, Ran El-Yaniv, and Yoshua Bengio. Quantizedneural networks: Training neural networks with low precision weights and activations. arXivpreprint arXiv:1609.07061v1, 2016.",
+        "marker": null,
+        "authors": [
+          "Itay Hubara",
+          "Matthieu Courbariaux",
+          "Daniel Soudry",
+          "Ran El-Yaniv",
+          "Yoshua Bengio"
+        ],
+        "title": "Quantizedneural networks: Training neural networks with low precision weights and activations",
+        "year": "2016",
+        "venue": "arXiv preprint",
+        "doi": null,
+        "arxiv_id": "1609.07061v1"
+      },
+      {
+        "id": "ref_13",
+        "raw": "Alex Krizhevsky, Sutskever Ilya, and E. Hinton Geoffrey. Imagenet classification with deep convo-lutional neural networks. In NIPS, 2012.",
+        "marker": null,
+        "authors": [
+          "Alex Krizhevsky",
+          "Sutskever Ilya",
+          "E. Hinton Geoffrey"
+        ],
+        "title": "Imagenet classification with deep convo-lutional neural networks",
+        "year": "2012",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_14",
+        "raw": "Yann LeCun, Bottou Leon, Yoshua Bengio, and Patrick Hadner. Gradient-based learning applied todocumentrecognition. In NIPS, 1998.",
+        "marker": null,
+        "authors": [
+          "Yann LeCun",
+          "Bottou Leon",
+          "Yoshua Bengio",
+          "Patrick Hadner"
+        ],
+        "title": "Gradient-based learning applied todocumentrecognition",
+        "year": "1998",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_15",
+        "raw": "Fengfu Li and Bin Liu. Ternary weight networks. arXiv preprint arXiv:1605.04711v1, 2016.",
+        "marker": null,
+        "authors": [
+          "Fengfu Li",
+          "Bin Liu"
+        ],
+        "title": "Ternary weight networks",
+        "year": "2016",
+        "venue": "arXiv preprint",
+        "doi": null,
+        "arxiv_id": "1605.04711v1"
+      },
+      {
+        "id": "ref_16",
+        "raw": "Jonathan Long, Evan Shelhamer, and Trevor Darrell. Fully convolutional networks for semanticsegmentation. In CVPR, 2015.",
+        "marker": null,
+        "authors": [
+          "Jonathan Long",
+          "Evan Shelhamer",
+          "Trevor Darrell"
+        ],
+        "title": "Fully convolutional networks for semanticsegmentation",
+        "year": "2015",
+        "venue": "CVPR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_17",
+        "raw": "Mohammad Rastegari, Vicente Ordonez, Joseph Redmon, and Ali Farhadi. Xnor-net: Imagenetclassification using binary convolutional neural networks. arXiv preprint arXiv:1603.05279v4,2016.",
+        "marker": null,
+        "authors": [
+          "Mohammad Rastegari",
+          "Vicente Ordonez",
+          "Joseph Redmon",
+          "Ali Farhadi"
+        ],
+        "title": "Xnor-net: Imagenetclassification using binary convolutional neural networks",
+        "year": "2016",
+        "venue": "arXiv preprint",
+        "doi": null,
+        "arxiv_id": "1603.05279v4"
+      },
+      {
+        "id": "ref_18",
+        "raw": "Shaoqing Ren, Kaiming He, Ross Girshick, and Jian Sun. Faster r-cnn: Towards real-time objectdetection with region proposal networks. In NIPS, 2015.",
+        "marker": null,
+        "authors": [
+          "Shaoqing Ren",
+          "Kaiming He",
+          "Ross Girshick",
+          "Jian Sun"
+        ],
+        "title": "Faster r-cnn: Towards real-time objectdetection with region proposal networks",
+        "year": "2015",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_19",
+        "raw": "Karen Simonyan and Andrew Zisserman. Very deep convolutional networks for large-scale imagerecognition. In ICLR, 2015.",
+        "marker": null,
+        "authors": [
+          "Karen Simonyan",
+          "Andrew Zisserman"
+        ],
+        "title": "Very deep convolutional networks for large-scale imagerecognition",
+        "year": "2015",
+        "venue": "ICLR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_20",
+        "raw": "Daniel Soudry, Itay Hubara, and Ron Meir. Expectation backpropagation: Parameter-free trainingof multilayer neural networks with continuous or discrete weights. In NIPS, 2014.",
+        "marker": null,
+        "authors": [
+          "Daniel Soudry",
+          "Itay Hubara",
+          "Ron Meir"
+        ],
+        "title": "Expectation backpropagation: Parameter-free trainingof multilayer neural networks with continuous or discrete weights",
+        "year": "2014",
+        "venue": "NIPS",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_21",
+        "raw": "Yi Sun, Xiaogang Wang, and Xiaoou Tang. Deep learning face representation from predicting10,000 classes. In CVPR, 2014.",
+        "marker": null,
+        "authors": [
+          "Yi Sun",
+          "Xiaogang Wang",
+          "Xiaoou Tang"
+        ],
+        "title": "Deep learning face representation from predicting10,000 classes",
+        "year": "2014",
+        "venue": "CVPR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_22",
+        "raw": "Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed, Dragomir Anguelov, Du-mitru Erhan, Vincent Vanhoucke, and Andrew Rabinovich. Going deeper with convolutions. InCVPR, 2015.",
+        "marker": null,
+        "authors": [
+          "Christian Szegedy",
+          "Wei Liu",
+          "Yangqing Jia",
+          "Pierre Sermanet",
+          "Scott Reed",
+          "Dragomir Anguelov",
+          "Du-mitru Erhan",
+          "Vincent Vanhoucke",
+          "Andrew Rabinovich"
+        ],
+        "title": "Going deeper with convolutions",
+        "year": "2015",
+        "venue": "CVPR",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_23",
+        "raw": "Christian Szegedy, Sergey Ioffe, and Vincent Vanhoucke. Inception-v4, inception-resnet and theimpact of residual connections on learning. arXiv preprint arXiv:1602.07261v1, 2016.",
+        "marker": null,
+        "authors": [
+          "Christian Szegedy",
+          "Sergey Ioffe",
+          "Vincent Vanhoucke"
+        ],
+        "title": "Inception-v4, inception-resnet and theimpact of residual connections on learning",
+        "year": "2016",
+        "venue": "arXiv preprint",
+        "doi": null,
+        "arxiv_id": "1602.07261v1"
+      }
+    ],
+    "citations": [
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al. (2014)",
+        "sentence": "Gong et al. (2014) address the storage problem of AlexNet (Krizhevsky et al., 2012) with vector quantization techniques.",
+        "section_id": "sec_2",
+        "start": 1722,
+        "end": 1740
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "For better compression, Han et al. (2016) present deep compression method which combines the pruning (Han et al., 2015), vector quantization and Huffman coding, and re-duce the model storage by $35\\times$ on AlexNet and $49\\times$ on VGG-16 (Simonyan & Zisserman, 2015).",
+        "section_id": "sec_2",
+        "start": 2403,
+        "end": 2420
+      },
+      {
+        "reference_id": null,
+        "marker": "Vanhoucke et al. (2011)",
+        "sentence": "Vanhoucke et al. (2011) use an SSE 8-bit fixed-point implementation to improve the computation of neural networks on the modern Intel x86 CPUs in feed-forward test, yielding $3\\times$ speed-up over an optimized floating-point baseline.",
+        "section_id": "sec_2",
+        "start": 2650,
+        "end": 2673
+      },
+      {
+        "reference_id": "ref_8",
+        "marker": "Gupta et al. (2015)",
+        "sentence": "Training CNNs by substituting the 32-bit floating-point represen-tation with the 16-bit fixed-point representation has also been explored in Gupta et al. (2015).",
+        "section_id": "sec_2",
+        "start": 3027,
+        "end": 3046
+      },
+      {
+        "reference_id": "ref_20",
+        "marker": "Soudry et al. (2014)",
+        "sentence": "Soudry et al. (2014) propose expectation backpropagation (EBP) to estimate the posterior distribution of deterministic network weights.",
+        "section_id": "sec_2",
+        "start": 3144,
+        "end": 3164
+      },
+      {
+        "reference_id": "ref_13",
+        "marker": "Krizhevsky et al., 2012",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 153,
+        "end": 176
+      },
+      {
+        "reference_id": "ref_19",
+        "marker": "Simonyan & Zisserman, 2015",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 178,
+        "end": 204
+      },
+      {
+        "reference_id": null,
+        "marker": "Taigman et al., 2014",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 225,
+        "end": 245
+      },
+      {
+        "reference_id": "ref_21",
+        "marker": "Sun et al., 2014",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 247,
+        "end": 263
+      },
+      {
+        "reference_id": "ref_16",
+        "marker": "Long et al., 2015",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 289,
+        "end": 306
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Chen et al., 2015a",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 308,
+        "end": 326
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Girshick, 2015",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 350,
+        "end": 364
+      },
+      {
+        "reference_id": "ref_18",
+        "marker": "Ren et al., 2015",
+        "sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va-riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015).",
+        "section_id": "sec_2",
+        "start": 366,
+        "end": 382
+      },
+      {
+        "reference_id": "ref_11",
+        "marker": "He et al., 2016",
+        "sentence": "Recent progress further shows clear evidence that CNNs could easily enjoy the accuracy gain from the increased network depth and width (He et al., 2016; Szegedy et al., 2015; 2016).",
+        "section_id": "sec_2",
+        "start": 859,
+        "end": 874
+      },
+      {
+        "reference_id": "ref_22",
+        "marker": "Szegedy et al., 2015",
+        "sentence": "Recent progress further shows clear evidence that CNNs could easily enjoy the accuracy gain from the increased network depth and width (He et al., 2016; Szegedy et al., 2015; 2016).",
+        "section_id": "sec_2",
+        "start": 876,
+        "end": 896
+      },
+      {
+        "reference_id": "ref_13",
+        "marker": "Krizhevsky et al., 2012",
+        "sentence": "Gong et al. (2014) address the storage problem of AlexNet (Krizhevsky et al., 2012) with vector quantization techniques.",
+        "section_id": "sec_2",
+        "start": 1781,
+        "end": 1804
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Chen et al., 2015b",
+        "sentence": "HashedNet (Chen et al., 2015b) uses a hash function to randomly map pre-trained weights into hash buckets, and all the weights in the same hash bucket are constrained to share a single floating-point value.",
+        "section_id": "sec_2",
+        "start": 2091,
+        "end": 2109
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Han et al., 2015",
+        "sentence": "For better compression, Han et al. (2016) present deep compression method which combines the pruning (Han et al., 2015), vector quantization and Huffman coding, and re-duce the model storage by $35\\times$ on AlexNet and $49\\times$ on VGG-16 (Simonyan & Zisserman, 2015).",
+        "section_id": "sec_2",
+        "start": 2481,
+        "end": 2497
+      },
+      {
+        "reference_id": "ref_19",
+        "marker": "Simonyan & Zisserman, 2015",
+        "sentence": "For better compression, Han et al. (2016) present deep compression method which combines the pruning (Han et al., 2015), vector quantization and Huffman coding, and re-duce the model storage by $35\\times$ on AlexNet and $49\\times$ on VGG-16 (Simonyan & Zisserman, 2015).",
+        "section_id": "sec_2",
+        "start": 2621,
+        "end": 2647
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Courbariaux et al., 2015",
+        "sentence": "BinaryConnect (Courbariaux et al., 2015) further extends the idea behind EBP to binarize network weights during training phase directly.",
+        "section_id": "sec_2",
+        "start": 3406,
+        "end": 3430
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "LeCun et al., 1998",
+        "sentence": "BinaryConnect achieves state-of-the-art accuracy using shallow CNNs for small datasets such as MNIST (LeCun et al., 1998) and CIFAR-10.",
+        "section_id": "sec_2",
+        "start": 3774,
+        "end": 3792
+      },
+      {
+        "reference_id": "ref_4",
+        "marker": "Courbariaux et al., 2016",
+        "sentence": "Later on, a series of efforts have been invested to train CNNs with low-precision weights, low-precision activations and even low-precision gradients, including but not limited to BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), ternary weight network (TWN) (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and quantized neural network (QNN) (Hubara et al., 2016).",
+        "section_id": "sec_2",
+        "start": 3999,
+        "end": 4023
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Rastegari et al., 2016",
+        "sentence": "Later on, a series of efforts have been invested to train CNNs with low-precision weights, low-precision activations and even low-precision gradients, including but not limited to BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), ternary weight network (TWN) (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and quantized neural network (QNN) (Hubara et al., 2016).",
+        "section_id": "sec_2",
+        "start": 4036,
+        "end": 4058
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Li & Liu, 2016",
+        "sentence": "Later on, a series of efforts have been invested to train CNNs with low-precision weights, low-precision activations and even low-precision gradients, including but not limited to BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), ternary weight network (TWN) (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and quantized neural network (QNN) (Hubara et al., 2016).",
+        "section_id": "sec_2",
+        "start": 4091,
+        "end": 4105
+      },
+      {
+        "reference_id": null,
+        "marker": "Zhou et al., 2016",
+        "sentence": "Later on, a series of efforts have been invested to train CNNs with low-precision weights, low-precision activations and even low-precision gradients, including but not limited to BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), ternary weight network (TWN) (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and quantized neural network (QNN) (Hubara et al., 2016).",
+        "section_id": "sec_2",
+        "start": 4120,
+        "end": 4137
+      },
+      {
+        "reference_id": "ref_12",
+        "marker": "Hubara et al., 2016",
+        "sentence": "Later on, a series of efforts have been invested to train CNNs with low-precision weights, low-precision activations and even low-precision gradients, including but not limited to BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), ternary weight network (TWN) (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and quantized neural network (QNN) (Hubara et al., 2016).",
+        "section_id": "sec_2",
+        "start": 4175,
+        "end": 4194
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Han et al., 2015",
+        "sentence": "Weight partition uses a pruning-inspired measure (Han et al., 2015; Guo et al., 2016) to divide the weights in each layer of a pre-trained full-precision CNN model into two disjoint groups which play complementary roles in our INQ.",
+        "section_id": "sec_2",
+        "start": 5846,
+        "end": 5862
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Guo et al., 2016",
+        "sentence": "Weight partition uses a pruning-inspired measure (Han et al., 2015; Guo et al., 2016) to divide the weights in each layer of a pre-trained full-precision CNN model into two disjoint groups which play complementary roles in our INQ.",
+        "section_id": "sec_2",
+        "start": 5864,
+        "end": 5880
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al., 2016",
+        "sentence": "(4) Taking AlexNet as an example, the combination of our network pruning and INQ outperforms deep compression method (Han et al., 2016) with significant margins.",
+        "section_id": "sec_2",
+        "start": 7840,
+        "end": 7856
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Chen et al., 2015b",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 327,
+        "end": 345
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al., 2014",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 369,
+        "end": 386
+      },
+      {
+        "reference_id": null,
+        "marker": "Vanhoucke et al., 2011",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 417,
+        "end": 439
+      },
+      {
+        "reference_id": "ref_8",
+        "marker": "Gupta et al., 2015",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 441,
+        "end": 459
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Courbariaux et al., 2015",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 477,
+        "end": 501
+      },
+      {
+        "reference_id": "ref_4",
+        "marker": "Courbariaux et al., 2016",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 515,
+        "end": 539
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Rastegari et al., 2016",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 552,
+        "end": 574
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Li & Liu, 2016",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 582,
+        "end": 596
+      },
+      {
+        "reference_id": null,
+        "marker": "Zhou et al., 2016",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 611,
+        "end": 628
+      },
+      {
+        "reference_id": "ref_12",
+        "marker": "Hubara et al., 2016",
+        "sentence": "In the literature, there are many existing network quantization works such as HashedNet (Chen et al., 2015b), vector quantization (Gong et al., 2014), fixed-point representation (Vanhoucke et al., 2011; Gupta et al., 2015), BinaryConnect (Courbariaux et al., 2015), BinaryNet (Courbariaux et al., 2016), XNOR-Net (Rastegari et al., 2016), TWN (Li & Liu, 2016), DoReFa-Net (Zhou et al., 2016) and QNN (Hubara et al., 2016).",
+        "section_id": "sec_5",
+        "start": 639,
+        "end": 658
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Han et al., 2015",
+        "sentence": "We are partially inspired by the latest progress in network pruning (Han et al., 2015; Guo et al., 2016).",
+        "section_id": "sec_5",
+        "start": 1606,
+        "end": 1622
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Guo et al., 2016",
+        "sentence": "We are partially inspired by the latest progress in network pruning (Han et al., 2015; Guo et al., 2016).",
+        "section_id": "sec_5",
+        "start": 1624,
+        "end": 1640
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Han et al., 2015",
+        "sentence": "That is, only the weights still keep with floating-point values are updated, akin to the latest pruning methods (Han et al., 2015; Guo et al., 2016) in which only the weights that are not currently removed are re-trained to enhance network accuracy.",
+        "section_id": "sec_6",
+        "start": 1735,
+        "end": 1751
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Guo et al., 2016",
+        "sentence": "That is, only the weights still keep with floating-point values are updated, akin to the latest pruning methods (Han et al., 2015; Guo et al., 2016) in which only the weights that are not currently removed are re-trained to enhance network accuracy.",
+        "section_id": "sec_6",
+        "start": 1753,
+        "end": 1769
+      },
+      {
+        "reference_id": "ref_11",
+        "marker": "He et al. (2016)",
+        "sentence": "Note that He et al. (2016) do not release their pre-trained ResNet-18 model to the public, so we use a publicly available re-implementation by Facebook.",
+        "section_id": "sec_7",
+        "start": 758,
+        "end": 774
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Guo et al.(2016)",
+        "sentence": "In Guo et al.(2016), we found random partition and pruning-inspired partition are the two best choices compared with the others.",
+        "section_id": "sec_8",
+        "start": 506,
+        "end": 522
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Guo et al., 2016",
+        "sentence": "Regarding weight partition, there are several candidate strate-gies as we tried in our previous work for efficient network pruning (Guo et al., 2016).",
+        "section_id": "sec_8",
+        "start": 484,
+        "end": 500
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Rastegari et al., 2016",
+        "sentence": "As for our 2-bit ternary model, although it incurs 2.25% decrease in top-1 error rate and 1.56% decrease in top-5 error rate in comparison to the pre-trained full-precision reference, its accuracy is considerably better than state-of-the-art results reported for binary-weight network (BWN) (Rastegari et al., 2016) and ternary weight network (TWN) (Li & Liu, 2016).",
+        "section_id": "sec_10",
+        "start": 1749,
+        "end": 1771
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Li & Liu, 2016",
+        "sentence": "As for our 2-bit ternary model, although it incurs 2.25% decrease in top-1 error rate and 1.56% decrease in top-5 error rate in comparison to the pre-trained full-precision reference, its accuracy is considerably better than state-of-the-art results reported for binary-weight network (BWN) (Rastegari et al., 2016) and ternary weight network (TWN) (Li & Liu, 2016).",
+        "section_id": "sec_10",
+        "start": 1807,
+        "end": 1821
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "Note that Han et al. (2016) is a hybrid network compression solution combining three different techniques, namely network pruning (Han et al., 2015), vector quantization (Gong et al., 2014) and Huffman coding.",
+        "section_id": "sec_11",
+        "start": 297,
+        "end": 314
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "Actually its compression performance on the convolutional layers is less than 3× (as can be seen in the Table 4 of Han et al. (2016)).",
+        "section_id": "sec_11",
+        "start": 753,
+        "end": 770
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "In Han et al. (2016), after network pruning, vector quantization further improves com- pression ratio from 9× to 27×, and Huffman coding finally boosts compression ratio up to 35×.",
+        "section_id": "sec_11",
+        "start": 1173,
+        "end": 1190
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "For fair comparison, we combine our proposed INQ and DNS, and compare the resulting method with Han et al. (2016).",
+        "section_id": "sec_11",
+        "start": 1447,
+        "end": 1464
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "When combing our proposed INQ and DNS, we achieve much better compression results compared with Han et al. (2016).",
+        "section_id": "sec_11",
+        "start": 1606,
+        "end": 1623
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al. (2016)",
+        "sentence": "Specif- ically, with 5-bit quantization, we can achieve 53× compression with slightly larger gains both in top-5 and top-1 recognition rates, yielding 51.43%/96.30% absolute improvement in compression performance compared with full version/fair version (i.e., the combination of network pruning and vector quantization) of Han et al. (2016), respectively.",
+        "section_id": "sec_11",
+        "start": 1948,
+        "end": 1965
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al., 2016",
+        "sentence": "In the literature, recently proposed deep compression method (Han et al., 2016) reports so far best results on network compression without loss of model accuracy.",
+        "section_id": "sec_11",
+        "start": 62,
+        "end": 78
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Han et al., 2015",
+        "sentence": "Note that Han et al. (2016) is a hybrid network compression solution combining three different techniques, namely network pruning (Han et al., 2015), vector quantization (Gong et al., 2014) and Huffman coding.",
+        "section_id": "sec_11",
+        "start": 418,
+        "end": 434
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al., 2014",
+        "sentence": "Note that Han et al. (2016) is a hybrid network compression solution combining three different techniques, namely network pruning (Han et al., 2015), vector quantization (Gong et al., 2014) and Huffman coding.",
+        "section_id": "sec_11",
+        "start": 458,
+        "end": 475
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Guo et al., 2016",
+        "sentence": "We solved this problem by our dynamic network surgery (DNS) method (Guo et al., 2016) which achieves about 7× speed-up in training and improves the performance of network pruning from 9× to 17.7×.",
+        "section_id": "sec_11",
+        "start": 1041,
+        "end": 1057
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al., 2014",
+        "sentence": "Besides, we also perform a set of experiments on AlexNet to compare the performance of our INQ and vector quantization (Gong et al., 2014).",
+        "section_id": "sec_11",
+        "start": 2181,
+        "end": 2198
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al., 2014",
+        "sentence": "This is consistent with the results reported in (Gong et al., 2014).",
+        "section_id": "sec_11",
+        "start": 2684,
+        "end": 2701
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al., 2014",
+        "sentence": "Last but not least, the final weights for vector quantization (Gong et al., 2014), network pruning (Han et al., 2015) and deep compression (Han et al., 2016) are still floating-point values, but the final weights for our INQ are in the form of either powers of two or zero.",
+        "section_id": "sec_11",
+        "start": 3117,
+        "end": 3134
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Han et al., 2015",
+        "sentence": "Last but not least, the final weights for vector quantization (Gong et al., 2014), network pruning (Han et al., 2015) and deep compression (Han et al., 2016) are still floating-point values, but the final weights for our INQ are in the form of either powers of two or zero.",
+        "section_id": "sec_11",
+        "start": 3154,
+        "end": 3170
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Han et al., 2016",
+        "sentence": "Last but not least, the final weights for vector quantization (Gong et al., 2014), network pruning (Han et al., 2015) and deep compression (Han et al., 2016) are still floating-point values, but the final weights for our INQ are in the form of either powers of two or zero.",
+        "section_id": "sec_11",
+        "start": 3194,
+        "end": 3210
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Chen et al., 2015b",
+        "sentence": "This may be partially the reason why it is much easier to get good compression performance on fully connected layers in comparison to convolutional layers, when using methods such as network hashing (Chen et al., 2015b) and vector quantization (Gong et al., 2014); (5) for 5-bit AlexNet model, the required bit-width for each layer is actually 4 but not 5.",
+        "section_id": "sec_14",
+        "start": 1302,
+        "end": 1320
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Gong et al., 2014",
+        "sentence": "This may be partially the reason why it is much easier to get good compression performance on fully connected layers in comparison to convolutional layers, when using methods such as network hashing (Chen et al., 2015b) and vector quantization (Gong et al., 2014); (5) for 5-bit AlexNet model, the required bit-width for each layer is actually 4 but not 5.",
+        "section_id": "sec_14",
+        "start": 1347,
+        "end": 1364
+      }
+    ],
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "label": "Figure 1",
+        "number": "1",
+        "page": 3,
+        "caption": "Figure 1: An overview of our incremental network quantization method. (a) Pre-trained full-precision model used as a reference. (b) Model update with three proposed operations: weight partition, group-wise quantization (green connections) and re-training (blue connections). (c) Final low-precision model with all the weights constrained to be either powers of two or zero. In the figure, operation (1) represents a single run of (b), and operation (2) denotes the procedure of repeating operation (1) on the latest re-trained weight group until all the non-zero weights are quantized. Our method does not lead to accuracy loss when using 5-bit, 4-bit and even 3-bit approximations in network quantization. For better visualization, here we just use a 3-layer fully connected network as an illustrative example, and the newly re-trained weights are divided into two disjoint groups of the same size at each run of operation (1) except the last run which only performs quantization on the re-trained floating-point weights occupying 12.5% of the model weights.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This figure illustrates the incremental network quantization (INQ) method. It shows three stages: (a) a pre-trained full-precision model, (b) a model update with weight partition, group-wise quantization (green connections), and re-training (blue connections), and (c) a final low-precision model with all weights constrained to be powers of two or zero. Operation (1) represents a single run of (b), and operation (2) denotes repeating operation (1) on the latest re-trained weight group until all non-zero weights are quantized. The percentages 50%, 75%, and 100% indicate the accumulated portion of quantized weights.",
+          "data_read": [
+            "Stage (a) shows a neural network with full-precision weights.",
+            "Stage (b) shows a model update process, with green connections for group-wise quantization and blue connections for re-training.",
+            "Stage (c) shows the final low-precision model.",
+            "Operation (1) is a single run of stage (b).",
+            "Operation (2) is the repetition of operation (1) until all non-zero weights are quantized.",
+            "The percentages indicate the progress of quantization: 50%, 75%, 100%."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure visually illustrates the iterative process of incremental network quantization and accuracy enhancement, as described in the text. It shows the three interdependent operations (weight partition, group-wise quantization, and re-training) and their iterative application until all weights are quantized, which aligns with the claim that these operations are repeated in an iterative manner until all weights are quantized, acting as an incremental network quantization and accuracy enhancement procedure.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "label": "Figure 2",
+        "number": "2",
+        "page": 5,
+        "caption": "Figure 2: Result illustrations. First row: results from the 1st iteration of the proposed three operations. The top left cube illustrates weight partition operation generating two disjoint groups, the middle image illustrates the quantization operation on the first weight group (green cells), and the top right cube illustrates the re-training operation on the second weight group (light blue cells). Second row: results from the 2nd, 3rd and 4th iterations of the INQ. In the figure, the accumulated portion of the weights which have been quantized undergoes from 50%\\u219275%\\u219287.5%\\u2192100%.",
+        "fidelity": 0.9509594882729211,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This figure illustrates the iterative process of Incremental Network Quantization (INQ) through a series of cube diagrams representing weight matrices. The first row shows the initial iteration with weight partition, quantization, and re-training. The second row shows the accumulated quantization over subsequent iterations.",
+          "data_read": [
+            "First row, top left cube: A 5x5 matrix of floating-point numbers (e.g., 0.01, 0.02, -0.20, 0.04, 0.33) with some cells highlighted in black, representing the initial weight partition.",
+            "First row, middle cube: The same 5x5 matrix, where the 'green cells' (e.g., 2^-2, -2^-1, 2^0) indicate quantized weights from the first group.",
+            "First row, top right cube: The same 5x5 matrix, where 'light blue cells' (e.g., 0.11, 0.04, -0.7) indicate re-trained weights from the second group.",
+            "Second row, left cube: Represents the 2nd iteration, with 50% of weights quantized.",
+            "Second row, middle cube: Represents the 3rd iteration, with 75% of weights quantized.",
+            "Second row, right cube: Represents the 4th iteration, with 100% of weights quantized.",
+            "The accumulated portion of quantized weights progresses from 50% to 75% to 87.5% to 100% across the iterations shown in the second row."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure visually demonstrates the iterative steps of the INQ method as described in the text. The first row clearly shows the three proposed operations (weight partition, quantization, re-training) in the 1st iteration. The second row illustrates the incremental nature of the quantization, with the accumulated portion of quantized weights increasing from 50% to 100% over subsequent iterations, directly supporting the claim that 'Illustrative results at iterative steps of our INQ are provided in Figure 2'.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "label": "Table 1",
+        "number": "1",
+        "page": 7,
+        "caption": "Table 1: Our INQ well converts diverse full-precision deep CNN models (including AlexNet, VGG-16, GoogleNet, ResNet-18 and ResNet-50) to 5-bit low-precision versions with consistently improved model accuracy.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the performance of various deep CNN models (AlexNet, VGG-16, GoogleNet, ResNet-18, and ResNet-50) when converted to 5-bit low-precision versions using the INQ method, compared to their full-precision (32-bit) reference versions. It shows the Top-1 error, Top-5 error, and the decrease in these error rates.",
+          "data_read": [
+            "The table has columns: 'Network', 'Bit-width', 'Top-1 error', 'Top-5 error', and 'Decrease in top-1/top-5 error'.",
+            "For AlexNet, the 32-bit reference has a Top-1 error of 42.76% and Top-5 error of 19.77%. The 5-bit INQ version has a Top-1 error of 42.61% and Top-5 error of 19.54%, showing a decrease of 0.15%/0.23%.",
+            "For VGG-16, the 32-bit reference has a Top-1 error of 31.46% and Top-5 error of 11.35%. The 5-bit INQ version has a Top-1 error of 29.18% and Top-5 error of 9.70%, showing a decrease of 2.28%/1.65%.",
+            "For GoogleNet, the 32-bit reference has a Top-1 error of 31.11% and Top-5 error of 10.97%. The 5-bit INQ version has a Top-1 error of 30.98% and Top-5 error of 10.72%, showing a decrease of 0.13%/0.25%.",
+            "For ResNet-18, the 32-bit reference has a Top-1 error of 31.73% and Top-5 error of 11.31%. The 5-bit INQ version has a Top-1 error of 31.02% and Top-5 error of 10.90%, showing a decrease of 0.71%/0.41%.",
+            "For ResNet-50, the 32-bit reference has a Top-1 error of 26.78% and Top-5 error of 8.76%. The 5-bit INQ version has a Top-1 error of 25.19% and Top-5 error of 7.55%, showing a decrease of 1.59%/1.21%."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table supports the claim that INQ converts models to 5-bit low-precision versions with consistently improved model accuracy. For all listed models (AlexNet, VGG-16, GoogleNet, ResNet-18, ResNet-50), the 'Decrease in top-1/top-5 error' column shows positive values, indicating a reduction in error rates (i.e., improved accuracy) for the 5-bit INQ versions compared to their 32-bit full-precision references.",
+          "issues": [],
+          "table_markdown": "| Network | Bit-width | Top-1 error | Top-5 error | Decrease in top-1/top-5 error |\n|:--------|:----------|:------------|:------------|:------------------------------|\n| AlexNet ref | 32 | 42.76% | 19.77% | |\n| AlexNet | 5 | 42.61% | 19.54% | 0.15%/0.23% |\n| VGG-16 ref | 32 | 31.46% | 11.35% | |\n| VGG-16 | 5 | 29.18% | 9.70% | 2.28%/1.65% |\n| GoogleNet ref | 32 | 31.11% | 10.97% | |\n| GoogleNet | 5 | 30.98% | 10.72% | 0.13%/0.25% |\n| ResNet-18 ref | 32 | 31.73% | 11.31% | |\n| ResNet-18 | 5 | 31.02% | 10.90% | 0.71%/0.41% |\n| ResNet-50 ref | 32 | 26.78% | 8.76% | |\n| ResNet-50 | 5 | 25.19% | 7.55% | 1.59%/1.21% |"
+        }
+      },
+      {
+        "id": "fig_4",
+        "kind": "table",
+        "label": "Table 2",
+        "number": "2",
+        "page": 8,
+        "caption": "Table 2: Comparison of two different strategies for weight partition on ResNet-18.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table compares the Top-1 and Top-5 error rates for two different weight partition strategies (Random partition and Pruning-inspired partition) on a ResNet-18 model with 5-bit quantization.",
+          "data_read": [
+            "Strategy: Random partition, Pruning-inspired partition",
+            "Bit-width: 5 for both strategies",
+            "Top-1 error for Random partition: 32.11%",
+            "Top-1 error for Pruning-inspired partition: 31.02%",
+            "Top-5 error for Random partition: 11.73%",
+            "Top-5 error for Pruning-inspired partition: 10.90%"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states that 'pruning-inspired partition brings 1.09% and 0.83% decrease in top-1 and top-5 error rates, respectively. Apparently, pruning-inspired partition is better than random partition'. The table shows that the Top-1 error for pruning-inspired partition (31.02%) is indeed lower than for random partition (32.11%), a decrease of 1.09%. Similarly, the Top-5 error for pruning-inspired partition (10.90%) is lower than for random partition (11.73%), a decrease of 0.83%. This directly supports the claim.",
+          "issues": [],
+          "table_markdown": "| Strategy | Bit-width | Top-1 error | Top-5 error |\n|:-----------------------|:----------|:------------|:------------|\n| Random partition | 5 | 32.11% | 11.73% |\n| Pruning-inspired partition | 5 | 31.02% | 10.90% |"
+        }
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "label": "Table 3",
+        "number": "3",
+        "page": 9,
+        "caption": "Table 3: Our INQ generates extremely low-precision (4-bit and 3-bit) models with improved or very similar accuracy compared with the full-precision ResNet-18 model.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents a comparison of the Top-1 and Top-5 error rates for the ResNet-18 model using different bit-widths for quantization, including a full-precision reference and various INQ (Incremental Network Quantization) configurations.",
+          "data_read": [
+            "Model: ResNet-18 ref, INQ, INQ, INQ, INQ",
+            "Bit-width: 32, 5, 4, 3, 2 (ternary)",
+            "Top-1 error: 31.73%, 31.02%, 31.11%, 31.92%, 33.98%",
+            "Top-5 error: 11.31%, 10.90%, 10.99%, 11.64%, 12.87%"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table shows that for INQ with 5-bit and 4-bit quantization, the Top-1 error (31.02% and 31.11% respectively) and Top-5 error (10.90% and 10.99% respectively) are lower than the ResNet-18 ref (32-bit) Top-1 error (31.73%) and Top-5 error (11.31%), indicating improved accuracy. For 3-bit INQ, the Top-1 error (31.92%) and Top-5 error (11.64%) are very similar to the reference, supporting the claim of 'improved or very similar accuracy'.",
+          "issues": [],
+          "table_markdown": "| Model           | Bit-width  | Top-1 error | Top-5 error |\n| :-------------- | :--------- | :---------- | :---------- |\n| ResNet-18 ref   | 32         | 31.73%      | 11.31%      |\n| INQ             | 5          | 31.02%      | 10.90%      |\n| INQ             | 4          | 31.11%      | 10.99%      |\n| INQ             | 3          | 31.92%      | 11.64%      |\n| INQ             | 2 (ternary)| 33.98%      | 12.87%      |"
+        }
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "label": "Table 4",
+        "number": "4",
+        "page": 9,
+        "caption": "Table 4: Comparison of our 2-bit ternary model and some other binary or ternary models, including the BWN and the TWN approximations of ResNet-18.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table compares the performance of the authors' 2-bit ternary model (INQ) with other binary or ternary models, specifically BWN and TWN, for ResNet-18, in terms of Top-1 and Top-5 error rates.",
+          "data_read": [
+            "The table has four columns: Method, Bit-width, Top-1 error, and Top-5 error.",
+            "BWN(Rastegari et al., 2016) with 1-bit width has a Top-1 error of 39.20% and Top-5 error of 17.00%.",
+            "TWN(Li & Liu, 2016) with 2-bit (ternary) width has a Top-1 error of 38.20% and Top-5 error of 15.80%.",
+            "INQ (ours) with 2-bit (ternary) width has a Top-1 error of 33.98% and Top-5 error of 12.87%."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states that the INQ 2-bit ternary model's accuracy is 'considerably better than state-of-the-art results reported for binary-weight network (BWN) and ternary weight network (TWN)'. The table shows that INQ (ours) has a Top-1 error of 33.98% and Top-5 error of 12.87%, which are indeed lower (better) than BWN (39.20% Top-1, 17.00% Top-5) and TWN (38.20% Top-1, 15.80% Top-5).",
+          "issues": [],
+          "table_markdown": "| Method | Bit-width | Top-1 error | Top-5 error |\n|---|---|---|---|\n| BWN(Rastegari et al., 2016) | 1 | 39.20% | 17.00% |\n| TWN(Li & Liu, 2016) | 2 (ternary) | 38.20% | 15.80% |\n| INQ (ours) | 2 (ternary) | 33.98% | 12.87% |"
+        }
+      },
+      {
+        "id": "fig_7",
+        "kind": "table",
+        "label": "Table 5",
+        "number": "5",
+        "page": 10,
+        "caption": "Table 5: Comparison of the combination of our INQ and DNS, and deep compression method on AlexNet. Conv: Convolutional layer, FC: Fully connected layer, P: Pruning, Q: Quantization, H: Huffman coding.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table compares the performance of the proposed INQ (Incremental Network Quantization) combined with DNS (Dynamic Network Surgery) against the deep compression method by Han et al. (2016) on AlexNet. It shows the bit-width used for convolutional (Conv) and fully connected (FC) layers, the compression ratio achieved, and the decrease in top-1/top-5 error rates.",
+          "data_read": [
+            "The table has columns: Method, Bit-width(Conv/FC), Compression ratio, and Decrease in top-1/top5 error.",
+            "Han et al. (2016) (P+Q) with 8/5 bit-width achieves 27x compression and 0.00%/0.03% error decrease.",
+            "Han et al. (2016) (P+Q+H) with 8/5 bit-width achieves 35x compression and 0.00%/0.03% error decrease.",
+            "Han et al. (2016) (P+Q+H) with 8/4 bit-width shows -0.01%/0.00% error decrease.",
+            "Our method (P+Q) with 5/5 bit-width achieves 53x compression and 0.08%/0.03% error decrease.",
+            "Han et al. (2016) (P+Q+H) with 4/2 bit-width shows -1.99%/-2.60% error decrease.",
+            "Our method (P+Q) with 4/4 bit-width achieves 71x compression and -0.52%/-0.20% error decrease.",
+            "Our method (P+Q) with 3/3 bit-width achieves 89x compression and -1.47%/-0.96% error decrease."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states that 'When combing our proposed INQ and DNS, we achieve much better compression results compared with Han et al. (2016).' The table supports this by showing that 'Our method (P+Q)' consistently achieves higher compression ratios (53x, 71x, 89x) compared to 'Han et al. (2016)' methods (27x, 35x) for similar or better error rates, especially at lower bit-widths.",
+          "issues": [],
+          "table_markdown": "| Method | Bit-width(Conv/FC) | Compression ratio | Decrease in top-1/top5 error |\n|---|---|---|---|\n| Han et al. (2016) (P+Q) | 8/5 | 27x | 0.00%/0.03% |\n| Han et al. (2016) (P+Q+H) | 8/5 | 35x | 0.00%/0.03% |\n| Han et al. (2016) (P+Q+H) | 8/4 | | -0.01%/0.00% |\n| Our method (P+Q) | 5/5 | 53x | 0.08%/0.03% |\n| Han et al. (2016) (P+Q+H) | 4/2 | | -1.99%/-2.60% |\n| Our method (P+Q) | 4/4 | 71x | -0.52%/-0.20% |\n| Our method (P+Q) | 3/3 | 89× | -1.47%/-0.96% |"
+        }
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "label": "Table 6",
+        "number": "6",
+        "page": 13,
+        "caption": "Table 6: A statistical distribution of the quantized weights in our 5-bit AlexNet model.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the statistical distribution of quantized weights in a 5-bit AlexNet model across different convolutional (Conv) and fully connected (FC) layers.",
+          "data_read": [
+            "The 'Weight' column lists various powers of 2, both negative and positive, and '0'.",
+            "The 'Conv1' layer shows a distribution where -2^-5 (10.52%) and 2^-5 (11.15%) are prominent.",
+            "The 'Conv2' layer has high percentages for -2^-7 (12.09%), -2^-6 (13.08%), 0 (11.30%), 2^-7 (11.01%), and 2^-6 (11.05%).",
+            "The 'Conv3' layer shows significant percentages for -2^-7 (14.34%), -2^-6 (15.26%), 0 (12.24%), 2^-7 (11.66%), and 2^-6 (11.86%).",
+            "The 'Conv4' layer has high values for -2^-7 (14.24%), -2^-6 (18.49%), 0 (9.70%), 2^-7 (10.33%), and 2^-6 (12.25%).",
+            "The 'Conv5' layer shows -2^-7 (14.68%), -2^-6 (20.66%), 0 (8.97%), 2^-7 (8.95%), and 2^-6 (10.67%) as dominant.",
+            "The 'FC6' layer has a different distribution with -2^-10 (8.95%), -2^-9 (12.29%), -2^-8 (16.48%), 0 (8.86%), 2^-10 (8.30%), 2^-9 (10.51%), and 2^-8 (12.91%) being notable.",
+            "The 'FC7' layer shows -2^-8 (16.13%), -2^-7 (17.87%), 0 (6.17%), 2^-8 (11.30%), and 2^-7 (11.90%) as high percentages.",
+            "The 'FC8' layer has -2^-7 (19.51%), -2^-6 (11.09%), 0 (3.62%), 2^-7 (10.94%), and 2^-6 (12.56%) as significant.",
+            "The 'Total' row for all layers is 100%.",
+            "The 'Bit-width' for all layers is 4."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table provides detailed statistical results of quantized weights, as stated in the text. It shows the distribution of weights across different layers of the AlexNet model, supporting the claim that it summarizes the statistical distribution of quantized weights.",
+          "issues": [],
+          "table_markdown": "| Weight | Conv1 | Conv2 | Conv3 | Conv4 | Conv5 | FC6 | FC7 | FC8 |\n|:-------|:------|:------|:------|:------|:------|:----|:----|:----|\n| -2^-10 |       |       |       |       |       | 8.95% | 6.37% | 3.86% |\n| -2^-9  |       |       |       |       |       | 12.29% | 9.58% | 6.19% |\n| -2^-8  | 5.04% | 10.55% | 11.58% | 10.09% | 9.88% | 16.48% | 16.13% | 12.90% |\n| -2^-7  | 6.56% | 12.09% | 14.34% | 14.24% | 14.68% | 10.84% | 17.87% | 19.51% |\n| -2^-6  | 9.22% | 13.08% | 15.26% | 18.49% | 20.66% | 0.79% | 3.43% | 11.09% |\n| -2^-5  | 10.52% | 8.73% | 5.92% | 7.77% | 9.79% | 0.002% | 0.004% | 0.40% |\n| -2^-4  | 9.75% | 2.70% | 0.49% | 0.38% | 0.55% |       |       |       |\n| -2^-3  | 4.61% | 0.39% | 0.02% | 0.01% | 0.004% |       |       |       |\n| -2^-2  | 0.67% | 0.01% | 1e-4% |       |       |       |       |       |\n| 0      | 5.51% | 11.30% | 12.24% | 9.70% | 8.97% | 8.86% | 6.17% | 3.62% |\n| 2^-10  |       |       |       |       |       | 8.30% | 5.81% | 3.40% |\n| 2^-9   |       |       |       |       |       | 10.51% | 7.84% | 4.69% |\n| 2^-8   | 5.20% | 9.70% | 10.44% | 8.60% | 7.69% | 12.91% | 11.30% | 8.08% |\n| 2^-7   | 6.79% | 11.01% | 11.66% | 10.33% | 8.95% | 8.95% | 11.90% | 10.94% |\n| 2^-6   | 9.99% | 11.05% | 11.86% | 12.25% | 10.67% | 1.12% | 3.54% | 12.56% |\n| 2^-5   | 11.15% | 6.57% | 5.22% | 6.81% | 6.37% | 0.01% | 0.06% | 2.75% |\n| 2^-4   | 10.14% | 2.26% | 0.86% | 1.24% | 1.62% | 1e-5% | 2e-5% | 0.01% |\n| 2^-3   | 4.26% | 0.53% | 0.09% | 0.08% | 0.16% |       |       |       |\n| 2^-2   | 0.60% | 0.05% | 0.01% | 0.003% | 0.01% |       |       |       |\n| 2^-1   |       | 3e-4% | 2e-4% | 3e-4% |       |       |       |       |\n| Total  | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |\n| Bit-width | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 |"
+        }
+      },
+      {
+        "id": "fig_9",
+        "kind": "table",
+        "label": "Table 7",
+        "number": "7",
+        "page": 13,
+        "caption": "Table 7: Comparison of our VGG-16 model with 5-bit weights and 4-bit activations, and the pre-trained reference with 32-bit floating-point weights and 32-bit float-point activations.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table compares the performance of a VGG-16 model with 5-bit weights and 4-bit activations against a pre-trained reference VGG-16 model with 32-bit floating-point weights and 32-bit floating-point activations. The comparison is based on Top-1 error, Top-5 error, and the decrease in these error rates.",
+          "data_read": [
+            "Network: VGG-16 ref, VGG-16",
+            "Bit-width for weight/activation: 32/32, 5/4",
+            "Top-1 error: 31.46% (VGG-16 ref), 29.82% (VGG-16)",
+            "Top-5 error: 11.35% (VGG-16 ref), 10.19% (VGG-16)",
+            "Decrease in top-1/top-5 error: 1.64%/1.16% (VGG-16)"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table shows that the VGG-16 model with 5-bit weights and 4-bit activations has a Top-1 error of 29.82% and a Top-5 error of 10.19%. In comparison, the VGG-16 reference model (32-bit weights and activations) has a Top-1 error of 31.46% and a Top-5 error of 11.35%. The 'Decrease in top-1/top-5 error' column explicitly states a 1.64%/1.16% improvement for the quantized model, which supports the claim that the VGG-16 model with 5-bit weights and 4-bit activations shows improved top-5 and top-1 recognition rates.",
+          "issues": [],
+          "table_markdown": "| Network | Bit-width for weight/activation | Top-1 error | Top-5 error | Decrease in top-1/top-5 error |\n|---|---|---|---|---|\n| VGG-16 ref | 32/32 | 31.46% | 11.35% | |\n| VGG-16 | 5/4 | 29.82% | 10.19% | 1.64%/1.16% |"
+        }
+      }
+    ],
+    "figure_mentions": [
+      {
+        "figure_id": "fig_1",
+        "marker": "Figure 1",
+        "sentence": "Furthermore, these three operations are repeated on the latest re-trained weight group in an iterative manner until all the weights are quantized, acting as an incremental network quantization and accuracy enhancement procedure (as illustrated in Figure 1).",
+        "section_id": "sec_2",
+        "start": 6602,
+        "end": 6610
+      },
+      {
+        "figure_id": "fig_2",
+        "marker": "Figure 2",
+        "sentence": "Illustrative results at iterative steps of our INQ are provided in Figure 2.",
+        "section_id": "sec_5",
+        "start": 3044,
+        "end": 3052
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 1",
+        "sentence": "Table 1: Our INQ well converts diverse full-precision deep CNN models (including AlexNet, VGG-16, GoogleNet, ResNet-18 and ResNet-50) to 5-bit low-precision versions with consistently improved model accuracy.",
+        "section_id": "sec_8",
+        "start": 0,
+        "end": 7
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 1",
+        "sentence": "After the re-training with no more than 8 epochs over each pre-trained full-precision model, we obtain the results as shown in Table 1.",
+        "section_id": "sec_8",
+        "start": 1293,
+        "end": 1300
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Table 2",
+        "sentence": "Table 2 summarizes the results of our INQ with 5-bit quantization.",
+        "section_id": "sec_9",
+        "start": 865,
+        "end": 872
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Table 2",
+        "sentence": "Table 2: Comparison of two different strategies for weight partition on ResNet-18.",
+        "section_id": "sec_9",
+        "start": 1403,
+        "end": 1410
+      },
+      {
+        "figure_id": "fig_5",
+        "marker": "Table 3",
+        "sentence": "Detailed results are summarized in Table 3 and Table 4.",
+        "section_id": "sec_10",
+        "start": 1859,
+        "end": 1866
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 4",
+        "sentence": "Detailed results are summarized in Table 3 and Table 4.",
+        "section_id": "sec_10",
+        "start": 1871,
+        "end": 1878
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 4",
+        "sentence": "Actually its compression performance on the convolutional layers is less than 3× (as can be seen in the Table 4 of Han et al. (2016)).",
+        "section_id": "sec_11",
+        "start": 742,
+        "end": 749
+      },
+      {
+        "figure_id": "fig_7",
+        "marker": "Table 5",
+        "sentence": "Detailed results are summarized in Table 5.",
+        "section_id": "sec_11",
+        "start": 1501,
+        "end": 1508
+      },
+      {
+        "figure_id": "fig_8",
+        "marker": "Table 6",
+        "sentence": "Detailed statistical results are summarized in Table 6.",
+        "section_id": "sec_14",
+        "start": 147,
+        "end": 154
+      },
+      {
+        "figure_id": "fig_8",
+        "marker": "Table 6",
+        "sentence": "Table 6: A statistical distribution of the quantized weights in our 5-bit AlexNet model.",
+        "section_id": "sec_14",
+        "start": 1460,
+        "end": 1467
+      },
+      {
+        "figure_id": "fig_9",
+        "marker": "Table 7",
+        "sentence": "Table 7: Comparison of our VGG-16 model with 5-bit weights and 4-bit activations, and the pre-trained reference with 32-bit floating-point weights and 32-bit float-point activations.",
+        "section_id": "sec_15",
+        "start": 86,
+        "end": 93
+      },
+      {
+        "figure_id": "fig_9",
+        "marker": "Table 7",
+        "sentence": "According to the results summarized in Table 7, it can be seen that our VGG-16 model with 5-bit weights and 4-bit activations shows improved top-5 and top-1 recognition rates in comparison to the pre-trained reference with 32-bit floating-point weights and 32-bit floating-point activations.",
+        "section_id": "sec_15",
+        "start": 616,
+        "end": 623
+      }
+    ],
+    "hidden_text_findings": [
+      {
+        "page": 5,
+        "text": "0.33",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          190.82,
+          94.42356159999997,
+          201.2808,
+          100.40116160000002
+        ]
+      },
+      {
+        "page": 5,
+        "text": "-0.42-0.33",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          138.801,
+          111.43056159999992,
+          168.2603408,
+          117.40816159999997
+        ]
+      },
+      {
+        "page": 5,
+        "text": "0.83",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          139.796,
+          128.43856159999996,
+          150.2568,
+          134.4161616
+        ]
+      },
+      {
+        "page": 5,
+        "text": "-0.90",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          121.79299999999999,
+          145.4225616,
+          134.2443408,
+          151.40016160000005
+        ]
+      },
+      {
+        "page": 5,
+        "text": "0.87-0.36",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          173.81199999999998,
+          145.4465616,
+          202.27634079999999,
+          151.42416160000005
+        ]
+      },
+      {
+        "page": 5,
+        "text": "-0.730.41",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          121.79299999999999,
+          162.45456159999992,
+          150.2568,
+          168.43216159999997
+        ]
+      },
+      {
+        "page": 5,
+        "text": "0.42",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          156.804,
+          162.45456159999992,
+          167.2648,
+          168.43216159999997
+        ]
+      },
+      {
+        "page": 5,
+        "text": "0.39",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          173.81199999999998,
+          162.43056159999992,
+          184.2728,
+          168.40816159999997
+        ]
+      },
+      {
+        "page": 5,
+        "text": "0.47",
+        "reasons": [
+          "color"
+        ],
+        "bbox": [
+          190.82,
+          162.45456159999992,
+          201.2808,
+          168.43216159999997
+        ]
+      }
+    ]
+  }
+}

@@ -2,7 +2,11 @@
 
 ## Visão geral
 
-O Metis recebe o PDF de um artigo científico e devolve um relatório de avaliação. Ele roda num único projeto Django, com workers Celery separados por tipo de trabalho:
+O Metis roda num único projeto Django, com workers Celery separados por tipo de
+trabalho. O desenho abaixo inclui componentes planejados.
+Na revisão de 16/11/2026, E1, E2, E4 e E5 estão implementados, e o E3 roda enxuto (texto oculto, regras de risco e gate humano); o corpus e o MinHash do plágio existem, mas ainda não entram no E3.
+E5 retorna `waiting_setup` se não houver rodadas completas. Consulte [estado e métricas](status_and_metrics.md)
+para evidências, limites e critérios de fechamento dos marcos.
 
 ```text
           sistema que submete (ou uma pessoa)
@@ -23,9 +27,9 @@ O Metis recebe o PDF de um artigo científico e devolve um relatório de avalia�
 └──────────────────────────┘            └──┬──────────┬──────────┬─────┘
                ▲                           │          │          │
                │                           ▼          ▼          ▼
-     beat: reconciliador              GROBID e     APIs        provedores
-     de runs parados                  Docling      acadêmicas  de LLM
-                                      (local)      (Crossref,  (GPT, Gemini)
+     beat: reconciliador              pypdf        APIs        provedores
+     de runs parados                  (texto       acadêmicas  de LLM
+                                      local)       (Crossref,  (GPT, Gemini)
                                                    OpenAlex,
                                                    S2, arXiv)
 ```
@@ -33,7 +37,7 @@ O Metis recebe o PDF de um artigo científico e devolve um relatório de avalia�
 O pipeline tem cinco estágios, cada um numa task Celery curta:
 
 ```text
-E1 Extração      texto, referências, citações, figuras descritas, texto oculto  → ExtractedDocument
+E1 Extração      mapa das seções e texto de cada uma, conferido com o PDF       → Extraction
 E2 Perfil        área (taxonomia OpenAlex), tipo de artigo, papéis das seções   → Question + mapa do documento
 E3 Integridade   similaridade + citações + texto oculto                         → IntegrityReport → GATE
 E4 Avaliação     3 avaliadores por seção + síntese → juiz → revisão (máx. 2)    → rodadas e vereditos
@@ -46,15 +50,14 @@ O detalhe de cada estágio está nos documentos próprios; o caminho completo de
 
 | Componente | Faz | Não faz |
 |---|---|---|
-| `web` | Recebe submissões, valida o PDF, responde status, serve o admin | Não chama LLM nem API externa; não processa PDF |
+| `web` | Recebe submissões, valida cabeçalho/tamanho, responde status e serve o admin; o rascunho de Question chama LLM síncrono | Não executa os estágios do pipeline na requisição |
 | Admin do Django | Curadoria de Questions, decisão do gate, reprocessamento, leitura da trilha de auditoria | Não edita notas nem saídas dos estágios |
-| `worker-extraction` | E1: GROBID, Docling, recorte e descrição das figuras | Trabalho de rede pesado ou longo de LLM |
-| `worker-integrity` | E3: busca de candidatos, MinHash, embeddings locais, consultas acadêmicas | Avaliação |
-| `worker-evaluation` | E2, E4 e E5 (chamadas de LLM) e a fila `default` (manutenção) | Parse de PDF |
+| `worker-extraction` | E1: divide o artigo com chamadas ao Gemini, em paralelo, e confere o texto contra o PDF | Os outros estágios |
+| `worker-integrity` | E3 pass-through; busca, MinHash e embeddings são planejados | Ainda não checa integridade |
+| `worker-evaluation` | E2, E4 e E5 reais e fila `default` (manutenção) | Parse de PDF |
 | `beat` | Agenda o reconciliador | Lógica de negócio |
-| PostgreSQL + pgvector | Estado dos runs, saídas estruturadas, eventos, vetores do corpus | — |
+| PostgreSQL + pgvector | Estado dos runs, saídas estruturadas e eventos; imagem pronta para vetores futuros | Corpus/vetores ainda não implementados |
 | Redis | Broker do Celery | Guardar estado de negócio |
-| GROBID | Estrutura do artigo, referências e ligação citação ↔ referência | — |
 
 ## Celery × Agno
 
@@ -81,18 +84,20 @@ O código fica em `projects/correction/` (monorepo), e os caminhos abaixo são r
 | `metis/` | projeto Django | settings, URLs, API Ninja, app Celery, `config.py` (único leitor de variáveis de ambiente) |
 | `attempts/` | app | `Article`, `Attempt`, `Run`, `RunEvent`, `LLMCall`; máquina de estados; API de submissão e status |
 | `questions/` | app | Taxonomia, `Question`, `RubricField`, critérios em código, profiler, resolução da Question |
-| `extraction/` | app | E1 e o `ExtractedDocument` |
-| `integrity/` | app | E3, relatório, corpus (`SourceDocument`, `SourceChunk`), regras de risco |
-| `evaluation/` | app | E4 e E5: contexto, avaliadores, validadores, juiz, rodadas, relatório final |
-| `pipeline/` | app sem models | `StageTask`, tasks Celery, publicação, reconciliador, casos de uso que iniciam ou retomam runs |
+| `extractor/` | app | E1: `DocumentConfig`, chamadas ao modelo, conferência contra o PDF e o model `Extraction` |
+| `integrity/` | app planejado, ainda ausente | E3, relatório, corpus (`SourceDocument`, `SourceChunk`), regras de risco |
+| `evaluation/` | app | Contratos e persistência de rodadas/vereditos e E5 real; executores do E4 pendentes |
+| `pipeline/` | app sem models | `StageTask`, tasks Celery, publicação, reconciliador e, em `services.py`, os casos de uso que iniciam ou retomam runs (submissão, decisão do gate, reprocessamento) |
+| `queries/` | pacote | Todo acesso ao banco: uma pasta por app (`queries/attempts/`…) e um Management por model, que o model herda (`Run.claim_stage(...)`) |
 | `agents/` | pacote | `ModelSpec`, `ModelFactory`, `AgentFactory`, schemas de saída, prompts, limites de concorrência, registro de uso, fakes |
-| `scholarly/` | pacote | Clientes de Crossref, OpenAlex, Semantic Scholar, arXiv e Unpaywall, com rate limit e cache |
-| `evals/` | pacote | Comandos de avaliação offline (PeerRead) |
+| `scholarly/` | pacote | Cliente OpenAlex para taxonomia; demais clientes e cache acadêmico planejados |
+| `evals/` | app sem models | Amostras e relatórios offline versionados, persistência sem sobrescrita e `compare_evals`; `bench_profiling` compara fields e papéis sem gravar Runs |
 
 Regras:
-- `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda.
-- **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. O `Workflow` de cada estágio (com `Step`, `Parallel`, `Loop`, `Condition`) é montado no `workflow.py` do app do estágio. `agents/` não importa apps de domínio. Um teste de fronteira de imports garante as três regras (ver [Agentes e workflows](agents.md#fronteiras)).
+- `pipeline` depende dos apps de domínio; os apps de domínio não importam `pipeline`, exceto a API e o admin, que são a borda, e os erros de estágio (`pipeline/errors.py`), que um estágio levanta para dizer ao pipeline como tratar a falha.
+- **`Agent` e modelos do Agno só em `agents/`.** O resto pede agentes à `AgentFactory`, e os testes trocam a fábrica por fakes. E2, E4 e E5 montam `Workflow` no app do estágio; E1 usa a fábrica pela sessão do `extractor/`, sem Workflow. E3 ainda não tem workflow real. `agents/` não importa apps de domínio; reexporta apenas `pipeline.errors.LLMUnavailable`. Um [teste de fronteira](agents.md#fronteiras) garante a regra dos agentes/modelos.
 - **Só `scholarly/` chama APIs acadêmicas.** Rate limit, cache e chaves ficam num lugar só.
+- **Só `queries/` fala com o banco.** Fora de `queries/<app>/`, ninguém usa `Model.objects` nem `cursor`: o código chama o método do Management na classe do model (`Run.get_with_events(run_id)`).
 - **Só `metis/config.py` lê variáveis de ambiente.** O ruff bloqueia `os.getenv`/`os.environ` fora dele.
 
 ## Decisões principais
@@ -102,25 +107,25 @@ As decisões e as alternativas descartadas estão em [planning/…/1_desenho_ini
 | Tema | Decisão |
 |---|---|
 | Stack | Django 6 + Ninja, Celery + Redis, Postgres 18 + pgvector, Agno 3.x |
-| Parsers | GROBID (estrutura e citações) + Docling (figuras, tabelas, fórmulas) + pdfplumber (texto oculto); tudo com licença permissiva |
+| Extração | Gemini pelo Agno, conferido contra pypdf. GROBID descartado em 11/11. Figuras, descrições e texto oculto implementados; recortes pendentes |
 | Questions | Curadas por área da taxonomia OpenAlex, com fallback até uma Question genérica |
 | Avaliadores | 3 slots com mesmo contexto e mesmos critérios: A = GPT, B = Gemini, C = outro modelo de uma das duas famílias, trocável por config. Juiz sempre da outra família |
-| Leitura do artigo | Por seção: passes por papel da seção geram observações, checagens entre seções e síntese por critério; o A/B do M3 contra o artigo inteiro confirma |
-| Juiz | Verificador com checklist; revisão parcial com direito a réplica |
-| Integridade | Regras explícitas decidem o risco; risco alto pausa para revisão humana |
-| Embeddings | BGE-M3 local (multilíngue; o manuscrito não sai da infraestrutura) |
+| Leitura do artigo (planejada) | Passes por seção, checagens e síntese; decisão depende do A/B com artigo inteiro |
+| Juiz (planejado) | Verificador com checklist; revisão parcial com direito a réplica |
+| Integridade (planejada) | Regras explícitas decidem o risco; risco alto pausa para revisão humana |
+| Embeddings (planejados) | BGE-M3 local; nenhum detector semântico ativo nesta base |
 
 ## Segurança e confidencialidade
 
-- **O PDF é entrada não confiável.** Há limite de tamanho e de páginas, timeout no parse, e o worker de extração fica isolado.
-- **Prompt injection.** O E1 procura texto oculto dirigido a revisores IA. Nos prompts, o artigo vai entre delimitadores, com a regra explícita de que o conteúdo do artigo não é instrução.
-- **Manuscritos inéditos.** O texto vai para APIs de LLM: é preciso conferir a política de retenção de cada provedor. Os embeddings rodam localmente, e a telemetria do Agno fica desligada.
-- **Arquivos.** Os PDFs e recortes ficam no storage do Django e nunca são servidos por URL pública.
+- **O PDF é entrada não confiável.** Upload limitado a 50 MiB por padrão, worker de extração separado e limites de task de 25/30 min. Não há limite de páginas nem timeout separado do pypdf; entram na 6.3.
+- **Prompt injection.** Payloads de agentes marcam o artigo como dado. O E1 procura texto oculto no PDF (1.7) e marca o que parece instrução a um revisor de IA; o E3 transforma isso em risco.
+- **Manuscritos inéditos.** O texto/PDF vai para APIs de LLM; a telemetria do Agno fica desligada. A política local de retenção (Q7) e a conferência das condições dos provedores continuam pendentes.
+- **Arquivos.** PDFs ficam no storage do Django, sem rota pública de mídia; recortes ainda não são produzidos. Relatórios exigem token na API ou permissão no admin.
 - **Acesso.** A API exige token de serviço e nega por padrão o que não tiver política explícita. O admin usa os usuários do Django.
 
 ## Limites conhecidos
 
 - **O sistema recomenda, não decide.** Risco alto de plágio e itens sem consenso vão para uma pessoa.
-- **Cobertura da similaridade.** Sem acordo com editoras, a comparação usa o corpus interno, abstracts e textos em acesso aberto. Os textos fechados ficam de fora, e o relatório declara isso.
+- **Integridade ainda não checada.** Corpus, similaridade e verificação de citações são planejados. O E5 registra `not_checked`; o `risk=low` do stub E3 não comprova ausência de risco.
 - **Detecção de texto gerado por IA está fora do escopo**, por ser pouco confiável. Referência inventada e citação desalinhada são sinais objetivos e entram na checagem.
-- **Calibração.** O PeerRead cobre só computação, IA e PLN (2013–2017). As outras áreas precisam de dados próprios para calibrar.
+- **Calibração pendente.** PeerRead será usado para notas/juiz; a medição atual de papéis usa 30 artigos PLOS ONE com rótulos provisórios. Não há qualidade científica ou custo médio por artigo validados. [Números e metas](status_and_metrics.md#metas-revistas-por-marco).

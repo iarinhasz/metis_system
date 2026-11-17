@@ -22,6 +22,14 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add questions app and OpenAlex taxonomy loader`
 
+**Situação (12/11/2026):** implementada. App registrado, três models e migração inicial;
+Managements em `queries/questions/`; cliente paginado em `scholarly/openalex.py`.
+`load_taxonomy` valida a árvore inteira, mostra o SHA-256 da versão e só grava com
+`--execute`, numa transação. Aceita JSON local com `--file`, preserva versões anteriores
+e não duplica nós na repetição. Admin da taxonomia somente de leitura. Testes com resposta
+real gravada cobrem níveis, repetição, versões, falhas HTTP, dados incompletos e permissões.
+Uso e fontes em [Perfil e Questions](../../../docs/questions_and_profiling.md#carga-implementada-21).
+
 ---
 
 ## Etapa 2.2 — Critérios em código
@@ -37,6 +45,12 @@ Caminhos relativos a `projects/correction/`.
 - Todo papel de cada `paper_type` tem pelo menos um critério; todo critério ativo aparece em algum papel.
 
 **Commit sugerido:** `feat: define evaluation criteria and method registry`
+
+**Situação (13/11/2026):** implementada como dependência da curadoria 2.6.
+Método `standard` congelado com sete critérios, escala discreta 1–5, pesos
+uniformes de desenvolvimento e cobertura por papel e tipo de artigo. Validação
+no import recusa escalas, pesos e coberturas inválidos. Valores aguardam calibração
+no M3; o agente da curadoria recebe essa configuração em código.
 
 ---
 
@@ -55,6 +69,19 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: classify articles and resolve the evaluation question`
 
+**Situação (13/11/2026):** implementada. Profiler em dois passos com schemas dinâmicos,
+validação de parentesco, confiança conservadora e tentativas limitadas; resolver por
+método e versão, somente Questions validadas e ativas, com fallback e snapshot
+imutável de todos os textos da rubrica. Limite de tentativas e limiar configuráveis
+em `metis/config.py`. Testes com fakes, SDKs contra HTTP local e PostgreSQL real.
+O teste de estágio cobre o status `error_llm` ao esgotar as respostas inválidas;
+a integração com o workflow e o Run continua na 2.5.
+
+**Verificação (13/11):** 509 testes passaram com PostgreSQL 18 e Python 3.14.10,
+com 5 casos `llm` excluídos. Ruff (172 arquivos), mypy (170 arquivos),
+`manage.py check` e `makemigrations --check --dry-run` passaram. Os contratos dos
+dois provedores usam HTTP local; não exigem chaves nem chamadas a LLMs externos.
+
 ---
 
 ## Etapa 2.4 — Papéis das seções e mapa do documento
@@ -69,6 +96,11 @@ Caminhos relativos a `projects/correction/`.
 - `test_document_map.py`: snapshot do mapa de uma fixture.
 
 **Commit sugerido:** `feat: assign section roles and build the document map`
+
+**Situação (13/11/2026):** implementada como dependência da 2.5, com regras PT/EN
+por tipo de artigo, classificação apenas dos títulos ambíguos, fallback `other`
+e mapa determinístico. Testes cobrem títulos compostos, papéis incompatíveis,
+baixa confiança e o conteúdo do mapa.
 
 ---
 
@@ -87,6 +119,15 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: run profiling stage and store the run profile`
 
+**Situação (13/11/2026):** implementada. Workflow Agno com política explícita de
+propagação de erros; checkpoints de field, classificação, Question, papéis e mapa
+no Run. Migration dos quatro campos, snapshot de configuração sem credenciais,
+retomada com posse conferida e isolamento dos propósitos internos nas rotas públicas
+e na substituição de avaliações. Testes eager com fakes e PostgreSQL real.
+
+Validação: suíte com **533 testes aprovados** (5 testes `llm` fora da execução),
+Ruff, mypy, checks do Django e migrations no PostgreSQL 18.
+
 ---
 
 ## Etapa 2.6 — Curadoria no admin
@@ -102,9 +143,23 @@ Caminhos relativos a `projects/correction/`.
 
 **Commit sugerido:** `feat: add question curation in the admin`
 
+**Situação (13/11/2026):** implementada. Formulário e ação de rascunho por nó ou
+genérica, sem manuscrito como entrada; rubricas em linha; ações de validar,
+ativar e desativar, com permissões e histórico do admin. Rascunhos começam
+desativados e não validados. Edições exigem nova aprovação, e a validação aumenta
+a versão. Gravações atômicas, conflito de escopo tratado, proteção contra edições
+obsoletas e leitura consistente do resolver. Runs antigos preservam os snapshots.
+Testes com fakes, POSTs reais do admin e PostgreSQL 18. Sem migration nova.
+
+**Verificação:** 564 testes aprovados, com 5 testes `llm` fora da execução;
+Ruff, formatação, mypy (187 arquivos) e checks do Django aprovados. O teste de concorrência usa duas
+conexões reais para verificar que o resolver não mistura versões das rubricas.
+
 ---
 
 ## Etapa 2.7 — Questions iniciais e amostra rotulada
+
+**Situação (15/11/2026):** implementada em 13/11: o catálogo das 4 Questions, o `seed_questions`, o `bench_profiling` e a amostra de 30 artigos, com a primeira referência medida só com as regras locais (119/152 papéis). Faltam a rodada do profiler com LLM (o papel `fast` usa o Gemini, e as chaves já estão no `.env` da `dev`) e a revisão humana das rubricas e dos rótulos.
 
 **O que fazer**
 - A Question genérica + 2–3 áreas (proposta: Computação, Física/Quântica e Saúde; questão aberta Q4), curadas no admin.
@@ -112,6 +167,29 @@ Caminhos relativos a `projects/correction/`.
 - Comando `bench_profiling`: acerto do field e dos papéis.
 
 **Pronto quando:** o primeiro número está registrado e vira a meta.
+
+**Implementação (13/11/2026):** catálogo versionado com genérica + Computação,
+Física/Quântica e Medicina. `seed_questions` faz dry-run por padrão e cria quatro
+rascunhos inativos/não validados com `--execute`, preservando qualquer curadoria
+existente no mesmo escopo/método. A revisão, validação e ativação continuam no admin.
+
+`bench_profiling` mede regras locais ou o profiler real (field, topic e papéis
+ambíguos), com relatório JSON de métricas, uso, modelos, versões e falhas. A amostra
+inclui 30 artigos abertos PLOS ONE, 10 por área, com DOI, atribuição, licença e hash
+de origem, em `projects/correction/evals/data/`. Fields vêm do OpenAlex e papéis
+foram anotados pelo Codex; são **rótulos provisórios, sem revisão humana independente**.
+
+Primeira referência local registrada: **119/152 papéis (78,29%)**, **F1 micro 0,7885**,
+zero falhas e zero chamadas pagas. Esse modo usa o tipo de artigo de referência
+e não mede o field. O resultado está em `baseline_rules.json`; não é baseline
+de LLM. A rodada com LLM foi autorizada para até 30 artigos e aguarda a credencial
+do provedor no clone. A aprovação das rubricas e dos rótulos continua pendente.
+
+Validação: **575 testes passaram**, com 5 contratos ao vivo excluídos; Ruff,
+formatação (197 arquivos), mypy (195 arquivos), checks do Django e conferência
+de migrações aprovados. Inclui carga concorrente/idempotente, rollback atômico,
+preservação de curadoria, métricas multilabel e profiler com fakes sem rótulos
+no payload. A taxonomia completa de 4.798 nós foi carregada no banco isolado.
 
 **Commit sugerido:** `feat: seed initial questions and measure profiling`
 

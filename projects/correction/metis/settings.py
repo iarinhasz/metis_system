@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+from kombu import Queue
+
+from projects.correction.attempts.status import QUEUES, STAGES
 from projects.correction.metis.config import settings as config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,7 +14,14 @@ ALLOWED_HOSTS = config.allowed_hosts
 CSRF_TRUSTED_ORIGINS = config.csrf_trusted_origins
 
 INSTALLED_APPS = [
+    "django.contrib.postgres",
     "projects.correction.attempts.apps.AttemptsConfig",
+    "projects.correction.pipeline.apps.PipelineConfig",
+    "projects.correction.extractor.apps.ExtractorAppConfig",
+    "projects.correction.questions.apps.QuestionsConfig",
+    "projects.correction.evaluation.apps.EvaluationConfig",
+    "projects.correction.integrity.apps.IntegrityConfig",
+    "projects.correction.evals.apps.EvalsConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -67,3 +77,25 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = BASE_DIR / config.media_root
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_BROKER_URL = config.redis_url
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": config.broker_visibility_timeout_seconds}
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_SOFT_TIME_LIMIT = config.stage_soft_time_limit_seconds
+CELERY_TASK_TIME_LIMIT = config.stage_time_limit_seconds
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_QUEUES = [Queue(name) for name in QUEUES]
+CELERY_TASK_ROUTES = {spec.task_name: {"queue": spec.queue} for spec in STAGES}
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "reconcile-runs": {
+        "task": "pipeline.reconcile_runs",
+        "schedule": config.reconcile_interval_seconds,
+        "options": {"queue": "default"},
+    }
+}

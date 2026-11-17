@@ -1,0 +1,1 @@
+mantenha as marcas que chamam as notas no texto e copie cada nota no fim da seção que a chama, depois de uma linha em branco, começando pela marca dela (ex.: "2 Texto da nota."). Em `has_footnotes`, diga se a seção chamava alguma nota.

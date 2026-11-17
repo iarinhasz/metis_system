@@ -11,7 +11,7 @@ Tudo em `projects/correction/`, com `manage.py` na raiz repassando para `project
 | API | `metis/api.py`, `metis/authentication.py` | Pronto: `NinjaAPI` fechada por padrão (`DenyAllAuth`), `/docs` só em DEBUG, `ServiceBearerAuth` com `compare_digest` |
 | Models | `attempts/models.py` | `Article`, `Attempt`, `Run`, `RunEvent`, base UUIDv7 |
 | Máquina de estados | `attempts/status.py` | `RunStatus`, `Stage`, `HumanDecision`, `STAGES`, `TRANSITIONS` e os conjuntos |
-| Operações do run | `attempts/managers.py` | `AttemptManagement` e `RunManagement` com lock, validação de transição e evento na mesma transação |
+| Operações do run | `queries/attempts/` (antes `attempts/managers.py`) | `ArticleManagement`, `AttemptManagement`, `RunManagement` e `RunEventManagement`: todo acesso ao banco, com lock, validação de transição e evento na mesma transação |
 | Submissão e status | `attempts/api.py` | `POST /api/attempts` (multipart, `external_id` obrigatório, 202/200), `GET /api/runs/{id}`, health |
 | Publicação | `attempts/publishing.py` | `publish_extraction(run_id)` via `send_task` na fila `extraction` |
 | Testes | `metis/tests/`, `attempts/tests/` | Config, status, run management e API |
@@ -28,7 +28,7 @@ Tudo em `projects/correction/`, com `manage.py` na raiz repassando para `project
 | `RunManagement` (`claim_stage`, `complete_stage`, `fail_stage`, `record_retry`, `decide`, `recover`, `release_stale`, `mark_republished`) | `StageTask` (0.4), serviços do gate (0.5), reconciliador (0.6). Nenhuma transição nova precisa ser escrita fora dele |
 | `STAGES` e `StageSpec` | Roteamento das tasks por fila e o mapa estágio → próximo estágio |
 | `publish_extraction` | Vira o caso geral `publish_stage(run_id, stage)` em `pipeline/publishing.py` (0.4); o import em `attempts/api.py` passa a apontar para lá |
-| `MetisSettings` | Ganha os `ModelSpec` por papel, as chaves dos provedores, `METIS_LLM_MAX_CONCURRENCY` e `METIS_GROBID_URL` (M1) |
+| `MetisSettings` | Ganha os `ModelSpec` por papel, as chaves dos provedores, `METIS_LLM_MAX_CONCURRENCY`, `GEMINI_KEY` e `METIS_LLM_TIMEOUT_SECONDS` (M1) |
 | `ServiceBearerAuth` | `POST /api/runs/{id}/decision` (0.5), `GET /report` (M3), `GET /integrity` (M4) |
 | PeerRead em `dataset_project/` | Fixtures do `ExtractedDocument` (1.1), gabarito de citações (1.10), corpus (4.3), plágio sintético (4.10), calibração (6.1) |
 

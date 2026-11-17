@@ -1,0 +1,915 @@
+{
+  "sha256": "4502d0c557dea6f35e97e692f4804993c61f90596524597bc7feea2bafeda62c",
+  "version": "2a9b3bd344b6070b",
+  "created_at": "2026-11-17T02:22:15.151037+00:00",
+  "article": {
+    "title": "INVESTIGATING RECURRENCE AND ELIGIBILITY TRACES IN DEEP Q-NETWORKS",
+    "authors": [
+      "Jean Harb",
+      "Doina Precup"
+    ],
+    "language": "en",
+    "model": "google/gemini-2.5-flash",
+    "sections": [
+      {
+        "id": "sec_1",
+        "title": "ABSTRACT",
+        "level": 1,
+        "parent_id": null,
+        "key": "abstract",
+        "text": "Eligibility traces in reinforcement learning are used as a bias-variance trade-off and can often speed up training time by propagating knowledge back over time- steps in a single update. We investigate the use of eligibility traces in combination with recurrent networks in the Atari domain. We illustrate the benefits of both recurrent nets and eligibility traces in some Atari games, and highlight also the importance of the optimization used in the training.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_2",
+        "title": "1 INTRODUCTION",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Deep reinforcement learning has had many practical successes in game playing (Mnih et al. (2015), Silver et al. (2016)) and robotics (Levine & Abbeel (2014)). Our interest is in further explor-ing these algorithms in the context of environments with sparse rewards and partial observability. To this end, we investigate the use of two methods that are known to mitigate these problems: recurrent networks, which provide a form of memory summarizing past experiences, and eligibility traces, which allow information to propagate over multiple time steps. Eligibility traces have been shown empirically to provide faster learning (Sutton & Barto (2017), in preparation) but their use with deep RL has been limited so far (van Seijen & Sutton (2014), Hausknecht & Stone (2015)). We provide experiments in the Atari domain showing that eligibility traces boost the performance of Deep RL. We also demonstrate a surprisingly strong effect of the optimization method on the performance of the recurrent networks.\nThe paper is structured as follows. In Sec. 2 we provide background and notation needed for the paper. Sec. 3 describes the algorithms we use. In sec. 4 we present and discuss our experimental results. In Sec. 5 we conclude and present avenues for future work.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_3",
+        "title": "2 BACKGROUND",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "A Markov Decision Process (MDP) consists of a tuple (S, A, r, P, γ), where S is the set of states, A is the set of actions, r : S × A → R is the reward function, P(s'|s, a) is the transition function (giving the next state distribution, conditioned on the current state and action), and γ ∈ [0, 1) is the discount factor. Reinforcement learning (RL) (Sutton & Barto, 1998) is a framework for solving unknown MDPs, which means finding a good (or optimal) way of behaving, also called a policy. RL works by obtaining transitions from the environment and using them, in order to compute a policy that maximizes the expected return, given by E[to vtrt].\n\nThe state-value function for a policy π : S × A → [0, 1], V\" (s), is defined as the expected return obtained by starting at state s and picking actions according to π. State-action values Q(s, a) are similar to state values, but conditioned also on the initial action a. A policy can be derived from the Qvalues by picking always the action with the best estimated value at any state.\n\nMonte Carlo (MC) and Temporal Difference (TD) are two standard methods for updating the value function from data. In MC, an entire trajectory's return is used as the target value of the current state.\n\nMC error = ∑∞i=0 γirt+i−V (st) (1)\n\nIn TD, the estimate of the next state's value is used to correct the current state's estimate:\n\nTD error = rt +γV (st+1)−V (st) (2)\n\nQ-learning is an RL algorithm that allows an agent to learn by imagining that it will take the best possible action in the following step:\n\nTD error = rt +γ max Q(st+1, a')−Q(st, at) (3)\n\nThis is an instance of off-policy learning, in which the agent gathers data with an exploratory policy, which randomizes the choice of action, but updates its estimates by constructing targets according to a differnet policy (in this case, the policy that is greedy with respect to the current value estimates.",
+        "has_footnotes": false,
+        "coverage": 0.9645390070921985,
+        "fidelity": 0.9584214235377027
+      },
+      {
+        "id": "sec_4",
+        "title": "2.1 ELIGIBILITY TRACES",
+        "level": 2,
+        "parent_id": "sec_3",
+        "key": null,
+        "text": "Eligibility traces are a fundamental reinforcement learning mechanism which allows a trade-off between TD and MC. MC methods suffer from high variance, as many trajectories can be taken from any given state and stochasticity is often present in the MDP. TD suffers from high bias, as it updates values based on its own estimates.\n\nUsing eligibility traces allows one to design algorithms that cover the middle-ground between MC and TD. The central notion for these are n-step returns, which provide a way of calculating the target by using the value estimate for the state which occurs n steps in the future (compared to the current state):\n\nWhen n is 1, the results is the TD target, and taking n→∞ yields the MC target.\n\nEligibility traces use a geometric weighting of these n-step returns, where the weight of the k-step return is λ times the weight of the k - 1-step return. Using a λ = 0 reduces to using TD, as all n-steps for n > 1 have a weight of 0. One of the appealing effects of using eligibility traces is that a single update allows states many steps behind a reward signal to receive credit. This propagates knowledge back at a faster rate, allowing for accelerated learning. Especially in environments where rewards are sparse and/or delayed, eligibility traces can help assign credit to past states and actions. Without traces, seeing a sparse reward will only propagate the value back by one step, which in turn needs to be sampled to send the value back a second step, and so on.\n\nThis way of viewing eligibility traces is called the forward view, as states are looking ahead at the rewards received in the future. The forward view is rarely used, as it requires a state to wait for the future to unfold before calculating an update, and requires memory to store the experience. There is an equivalent view called the backward view, which allows us to calculate updates for every previous state as we take a single action. This requires no memory and lets us perform updates without having to wait for the future. However, this view has had limited success in the neural network setting as it requires using a trace on each neuron of the network, which tend to be dense and heavily used at each step resulting in noisy signals. For this reason, eligibility traces aren't heavily used when using deep learning, despite their potential benefits.",
+        "has_footnotes": false,
+        "coverage": 0.7680079483358172,
+        "fidelity": 0.9796682718031032
+      },
+      {
+        "id": "sec_5",
+        "title": "2.1.1 Q(x)",
+        "level": 3,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "A few versions of Q(x) exist, but the most used one is Watkins's Q(X). As Q-learning is off-policy, the sequence of actions used in the past trajectory used to calculate the trace might be different from the actions that the current policy might take. In that case, one should not be using the trajectory past the point where actions differ. To handle such a case, Watkins's Q(X) sets the trace to 0 if the action that the current policy would select is different from the one used in the past.",
+        "has_footnotes": false,
+        "coverage": null,
+        "fidelity": null
+      },
+      {
+        "id": "sec_6",
+        "title": "2.2 DEEP Q-NETWORKS",
+        "level": 2,
+        "parent_id": "sec_3",
+        "key": null,
+        "text": "Mnih et al. (2015) introduced deep Q-networks (DQN), one of the first successful reinforcement learning algorithms that use deep learning for function approximation in a way general enough which is applicable to a variety of environments. Applying it to a set of Atari games, they used a convolutional neural network (CNN) which took as input the last four frames of the game, and output Q-values for each possible action.\n\nEquation 6 shows the DQN cost function, where we are optimizing the @ parameters. The 0-parameters represent frozen Q-value weights which are update at a chosen frequency.\n\nL(st, at|0) = (rt + ymax Q(st+1, a′|0¯) – Q(st, at|0))2\na'\n\n(6)",
+        "has_footnotes": false,
+        "coverage": 0.9621212121212122,
+        "fidelity": 0.8870636550308009
+      },
+      {
+        "id": "sec_7",
+        "title": "2.2.1 DEEP RECURRENT Q-NETWORKS",
+        "level": 3,
+        "parent_id": "sec_6",
+        "key": null,
+        "text": "As introduced in Hausknecht & Stone (2015), deep recurrent Q-networks (DRQN) are a modifica- tion on DQN, where single frames are passed through a CNN, which generates a feature vector that is then fed to an RNN which finally outputs Q-values. This architecture gives the agent a mem- ory, allowing it to learn long-term temporal effects and handle partial observability, which is the case in many environments. The authors showed that randomly blanking out frames was difficult to overcome for DQN, but that DRQN learned to handle without issue.\n\nTo train DRQN, they proposed two variants of experience replay. The first was to sample entire trajectories and run the RNN from end to end. However this is very computationally demanding as some trajectories can be over 10000 steps long. The second alternative was to sample sub- trajectories instead of single transitions. This is required as the RNN needs to fill its hidden state and to allow it to understand the temporal aspect of the data.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_8",
+        "title": "2.3 OPTIMIZERS",
+        "level": 2,
+        "parent_id": "sec_3",
+        "key": null,
+        "text": "Stochastic gradient descent (SGD) is generally the algorithm used to optimize neural networks. However, some information is lost during the process as past gradients might signal that a weight drastically needs to change, or that it is oscillating, requiring a decrease in learning rate. Adaptive SGD algorithms have been built to use this information.\n\nRMSprop (Tieleman & Hinton (2012)), uses a geometric averaging over gradients squared, and divides the current gradient by its square root. To perform RMSprop, first we calculate the averaging as g = βg + (1 − 3) 02 and then update the parameters θ θ + α\n√gte\nDQN (Graves (2013)) introduced a variant of RMSprop where the gradient is instead divided by the standard deviation of the running average. First we calculate the running averages m = ẞт + (1\nβ)0 and g = βg + (1 − β)∇02, and then update the parameters using 0 ← 0 + α\nthe rest of the paper, when mentioning RMSprop, we'll be referring to this version.\n\nFinally, Kingma & Ba (2014) introduced Adam, which is essentially RMSprop coupled with Nes-terov momentum, along with the running averages being corrected for bias. We have a term for the\nrate of momentum of each of the running averages. To calculate the update with Adam, we start\nwith the updating the averages m = β₁m + (1 − β₁)∇θ, υ = β₂υ + (1 − β2)∇02, the correct their\nbiases m = m/(1 − β₁), ô = v/(1 – 5) and finally calculate the gradient update 0 ← 0 +α.\n\nVe\nVg-m²+€\nIn\nVite",
+        "has_footnotes": false,
+        "coverage": 0.704119850187266,
+        "fidelity": 0.8432835820895522
+      },
+      {
+        "id": "sec_9",
+        "title": "3 EXPERIMENTAL SETUP",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "As explained, the forward view of eligibility traces can be useful, but is computationally demanding in terms of memory and time. One must store all transitions and apply the neural network to each state in the trajectory. By using DRQN, experience replay is already part of the algorithm, which removes the memory requirement of the traces. Then, by training on sub-trajectories of data, the states must be run through the RNN with all state values as the output, which eliminates the compu-tational cost. Finally, all that's left to use eligibility traces is simply to calculate the weighted sum of the targets, which is very cheap to do.\n\nIn this section we analyze the use of eligibility traces when training DRQN and try both RMSprop and Adam as optimizers. We only tested the algorithms on fully observable games as to compare the learning capacities without the unfair advantage of having a memory, as would be the case on partially observable environments.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_10",
+        "title": "3.1 ARCHITECTURE",
+        "level": 2,
+        "parent_id": "sec_9",
+        "key": null,
+        "text": "We tested the algorithms on two Atari 2600 games, part of the Arcade Learning Environment (Bellemare et al. (2012)), Pong and Tennis. The architecture used is similar to the one used in Hausknecht & Stone (2015). The frames are converted to gray-scale and re-sized to 84x84. These are then fed to a CNN with the first layer being 32 8x8 filters and a stride of 4, followed by 64 4x4 filters with a stride of 2, then by 64 3x3 filters with a stride of 1. The output of the CNN is then flattened before being fed to a single dense layer of 512 output neurons, which is finally fed to an LSTM (Hochreiter & Schmidhuber (1997)) with 512 cells. We then have a last linear layer that takes the output of the recurrent layer to output the Q-values. All layers before the LSTM are activated using rectified linear units (ReLU).\n\nAs mentioned in subsection 2.2.1, we also altered experience replay to sample sub-trajectories. We use backprop through time (BPTT) to train the RNN, but only train on a sub-trajectory of experience. In runtime, the RNN will have had a large sequence of inputs in its hidden state, which can be problematic if always trained with an empty hidden state. Like in Lample & Singh Chaplot (2016), we therefore sample a slightly longer length of trajectory and use the first m states to fill the hidden state. In our experiments, we selected trajectory lengths of 32, where the first 10 states are used as filler and the remaining 22 are used for the traces and TD costs. We used a batch size of 4.\n\nAll experiments using eligibility traces use X = 0.8. Furthermore, we use Watkins's Q(X). To limit computation costs of using traces, we cut the trace off once it becomes too small. In our experiments, we choose the limit of 0.01, which allows the traces to affect 21 states ahead (when x = 0.8). We calculate the trace for every state in the trajectory, except for a few in the beginning, use to fill in the hidden state of the RNN.\n\nWhen using RMSprop, we used a momentum of 0.95, an epsilon of 0.01 and a learning rate of 0.00025. When using Adam, we used a momentum of gradients of 0.9, a momentum of squared gradients of 0.999, an epsilon of 0.001 and a learning rate of 0.00025.\n\nTesting phases are consistent across all models, with the score being the average over each game played during 125000 frames. We also use an € of 0.05 for action selection.\n\nChoose k as number of trace steps and m as RNN-filler steps Initialize weights θ, experience replay D θ¯ ← θ s ← s0 repeat Initialize RNN hidden state to 0. repeat Choose a according to ε-greedy policy on Q(s, a|θ) Take action a in s, observe s', r Store s, a, r, s' in Experience Replay Sample 4 sub-trajectories of m + k sequential transitions (s, a, r, s') from D r s' is terminal, ŷ = r + γ max Q(s', a'|θ¯) otherwise a' foreach transition sampled do λt = {λ if at = arg maxā (st, ā|θ), 0 otherwise end for l from 0 to k − 1 do R(s−l+1)1 k t+l = [∑s=l (Πi=1 λt+i)R(s−l+1)1]/[∑s=l (Πi=1 λt+i)] end Perform gradient descent on (R(s−l+1)1 t+s −Q(s,a|θ))2 2θ Every 10000 steps θ¯ ← θ s ← s' until s' is terminal until training complete Algorithm 1: Deep Recurrent Q-Networks with forward view eligibility traces on Atari. The eligibility traces are calculated using the n-step return function R(n) for time-step t was described in section 2.1.",
+        "has_footnotes": false,
+        "coverage": 0.9114114114114115,
+        "fidelity": 0.9010458567980691
+      },
+      {
+        "id": "sec_11",
+        "title": "4 EXPERIMENTAL RESULTS",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We describe experiments in two Atari games: Pong and Tennis. We chose Pong because it permits quick experimentation, and Tennis because it is one of the games that has proven difficult in all published results on Atari.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_12",
+        "title": "4.1 PONG",
+        "level": 2,
+        "parent_id": "sec_11",
+        "key": null,
+        "text": "First, we tested an RNN model both with X = 0 and x = 0.8, trained with RMSprop. Figure 2 shows that the model without a trace (X = 0) learned at the same rate as DQN, while the model with traces (X = 0.8) learned substantially faster and with more stability, without exhibiting any epochs with depressed performance. This is probably due to the eligibility traces propagating rewards back by many steps in a single update. In Pong, when the agent hits the ball, it must wait several time-steps before the ball gets either to or past the opponent. Once this happens, the agent must assign the credit of the event back to the time when it hit the ball, and not to the actions performed after the ball had already left. The traces clearly help send this signal back faster.\n\nWe then tested the same models but using Adam as the optimizer instead of RMSprop. All models learn much faster with this setting. However, the model with no trace gains significantly more than the model with the trace. Our current intuition is that some hyper-parameters, such as the frozen network's update frequency, are limiting the rate at which the model can learn. Note also that the DQN model also learns faster with Adam as the optimizer, but remains quite unstable, in comparison with the recurrent net models.\n\nFinally, the results in Table 1 show that both using eligibility traces and Adam provide performance improvements. While training with RMSProp, the model with traces gets to near optimal perfor- mance more than twice as quickly as the other models. With Adam, the model learns to be optimal in just 6 epochs.",
+        "has_footnotes": false,
+        "coverage": 0.8068965517241379,
+        "fidelity": 0.9332273449920508
+      },
+      {
+        "id": "sec_13",
+        "title": "4.2 TENNIS",
+        "level": 2,
+        "parent_id": "sec_11",
+        "key": null,
+        "text": "The second Atari 2600 game we tested was Tennis. A match consists of only one set, which is won by the player who is the first to win 6 \"games\" (as in regular tennis). The score ranges from 24 to -24, given as the difference between the number of balls won by the two players.\n\nAs in Pong, we first tried an RNN trained with RMSprop and the standard learning rate of 0.00025, both with and without eligibility traces (using again λ = 0.8 and λ = 0). Figure 3 shows that both RNN models learned to get optimal scores after about 50 epochs. This is in contrast with DQN, which never seems to be able to pass the 0 threshold, with large fluctuations ranging from -24 to 0. After visually inspecting the games played in the testing phase, we noticed that the DQN agent gets stuck in a loop, where it exchanges the ball with the opponent until the timer runs out. In such a case, the agent minimizes the number of points scored against, but never learns to beat the opponent. The score fluctuations depend on how few points the agent allows before entering the loop. We suspect that the agent gets stuck in this policy because the reward for trying to defeat the opponent is delayed, waiting for the ball to reach the opponent and get past it. Furthermore, the experiences of getting a point are relatively sparse. Together, it makes it difficult to propagate the reward back to the action of hitting the ball correctly.\n\nWe also notice that both the RNN with and without eligibility traces manage to learn a near-optimal policy without getting stuck in the bad policy. The RNN has the capacity of sending the signal back to past states with BPTT, allowing it to do credit assignment implicitly, which might explain their ability to escape the bad policy. Remarkably, this is the only algorithm that succeeds in getting near-optimal scores on Tennis, out of all variants of DQN (Mnih et al. (2015), Munos et al. (2016), Wang et al. (2015), Mnih et al. (2016), Schaul et al. (2015)), which tend to get stuck in the policy of delaying. The model without traces learned at a faster pace than the one with traces, arriving to a score of 20 in 45 epochs as opposed to 62 for its counterpart. It's possible that the updates for model with traces were smaller, due to the weighting of target values, indirectly leading to a lower learning rate. We also trained the models with RMSprop and a higher learning rate of 0.001. This led to the model with traces getting to 20 points in just 27 epochs, while the model without traces lost its ability to get optimal scores and never passed the 0 threshold.\n\nWe then tried using Adam as the optimizer, with the original learning rate of 0.00025. Both RNN models learned substantially faster than with RMSprop, with the RNN with traces getting to near-optimal performance in just 13 epochs. With Adam, the gradient for the positive TD is stored in the momentum part of the equation for quite some time. Once in momentum, the gradient is part of many updates, which makes it enough to overtake the safe strategy. We also notice that the model with traces was much more stable than its counterpart. The model without traces fell back to the policy of delaying the game on two occasions, after having learned to beat the opponent. Finally, we trained DQN with Adam, but the model acted the same way as DQN trained with RMSprop.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 0.9927203065134099
+      },
+      {
+        "id": "sec_14",
+        "title": "5 DISCUSSION AND CONCLUSION",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "In this paper, we analyzed the effects of using eligibility traces and different optimization functions. We showed that eligibility traces can improve and stabilize learning and using Adam can strongly accelerate learning.\n\nAs shown in the Pong results, the model using eligibility traces didn't gain much performance from using Adam. One possible cause is the frozen network. While it has a stabilizing effect in DQN, by stopping policies from drastically changing from a single update, it also stops newly learned values from being propagated back. Double DQN seems to partially go around this issue, allowing the policy of the next state to change, while keeping the values frozen. In future experiments, we must consider eliminating or increasing the frozen network's update frequency. It would also be interesting to reduce the size of experience replay, as with increased learning speed, old observations can become too off-policy and barely be used in eligibility traces.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_15",
+        "title": "REFERENCES",
+        "level": 1,
+        "parent_id": null,
+        "key": "references",
+        "text": "Marc G Bellemare, Yavar Naddaf, Joel Veness, and Michael Bowling. The arcade learning envi-ronment: An evaluation platform for general agents. Journal of Artificial Intelligence Research,2012.\n\nAlex Graves. Generating sequences with recurrent neural networks. arXiv preprintarXiv:1308.0850, 2013.\n\nMatthew Hausknecht and Peter Stone. Deep recurrent q-learning for partially observable mdps.arXiv preprint arXiv:1507.06527, 2015.\n\nSepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. Neural computation, 9(8):1735-1780, 1997.\n\nDiederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprintarXiv:1412.6980, 2014.\n\nGuillaume Lample and Devendra Singh Chaplot. Playing fps games with deep reinforcement learn-ing. arXiv preprint arXiv:1609.05521, 2016.\n\nSergey Levine and Pieter Abbeel. Learning neural network policies with guided policy search underunknown dynamics. In Advances in Neural Information Processing Systems, pp. 1071–1079,2014.\n\nVolodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G Belle-mare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al. Human-levelcontrol through deep reinforcement learning. Nature, 518(7540):529–533 2015.\n\nVolodymyr Mnih, Adria Puigdomenech Badia, Mehdi Mirza, Alex Graves, Timothy P Lillicrap, TimHarley, David Silver, and Koray Kavukcuoglu. Asynchronous methods for deep reinforcementlearning. arXiv preprint arXiv:1602.01783, 2016.\n\nRémi Munos, Tom Stepleton, Anna Harutyunyan, and Marc G Bellemare. Safe and efficient off-policy reinforcement learning. arXiv preprint arXiv:1606.02647, 2016.\n\nTom Schaul, John Quan, Ioannis Antonoglou, and David Silver. Prioritized experience replay. arXivpreprint arXiv:1511.05952, 2015.\n\nDavid Silver, Aja Huang, Chris J Maddison, Arthur Guez, Laurent Sifre, George Van Den Driessche,Julian Schrittwieser, Ioannis Antonoglou, Veda Panneershelvam, Marc Lanctot, et al. Masteringthe game of go with deep neural networks and tree search. Nature, 529(7587):484–489, 2016.\n\nRichard S Sutton and Andrew G Barto. Reinforcement learning: An introduction, volume 1. MITpress Cambridge, 1998.\n\nRichard S Sutton and Andrew G Barto. Reinforcement learning: An introduction, In Preparation.MIT press Cambridge, 2017.\n\nTijmen Tieleman and Geoffrey Hinton. Lecture 6.5-rmsprop: Divide the gradient by a runningaverage of its recent magnitude. COURSERA: Neural Networks for Machine Learning, 4(2),2012.\n\nHarm van Seijen and Rich Sutton. True online td (lambda). In Proceedings of The 31st InternationalConference on Machine Learning, pp. 692-700, 2014.\n\nZiyu Wang, Nando de Freitas, and Marc Lanctot. Dueling network architectures for deep reinforce-ment learning. arXiv preprint arXiv:1511.06581, 2015.",
+        "has_footnotes": false,
+        "coverage": 0.9760589318600368,
+        "fidelity": 0.9671972986010613
+      }
+    ],
+    "references": [
+      {
+        "id": "ref_1",
+        "raw": "Marc G Bellemare, Yavar Naddaf, Joel Veness, and Michael Bowling. The arcade learning envi-ronment: An evaluation platform for general agents. Journal of Artificial Intelligence Research,2012.",
+        "marker": null,
+        "authors": [
+          "Marc G Bellemare",
+          "Yavar Naddaf",
+          "Joel Veness",
+          "Michael Bowling"
+        ],
+        "title": "The arcade learning envi-ronment: An evaluation platform for general agents",
+        "year": "2012",
+        "venue": "Journal of Artificial Intelligence Research",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_2",
+        "raw": "Alex Graves. Generating sequences with recurrent neural networks. arXiv preprintarXiv:1308.0850, 2013.",
+        "marker": null,
+        "authors": [
+          "Alex Graves"
+        ],
+        "title": "Generating sequences with recurrent neural networks",
+        "year": "2013",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1308.0850"
+      },
+      {
+        "id": "ref_3",
+        "raw": "Matthew Hausknecht and Peter Stone. Deep recurrent q-learning for partially observable mdps.arXiv preprint arXiv:1507.06527, 2015.",
+        "marker": null,
+        "authors": [
+          "Matthew Hausknecht",
+          "Peter Stone"
+        ],
+        "title": "Deep recurrent q-learning for partially observable mdps",
+        "year": "2015",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1507.06527"
+      },
+      {
+        "id": "ref_4",
+        "raw": "Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. Neural computation, 9(8):1735-1780, 1997.",
+        "marker": null,
+        "authors": [
+          "Sepp Hochreiter",
+          "Jürgen Schmidhuber"
+        ],
+        "title": "Long short-term memory",
+        "year": "1997",
+        "venue": "Neural computation, 9(8):1735-1780",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_5",
+        "raw": "Diederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprintarXiv:1412.6980, 2014.",
+        "marker": null,
+        "authors": [
+          "Diederik Kingma",
+          "Jimmy Ba"
+        ],
+        "title": "Adam: A method for stochastic optimization",
+        "year": "2014",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1412.6980"
+      },
+      {
+        "id": "ref_6",
+        "raw": "Guillaume Lample and Devendra Singh Chaplot. Playing fps games with deep reinforcement learn-ing. arXiv preprint arXiv:1609.05521, 2016.",
+        "marker": null,
+        "authors": [
+          "Guillaume Lample",
+          "Devendra Singh Chaplot"
+        ],
+        "title": "Playing fps games with deep reinforcement learn-ing",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1609.05521"
+      },
+      {
+        "id": "ref_7",
+        "raw": "Sergey Levine and Pieter Abbeel. Learning neural network policies with guided policy search underunknown dynamics. In Advances in Neural Information Processing Systems, pp. 1071–1079,2014.",
+        "marker": null,
+        "authors": [
+          "Sergey Levine",
+          "Pieter Abbeel"
+        ],
+        "title": "Learning neural network policies with guided policy search underunknown dynamics",
+        "year": "2014",
+        "venue": "Advances in Neural Information Processing Systems, pp. 1071–1079",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_8",
+        "raw": "Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G Belle-mare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al. Human-levelcontrol through deep reinforcement learning. Nature, 518(7540):529–533 2015.",
+        "marker": null,
+        "authors": [
+          "Volodymyr Mnih",
+          "Koray Kavukcuoglu",
+          "David Silver",
+          "Andrei A Rusu",
+          "Joel Veness",
+          "Marc G Belle-mare",
+          "Alex Graves",
+          "Martin Riedmiller",
+          "Andreas K Fidjeland",
+          "Georg Ostrovski",
+          "et al."
+        ],
+        "title": "Human-levelcontrol through deep reinforcement learning",
+        "year": "2015",
+        "venue": "Nature, 518(7540):529–533",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_9",
+        "raw": "Volodymyr Mnih, Adria Puigdomenech Badia, Mehdi Mirza, Alex Graves, Timothy P Lillicrap, TimHarley, David Silver, and Koray Kavukcuoglu. Asynchronous methods for deep reinforcementlearning. arXiv preprint arXiv:1602.01783, 2016.",
+        "marker": null,
+        "authors": [
+          "Volodymyr Mnih",
+          "Adria Puigdomenech Badia",
+          "Mehdi Mirza",
+          "Alex Graves",
+          "Timothy P Lillicrap",
+          "TimHarley",
+          "David Silver",
+          "Koray Kavukcuoglu"
+        ],
+        "title": "Asynchronous methods for deep reinforcementlearning",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1602.01783"
+      },
+      {
+        "id": "ref_10",
+        "raw": "Rémi Munos, Tom Stepleton, Anna Harutyunyan, and Marc G Bellemare. Safe and efficient off-policy reinforcement learning. arXiv preprint arXiv:1606.02647, 2016.",
+        "marker": null,
+        "authors": [
+          "Rémi Munos",
+          "Tom Stepleton",
+          "Anna Harutyunyan",
+          "Marc G Bellemare"
+        ],
+        "title": "Safe and efficient off-policy reinforcement learning",
+        "year": "2016",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1606.02647"
+      },
+      {
+        "id": "ref_11",
+        "raw": "Tom Schaul, John Quan, Ioannis Antonoglou, and David Silver. Prioritized experience replay. arXivpreprint arXiv:1511.05952, 2015.",
+        "marker": null,
+        "authors": [
+          "Tom Schaul",
+          "John Quan",
+          "Ioannis Antonoglou",
+          "David Silver"
+        ],
+        "title": "Prioritized experience replay",
+        "year": "2015",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1511.05952"
+      },
+      {
+        "id": "ref_12",
+        "raw": "David Silver, Aja Huang, Chris J Maddison, Arthur Guez, Laurent Sifre, George Van Den Driessche,Julian Schrittwieser, Ioannis Antonoglou, Veda Panneershelvam, Marc Lanctot, et al. Masteringthe game of go with deep neural networks and tree search. Nature, 529(7587):484–489, 2016.",
+        "marker": null,
+        "authors": [
+          "David Silver",
+          "Aja Huang",
+          "Chris J Maddison",
+          "Arthur Guez",
+          "Laurent Sifre",
+          "George Van Den Driessche",
+          "Julian Schrittwieser",
+          "Ioannis Antonoglou",
+          "Veda Panneershelvam",
+          "Marc Lanctot",
+          "et al."
+        ],
+        "title": "Masteringthe game of go with deep neural networks and tree search",
+        "year": "2016",
+        "venue": "Nature, 529(7587):484–489",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_13",
+        "raw": "Richard S Sutton and Andrew G Barto. Reinforcement learning: An introduction, volume 1. MITpress Cambridge, 1998.",
+        "marker": null,
+        "authors": [
+          "Richard S Sutton",
+          "Andrew G Barto"
+        ],
+        "title": "Reinforcement learning: An introduction, volume 1",
+        "year": "1998",
+        "venue": "MITpress Cambridge",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_14",
+        "raw": "Richard S Sutton and Andrew G Barto. Reinforcement learning: An introduction, In Preparation.MIT press Cambridge, 2017.",
+        "marker": null,
+        "authors": [
+          "Richard S Sutton",
+          "Andrew G Barto"
+        ],
+        "title": "Reinforcement learning: An introduction, In Preparation",
+        "year": "2017",
+        "venue": "MIT press Cambridge",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_15",
+        "raw": "Tijmen Tieleman and Geoffrey Hinton. Lecture 6.5-rmsprop: Divide the gradient by a runningaverage of its recent magnitude. COURSERA: Neural Networks for Machine Learning, 4(2),2012.",
+        "marker": null,
+        "authors": [
+          "Tijmen Tieleman",
+          "Geoffrey Hinton"
+        ],
+        "title": "Lecture 6.5-rmsprop: Divide the gradient by a runningaverage of its recent magnitude",
+        "year": "2012",
+        "venue": "COURSERA: Neural Networks for Machine Learning, 4(2)",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_16",
+        "raw": "Harm van Seijen and Rich Sutton. True online td (lambda). In Proceedings of The 31st InternationalConference on Machine Learning, pp. 692-700, 2014.",
+        "marker": null,
+        "authors": [
+          "Harm van Seijen",
+          "Rich Sutton"
+        ],
+        "title": "True online td (lambda)",
+        "year": "2014",
+        "venue": "Proceedings of The 31st InternationalConference on Machine Learning, pp. 692-700",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_17",
+        "raw": "Ziyu Wang, Nando de Freitas, and Marc Lanctot. Dueling network architectures for deep reinforce-ment learning. arXiv preprint arXiv:1511.06581, 2015.",
+        "marker": null,
+        "authors": [
+          "Ziyu Wang",
+          "Nando de Freitas",
+          "Marc Lanctot"
+        ],
+        "title": "Dueling network architectures for deep reinforce-ment learning",
+        "year": "2015",
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "1511.06581"
+      }
+    ],
+    "citations": [
+      {
+        "reference_id": "ref_8",
+        "marker": "Mnih et al. (2015)",
+        "sentence": "Deep reinforcement learning has had many practical successes in game playing (Mnih et al. (2015), Silver et al. (2016)) and robotics (Levine & Abbeel (2014)).",
+        "section_id": "sec_2",
+        "start": 78,
+        "end": 96
+      },
+      {
+        "reference_id": "ref_12",
+        "marker": "Silver et al. (2016)",
+        "sentence": "Deep reinforcement learning has had many practical successes in game playing (Mnih et al. (2015), Silver et al. (2016)) and robotics (Levine & Abbeel (2014)).",
+        "section_id": "sec_2",
+        "start": 98,
+        "end": 118
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Levine & Abbeel (2014)",
+        "sentence": "Deep reinforcement learning has had many practical successes in game playing (Mnih et al. (2015), Silver et al. (2016)) and robotics (Levine & Abbeel (2014)).",
+        "section_id": "sec_2",
+        "start": 134,
+        "end": 156
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "Sutton & Barto (2017)",
+        "sentence": "Eligibility traces have been shown empirically to provide faster learning (Sutton & Barto (2017), in preparation) but their use with deep RL has been limited so far (van Seijen & Sutton (2014), Hausknecht & Stone (2015)).",
+        "section_id": "sec_2",
+        "start": 629,
+        "end": 650
+      },
+      {
+        "reference_id": "ref_16",
+        "marker": "Seijen & Sutton (2014)",
+        "sentence": "Eligibility traces have been shown empirically to provide faster learning (Sutton & Barto (2017), in preparation) but their use with deep RL has been limited so far (van Seijen & Sutton (2014), Hausknecht & Stone (2015)).",
+        "section_id": "sec_2",
+        "start": 724,
+        "end": 746
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Hausknecht & Stone (2015)",
+        "sentence": "Eligibility traces have been shown empirically to provide faster learning (Sutton & Barto (2017), in preparation) but their use with deep RL has been limited so far (van Seijen & Sutton (2014), Hausknecht & Stone (2015)).",
+        "section_id": "sec_2",
+        "start": 748,
+        "end": 773
+      },
+      {
+        "reference_id": "ref_13",
+        "marker": "Sutton & Barto, 1998",
+        "sentence": "Reinforcement learning (RL) (Sutton & Barto, 1998) is a framework for solving unknown MDPs, which means finding a good (or optimal) way of behaving, also called a policy.",
+        "section_id": "sec_3",
+        "start": 351,
+        "end": 371
+      },
+      {
+        "reference_id": "ref_8",
+        "marker": "Mnih et al. (2015)",
+        "sentence": "Mnih et al. (2015) introduced deep Q-networks (DQN), one of the first successful reinforcement learning algorithms that use deep learning for function approximation in a way general enough which is applicable to a variety of environments.",
+        "section_id": "sec_6",
+        "start": 0,
+        "end": 18
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Hausknecht & Stone (2015)",
+        "sentence": "As introduced in Hausknecht & Stone (2015), deep recurrent Q-networks (DRQN) are a modifica- tion on DQN, where single frames are passed through a CNN, which generates a feature vector that is then fed to an RNN which finally outputs Q-values.",
+        "section_id": "sec_7",
+        "start": 17,
+        "end": 42
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Tieleman & Hinton (2012)",
+        "sentence": "RMSprop (Tieleman & Hinton (2012)), uses a geometric averaging over gradients squared, and divides the current gradient by its square root.",
+        "section_id": "sec_8",
+        "start": 363,
+        "end": 387
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Graves (2013)",
+        "sentence": "DQN (Graves (2013)) introduced a variant of RMSprop where the gradient is instead divided by the standard deviation of the running average.",
+        "section_id": "sec_8",
+        "start": 619,
+        "end": 632
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Kingma & Ba (2014)",
+        "sentence": "Finally, Kingma & Ba (2014) introduced Adam, which is essentially RMSprop coupled with Nes-terov momentum, along with the running averages being corrected for bias.",
+        "section_id": "sec_8",
+        "start": 976,
+        "end": 994
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Bellemare et al. (2012)",
+        "sentence": "We tested the algorithms on two Atari 2600 games, part of the Arcade Learning Environment (Bellemare et al. (2012)), Pong and Tennis.",
+        "section_id": "sec_10",
+        "start": 91,
+        "end": 114
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Hausknecht & Stone (2015)",
+        "sentence": "The architecture used is similar to the one used in Hausknecht & Stone (2015).",
+        "section_id": "sec_10",
+        "start": 186,
+        "end": 211
+      },
+      {
+        "reference_id": "ref_4",
+        "marker": "Hochreiter & Schmidhuber (1997)",
+        "sentence": "The output of the CNN is then flattened before being fed to a single dense layer of 512 output neurons, which is finally fed to an LSTM (Hochreiter & Schmidhuber (1997)) with 512 cells.",
+        "section_id": "sec_10",
+        "start": 591,
+        "end": 622
+      },
+      {
+        "reference_id": "ref_8",
+        "marker": "Mnih et al. (2015)",
+        "sentence": "Remarkably, this is the only algorithm that succeeds in getting near-optimal scores on Tennis, out of all variants of DQN (Mnih et al. (2015), Munos et al. (2016), Wang et al. (2015), Mnih et al. (2016), Schaul et al. (2015)), which tend to get stuck in the policy of delaying.",
+        "section_id": "sec_13",
+        "start": 1874,
+        "end": 1892
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Munos et al. (2016)",
+        "sentence": "Remarkably, this is the only algorithm that succeeds in getting near-optimal scores on Tennis, out of all variants of DQN (Mnih et al. (2015), Munos et al. (2016), Wang et al. (2015), Mnih et al. (2016), Schaul et al. (2015)), which tend to get stuck in the policy of delaying.",
+        "section_id": "sec_13",
+        "start": 1894,
+        "end": 1913
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Wang et al. (2015)",
+        "sentence": "Remarkably, this is the only algorithm that succeeds in getting near-optimal scores on Tennis, out of all variants of DQN (Mnih et al. (2015), Munos et al. (2016), Wang et al. (2015), Mnih et al. (2016), Schaul et al. (2015)), which tend to get stuck in the policy of delaying.",
+        "section_id": "sec_13",
+        "start": 1915,
+        "end": 1933
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Mnih et al. (2016)",
+        "sentence": "Remarkably, this is the only algorithm that succeeds in getting near-optimal scores on Tennis, out of all variants of DQN (Mnih et al. (2015), Munos et al. (2016), Wang et al. (2015), Mnih et al. (2016), Schaul et al. (2015)), which tend to get stuck in the policy of delaying.",
+        "section_id": "sec_13",
+        "start": 1935,
+        "end": 1953
+      },
+      {
+        "reference_id": "ref_11",
+        "marker": "Schaul et al. (2015)",
+        "sentence": "Remarkably, this is the only algorithm that succeeds in getting near-optimal scores on Tennis, out of all variants of DQN (Mnih et al. (2015), Munos et al. (2016), Wang et al. (2015), Mnih et al. (2016), Schaul et al. (2015)), which tend to get stuck in the policy of delaying.",
+        "section_id": "sec_13",
+        "start": 1955,
+        "end": 1975
+      }
+    ],
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "label": "Figure 1",
+        "number": "1",
+        "page": 4,
+        "caption": "Figure 1: This graph illustrates how a sample from experience replay is used in training. We use a number of frames to fill the hidden state of the RNN. Then, for the states used for training, we have the RNN output the Q-values. Finally, we calculate each n-step return and weight them according to \\, where the arrows represent the forward view of each trace. All states are passed though the CNN before entering the RNN.",
+        "fidelity": 0.939873417721519,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This diagram illustrates the process of using a sample from experience replay in training a recurrent neural network (RNN) for Q-value prediction. It shows how states are processed through a Convolutional Neural Network (CNN) before entering the RNN, how the RNN's hidden state is filled, and how Q-values are calculated and weighted for n-step returns.",
+          "data_read": [
+            "States are labeled St-3, St-2, St-1, St, St+1, St+2, St+3, St+4.",
+            "Q-values are shown as Q(st, at), Q(St+1, at+1), Q(St+2, at+2), Q(St+3, at+3), Q(st+4, at+4).",
+            "Arrows indicate the forward view of each trace, with weights λ^3, λ^2, λ^1, λ^0, λ^-1, λ^-2, λ^-3, λ^-4 above the Q-values, suggesting a weighting scheme based on λ.",
+            "The process involves filling the hidden state of the RNN with a number of frames, then having the RNN output Q-values for states used for training, and finally calculating n-step returns weighted by λ."
+          ],
+          "supports_claims": null,
+          "support_rationale": "The article text does not make any claims about this specific figure, so it cannot be determined if the figure supports any claims.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "label": "Figure 2",
+        "number": "2",
+        "page": 6,
+        "caption": "Figure 2: Test scores on Pong by training models with RMSprop vs Adam.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "line graph",
+          "description": "This figure consists of two line graphs comparing test scores on the game Pong over epochs, using different optimization methods (RMSprop and Adam) and eligibility trace values (λ=0.0 and λ=0.8), as well as a DQN baseline.",
+          "data_read": [
+            "The left graph, titled \"RMSprop\", shows scores ranging from -25 to 20 on the y-axis and epochs from 0 to 30 on the x-axis.",
+            "The \"RNN trace=0.0\" (blue line with squares) starts at -20 and fluctuates, reaching 15 by epoch 15 and staying around 15-18.",
+            "The \"RNN trace=0.8\" (red line with circles) starts at -20, increases steadily, reaching 15 by epoch 10 and staying around 15-18.",
+            "The \"DQN\" (green line with triangles) starts at -20, increases, reaches 15 by epoch 10, but shows more fluctuations than \"RNN trace=0.8\".",
+            "The right graph, titled \"Adam\", also shows scores from -25 to 20 on the y-axis and epochs from 0 to 30 on the x-axis.",
+            "The \"RNN trace=0.0\" (blue line with squares) starts at -20, increases rapidly, reaching 15 by epoch 5 and staying around 15-18.",
+            "The \"RNN trace=0.8\" (red line with circles) starts at -20, increases very rapidly, reaching 15 by epoch 5 and staying around 15-18, with less fluctuation than \"RNN trace=0.0\".",
+            "The \"DQN\" (green line with triangles) starts at -20, increases rapidly, reaching 15 by epoch 5, but shows significant fluctuations, dropping below 0 multiple times."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure supports the claims. For RMSprop, the \"RNN trace=0.8\" (red line) learns faster and with more stability than \"RNN trace=0.0\" (blue line) and DQN (green line), reaching high scores earlier and maintaining them without significant dips. For Adam, all models learn faster, and \"RNN trace=0.8\" (red line) shows the fastest and most stable learning, reaching optimal performance very quickly and maintaining it, while DQN (green line) is unstable.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "label": "Table 1",
+        "number": "1",
+        "page": 6,
+        "caption": "Table 1: Number of epochs before getting to 18 points in Pong. We chose 18 points as the thresh- old because it represents a near-optimal strategy. Testing is performed with a 5% e-greedy policy, stopping the agent from having a perfect score.",
+        "fidelity": 0.8850574712643678,
+        "description": {
+          "figure_class": "table",
+          "description": "This table shows the number of epochs required for different deep reinforcement learning models to reach 18 points in the game Pong. The models tested include DQN, RNN with lambda (λ) = 0, and RNN with lambda (λ) = 0.8, using two different optimizers: RMSprop and Adam.",
+          "data_read": [
+            "The table has three rows representing the models: DQN, RNN λ = 0, and RNN λ = 0.8.",
+            "It has two columns for optimizers: RMSprop and Adam.",
+            "For RMSprop, DQN takes 23 epochs, RNN λ = 0 takes 28 epochs, and RNN λ = 0.8 takes 10 epochs.",
+            "For Adam, DQN takes 12 epochs, RNN λ = 0 takes 8 epochs, and RNN λ = 0.8 takes 6 epochs."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table supports the claim that both eligibility traces (RNN λ = 0.8 vs RNN λ = 0) and Adam (Adam column vs RMSprop column) provide performance improvements. Specifically, RNN λ = 0.8 with RMSprop (10 epochs) is faster than RNN λ = 0 with RMSprop (28 epochs). Also, all models with Adam (12, 8, 6 epochs) are faster than their RMSprop counterparts (23, 28, 10 epochs respectively). The claim that 'the model with traces gets to near optimal performance more than twice as quickly as the other models' when training with RMSprop is supported by comparing RNN λ = 0.8 (10 epochs) to DQN (23 epochs) and RNN λ = 0 (28 epochs). The claim that 'With Adam, the model learns to be optimal in just 6 epochs' is directly supported by the RNN λ = 0.8 entry under Adam.",
+          "issues": [],
+          "table_markdown": "| | RMSprop | Adam |\n|:---|:---|:---|\n| DQN | 23 | 12 |\n| RNN λ = 0 | 28 | 8 |\n| RNN λ = 0.8 | 10 | 6 |"
+        }
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "label": "Figure 3",
+        "number": "3",
+        "page": 7,
+        "caption": "Figure 3: Test scores on Tennis comparing RMSprop and Adam.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "line chart",
+          "description": "This figure consists of three line charts showing test scores on the game Tennis over epochs, comparing different models and optimizers: RMSprop with learning rate 0.00025, RMSprop with learning rate 0.001, and Adam with learning rate 0.00025.",
+          "data_read": [
+            "Each chart has 'epochs' on the x-axis, ranging from 0 to 80 for the first chart and 0 to 30 for the second and third charts.",
+            "The y-axis for all charts is 'scores', ranging from -30 to 30.",
+            "The legend indicates three lines: 'RNN trace=0.0' (blue squares), 'RNN trace=0.8' (green triangles), and 'DQN' (red circles).",
+            "In the 'RMSprop lr=0.00025' chart, 'RNN trace=0.0' reaches scores around 10-15 after about 40 epochs, while 'RNN trace=0.8' reaches scores around 20-25 after about 60 epochs. 'DQN' fluctuates between -20 and 0.",
+            "In the 'RMSprop lr=0.001' chart, 'RNN trace=0.0' fluctuates between -20 and 10, while 'RNN trace=0.8' reaches scores around 20-25 after about 20 epochs. 'DQN' fluctuates between -20 and 0.",
+            "In the 'Adam' chart, 'RNN trace=0.0' reaches scores around 10-15 after about 15 epochs, while 'RNN trace=0.8' reaches scores around 20-25 after about 10 epochs. 'DQN' fluctuates between -20 and 0."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states that 'Figure 3 shows that both RNN models learned to get optimal scores after about 50 epochs.' The charts for RMSprop lr=0.00025, RMSprop lr=0.001, and Adam lr=0.00025 all show the 'RNN trace=0.0' and 'RNN trace=0.8' lines (blue and green) reaching high positive scores (around 10-25) within or before 50 epochs, indicating optimal learning.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "label": "Table 2",
+        "number": "2",
+        "page": 7,
+        "caption": "Table 2: Number of epochs before getting to 20 points in Tennis. N/A represents the inability to reach such a level.",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the number of epochs required for different deep reinforcement learning models to reach a score of 20 points in the game of Tennis. It compares DQN, RNN with trace=0, and RNN with trace=0.8, across three different optimizers: RMSprop with learning rate 0.00025, RMSprop with learning rate 0.001, and Adam with learning rate 0.00025.",
+          "data_read": [
+            "The table has rows for 'DQN', 'RNN λ = 0', and 'RNN λ = 0.8'.",
+            "The columns are 'RMSprop lr=0.00025', 'RMSprop lr=0.001', and 'Adam lr=0.00025'.",
+            "For 'DQN' with 'RMSprop lr=0.00025', the value is 'N/A'.",
+            "For 'DQN' with 'RMSprop lr=0.001', the value is 'N/A'.",
+            "For 'DQN' with 'Adam lr=0.00025', the value is 'N/A'.",
+            "For 'RNN λ = 0' with 'RMSprop lr=0.00025', the value is '45'.",
+            "For 'RNN λ = 0' with 'RMSprop lr=0.001', the value is 'N/A'.",
+            "For 'RNN λ = 0' with 'Adam lr=0.00025', the value is '19'.",
+            "For 'RNN λ = 0.8' with 'RMSprop lr=0.00025', the value is '62'.",
+            "For 'RNN λ = 0.8' with 'RMSprop lr=0.001', the value is '27'.",
+            "For 'RNN λ = 0.8' with 'Adam lr=0.00025', the value is '13'.",
+            "N/A indicates the inability to reach the 20-point level."
+          ],
+          "supports_claims": null,
+          "support_rationale": "The article does not make any claims about this specific figure.",
+          "issues": [],
+          "table_markdown": "| | RMSprop lr=0.00025 | RMSprop lr=0.001 | Adam lr=0.00025 |\n|:---|:---|:---|:---|\n| DQN | N/A | N/A | N/A |\n| RNN λ = 0 | 45 | N/A | 19 |\n| RNN λ = 0.8 | 62 | 27 | 13 |"
+        }
+      }
+    ],
+    "figure_mentions": [
+      {
+        "figure_id": "fig_2",
+        "marker": "Figure 2",
+        "sentence": "First, we tested an RNN model both with X = 0 and x = 0.8, trained with RMSprop. Figure 2 shows that the model without a trace (X = 0) learned at the same rate as DQN, while the model with traces (X = 0.8) learned substantially faster and with more stability, without exhibiting any epochs with depressed performance.",
+        "section_id": "sec_12",
+        "start": 81,
+        "end": 89
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 1",
+        "sentence": "Finally, the results in Table 1 show that both using eligibility traces and Adam provide performance improvements.",
+        "section_id": "sec_12",
+        "start": 1319,
+        "end": 1326
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Figure 3",
+        "sentence": "Figure 3 shows that both RNN models learned to get optimal scores after about 50 epochs.",
+        "section_id": "sec_13",
+        "start": 450,
+        "end": 458
+      }
+    ],
+    "hidden_text_findings": [
+      {
+        "page": 6,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          131.0997730969862,
+          165.98002641462836,
+          136.36004706959423,
+          167.97893052421944
+        ]
+      },
+      {
+        "page": 6,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          282.7082094606182,
+          165.98002641462836,
+          287.9684834332262,
+          167.97893052421944
+        ]
+      },
+      {
+        "page": 7,
+        "text": "s",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          106.53852782413236,
+          293.7888135355524,
+          111.68921275564436,
+          295.776977919116
+        ]
+      },
+      {
+        "page": 7,
+        "text": "s",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          239.97761017704033,
+          293.7888135355524,
+          245.12829510855232,
+          295.776977919116
+        ]
+      },
+      {
+        "page": 7,
+        "text": "s",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          373.7391678241323,
+          293.7888135355524,
+          378.8898527556443,
+          295.776977919116
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          106.53852782413236,
+          298.0175258643238,
+          111.68921275564436,
+          299.9747861382983
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          239.97761017704033,
+          298.0175258643238,
+          245.12829510855232,
+          299.9747861382983
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          373.7391678241323,
+          298.0175258643238,
+          378.8898527556443,
+          299.9747861382983
+        ]
+      },
+      {
+        "page": 7,
+        "text": "s",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          106.53852782413236,
+          304.7340190150154,
+          111.68921275564436,
+          306.72218339857903
+        ]
+      },
+      {
+        "page": 7,
+        "text": "s",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          239.97761017704033,
+          304.7340190150154,
+          245.12829510855232,
+          306.72218339857903
+        ]
+      },
+      {
+        "page": 7,
+        "text": "s",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          373.7391678241323,
+          304.7340190150154,
+          378.8898527556443,
+          306.72218339857903
+        ]
+      }
+    ]
+  }
+}

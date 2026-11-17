@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<p>O agente propõe a rubrica a partir da área e dos critérios do método. Revise o rascunho antes de validar e ativar.</p>
+<form method="post">{% csrf_token %}
+{{ form.as_p }}
+<input type="submit" value="Rascunhar Question">
+</form>
+{% endblock %}
