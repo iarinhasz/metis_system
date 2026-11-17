@@ -16,6 +16,7 @@ Como funciona:
    espaço, hifenização e palavra grudada ("reasonabout") não contam como diferença, e uma nota
    colada no meio de uma frase só derruba os trechos em volta dela.
 4. Na cobertura, só conta a prosa do PDF: legenda, tabela e fórmula ficam de fora.
+5. Na fidelidade, as fórmulas da resposta, que a extração escreve em LaTeX, ficam de fora.
 """
 
 import re
@@ -35,6 +36,8 @@ WORD: Final = re.compile(r"[^\W\d_]{2,}")
 MIN_WORDS: Final = 8
 MIN_LETTER_SHARE: Final = 0.75
 GRAM_CHARS: Final = 20
+# Fórmula em LaTeX na resposta (a extração das seções escreve a matemática assim).
+LATEX_MATH: Final = re.compile(r"\$\$.+?\$\$|\\\[.+?\\\]|\$[^$\n]+?\$", re.DOTALL)
 # Frase do PDF com menos que isto dos seus trechos na resposta conta como faltando.
 SENTENCE_FOUND_SHARE: Final = 0.5
 
@@ -93,10 +96,13 @@ def coverage(local: str | None, extracted: str) -> float | None:
 
 def fidelity(local: str | None, extracted: str) -> float | None:
     """Fração da resposta que está no trecho local da seção; None quando não há o que verificar
-    (título não achado ou resposta vazia)."""
+    (título não achado ou resposta vazia). As fórmulas em LaTeX da resposta ficam de fora: o
+    `\\phi` dela não está no texto do PDF, que traz o `φ` (ou lixo), e não é de outra seção."""
     if local is None:
         return None
-    produced = _grams(extracted)
+    # Cada trecho entre fórmulas à parte: juntá-los criaria pedaços que não existem no PDF, onde
+    # a fórmula (o `φ`) fica no meio.
+    produced = set().union(*(_grams(part) for part in LATEX_MATH.split(extracted)))
     if not produced:
         return None
     return len(produced & _grams(local)) / len(produced)

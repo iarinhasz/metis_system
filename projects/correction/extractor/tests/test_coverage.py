@@ -141,3 +141,19 @@ def test_lists_the_missing_sentences_in_order() -> None:
     assert missing_sentences(f"{PROSE} {MORE} {third}", PROSE, limit=1) == [MORE]
     assert missing_sentences(f"{PROSE} {MORE} {third}", PROSE, limit=5) == [MORE, third]
     assert missing_sentences(None, PROSE, limit=2) == []
+
+
+def test_fidelity_ignores_the_latex_formulas_of_the_answer() -> None:
+    """A extração escreve a matemática em LaTeX (`\\phi`), que não está no texto do PDF (`φ`)."""
+    local = (
+        "We use approximate inference networks with parameters collected into φ. The single "
+        "dataset log likelihood lower bound is given by the expression below."
+    )
+    answer = (
+        "We use approximate inference networks with parameters collected into $\\phi$. The single "
+        "dataset log likelihood lower bound is given by the expression below.\n\n"
+        "$$\\mathcal{L}_D = \\mathbb{E}_{q(c|D;\\phi)}\\left[\\sum_{x \\in d} "
+        "\\log p(x|z;\\theta)\\right] \\tag{4}$$"
+    )
+
+    assert fidelity(local, answer) == 1.0
