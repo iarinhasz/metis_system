@@ -10,7 +10,7 @@ Avaliador de artigos científicos com IA. O Metis recebe o PDF de um artigo e:
 
 O sistema recomenda; não decide sozinho. Risco alto e pontos sem consenso vão para revisão humana.
 
-> **Situação (16/11/2026):** a plataforma, o E1 (extração), o E2 (perfil e Question), o E3 enxuto (texto oculto, regras de risco e gate humano), o E4 (avaliadores, juiz e revisão), o E5 (consolidação), a curadoria das Questions, o rubric check e o custo no admin estão implementados. **Com modelos reais, o E4 ainda não foi confirmado até o fim**: no primeiro run real ele terminou em `error_llm`, porque as respostas dos modelos não passavam nas validações; elas foram ajustadas em 16/11 e testadas com modelos falsos, mas ainda falta um run real chegar ao relatório. As checagens das referências no E3 (existência, retratação e consistência) também estão em andamento. Detalhes em [estado e métricas](docs/status_and_metrics.md) e na [divisão em módulos](planning/2026-11_november/2_divisao_equipe/divisao_em_modulos.html) (abra no navegador).
+> **Situação (16/11/2026):** a plataforma, o E1 (extração), o E2 (perfil e Question), o E3 enxuto (texto oculto, regras de risco e gate humano), o E4 (avaliadores, juiz e revisão), o E5 (consolidação), a curadoria das Questions, o rubric check e o custo no admin estão implementados. **Um PDF real já chega ao relatório final** (ICLR 410, 16/11, cerca de 15 min e US$ 1,07). A qualidade da avaliação ainda está sendo medida: muitas citações dos avaliadores não batem com o texto e são descartadas, e a comparação com as revisões reais do PeerRead está em andamento. As checagens das referências no E3 (existência, retratação e consistência) também estão em andamento. Detalhes em [estado e métricas](docs/status_and_metrics.md) e na [divisão em módulos](planning/2026-11_november/2_divisao_equipe/divisao_em_modulos.html) (abra no navegador).
 
 ## Como funciona
 
@@ -222,7 +222,7 @@ curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8100/api/attempts
 ```
 
-Hoje esse run passa pelo E1 (cerca de 1 min 40 s e US$ 0,12 para as 13 páginas), pelo E2 (cerca de 1 min) e pelo E3, e segue para o E4. No primeiro run real, o E4 terminou em `error_llm`; as correções de 16/11 ainda precisam ser confirmadas num run real. Se o E4 falhar, a mensagem do erro, na página do run, diz que passo falhou e por quê.
+Hoje esse run passa pelo E1 (cerca de 1 min 40 s e US$ 0,12 para as 13 páginas), pelo E2 (cerca de 1 min) e pelo E3, e pelo E4 (cerca de 12 min, três avaliadores, juízes e revisão) e o E5, e termina em `done`, com o relatório em `GET /api/runs/<run_id>/report`. Se o E4 falhar, a mensagem do erro, na página do run, diz que passo falhou e por quê.
 
 ## Desenvolvimento
 

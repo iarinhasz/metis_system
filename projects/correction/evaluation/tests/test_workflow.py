@@ -365,6 +365,42 @@ def test_e4_retry_finishes_after_a_failed_synthesis_without_a_stuck_judged_round
     assert names.count("judge") == slots
 
 
+@pytest.mark.django_db(transaction=True)
+def test_e4_retry_resumes_a_revision_round_whose_judge_failed(run: Run) -> None:
+    """O caso do run real: a rodada 2 já tem os vereditos válidos levados da rodada 1 quando o
+    juiz dela cai; a retomada não reescreve a rodada (travava em "revisão julgada")."""
+    prepared = _prepare_run(run)
+    _advance_to_evaluation(prepared)
+    task_id = "e4"
+    Run.objects.filter(pk=prepared.pk).update(
+        config_snapshot={
+            **prepared.config_snapshot,
+            "evaluation_mode": EvaluationMode.WHOLE_DOCUMENT.value,
+        },
+    )
+    active_run = Run.for_evaluation(prepared.pk, task_id)
+    response = _whole_document_output(active_run)
+    _, first_judgment, second_judgment, revision = _revision_judge_reports(active_run)
+    slots = len(EvaluatorSlot)
+    factory = FakeAgentFactory(
+        str(prepared.pk),
+        Stage.EVALUATION,
+        task_id=task_id,
+        scripts={
+            "whole_document_reviewer": [response] * slots,
+            "judge": [first_judgment] * slots + [LLMUnavailable("503")] + [second_judgment] * slots,
+            # A primeira revisão vem fora das regras (accept sem o item corrigido) e é recusada.
+            "reviser": [{**revision, "replacement": None}] * slots + [revision] * slots,
+        },
+    )
+
+    # A volta seguinte do laço de revisão retoma a rodada 2 no mesmo run.
+    result = run_evaluation(str(prepared.pk), task_id, factory=factory)
+
+    assert set(result["review_rounds"]) == {slot.value for slot in EvaluatorSlot}
+    assert len(ReviewRound.latest_for_consolidation(prepared.pk)) == slots
+
+
 def test_builder_uses_three_slots_and_snapshot_mode() -> None:
     from projects.correction.evaluation.tests.test_context import _context_run
 

@@ -284,7 +284,13 @@ class EvaluationExecutor:
             return row
 
         checkpoints = self.deps.revision_checkpoints(self.slot, round_number)
-        RevisionStep(self.deps.context, self.slot, self.deps.factory, checkpoints).execute()
+        started = ReviewRound.objects.filter(
+            run_id=self.deps.run_id, evaluator_slot=self.slot, round_number=round_number
+        ).first()
+        # Rodada que já começou a ser validada ou julgada já foi reescrita: o retry segue para a
+        # validação e o juiz, que só tratam o que falta. Regravá-la travava ("revisão julgada").
+        if started is None or not started.verdicts.exists():
+            RevisionStep(self.deps.context, self.slot, self.deps.factory, checkpoints).execute()
         ValidateStep(
             self.deps.context,
             RunValidationCheckpoints(
