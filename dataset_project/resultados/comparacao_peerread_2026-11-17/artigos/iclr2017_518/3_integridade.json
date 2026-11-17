@@ -1,0 +1,9 @@
+{
+    "run_id": "01a1e77d-9a30-748a-b509-0245f43fdcb7",
+    "risk": "low",
+    "rules_version": "v1",
+    "coverage": {
+        "hidden_text": true
+    },
+    "findings": []
+}

@@ -1,0 +1,385 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T10181",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "Neural Disambiguation of Causal Lexical Markers based on Context",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "table",
+        "page": 3,
+        "label": "Table 1",
+        "caption": "Table 1: Explicit and implicit causal relations"
+      },
+      {
+        "id": "fig_2",
+        "kind": "table",
+        "page": 4,
+        "label": "Table 2",
+        "caption": "Table 2: Examples of different meanings of the prepositions since and after taken from the AltLex corpus"
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "page": 4,
+        "label": "Table 3",
+        "caption": "Table 3: Number of instances in the AltLex corpus"
+      },
+      {
+        "id": "fig_4",
+        "kind": "table",
+        "page": 5,
+        "label": "Table 4",
+        "caption": "Table 4: Distribution of the lexical markers"
+      },
+      {
+        "id": "fig_5",
+        "kind": "figure",
+        "page": 5,
+        "label": "Figure 1",
+        "caption": "Figure 1: The network architecture"
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 5",
+        "caption": "Table 5: Results of the baselines (B1 and B2) and the configurations evaluated"
+      },
+      {
+        "id": "fig_7",
+        "kind": "figure",
+        "page": 7,
+        "label": "Figure 2",
+        "caption": "Figure 2: Distribution of the most frequent connectives in the class Cause"
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 6",
+        "caption": "Table 6: Number of relations in the reduced version of the AltLex Corpus"
+      },
+      {
+        "id": "fig_9",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 7",
+        "caption": "Table 7: Results of B1 and Pair_LSTM_Mean_Adam with the reduced version of the AltLex corpus"
+      },
+      {
+        "id": "fig_10",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 8",
+        "caption": "Table 8: Some correctly classified examples by our best configuration and misclassified by B2"
+      }
+    ],
+    "abstract": "Causation is a psychological tool of humans to understand the world and it is projected in natural language. Causation relates two events, so in order to understand the causal relation of those events and the causal reasoning of humans, the study of causality classification is required. Herein, we propose a neural network architecture for the task of causality classification. We claim that the encoding of the meaning of a sentence is required for the disambiguation of its causal meaning. Our results show that our claim holds, and we outperform the state-of-the-art.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 Introduction",
+        "first_sentence": "Causation is a psychological tool of humans to un-derstand the world independently of language, and it is one of the principles involved in the construc-tion of the human mental model of reality (Neele-man and van de Koot, 2012)."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "related_work"
+        ],
+        "title": "2 Related Work",
+        "first_sentence": "Khoo et al."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "3 Causality classification",
+        "first_sentence": "The next sections expose the definition of the task (Section 3.1), the data used in the experiments (Sec-tion 3.2) and the proposed system (Section 3.3)."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "other"
+        ],
+        "title": "3.1 Definition",
+        "first_sentence": "Causality is defined as the semantic relation be-tween two events (e1, e2), namely causing event(cause, e₁) and caused event (effect, e2)."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "method"
+        ],
+        "title": "3.2 Data",
+        "first_sentence": "Causality may be signalled by a verb (cause), a preposition (because), an adverb (subsequently) or an expression such as as a result of."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "related_work"
+        ],
+        "title": "3.3 Disambiguation of the Causal Meaning",
+        "first_sentence": "Kruengkrai et al."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "method",
+          "results"
+        ],
+        "title": "4 Experiments and Results",
+        "first_sentence": "As far as we know, the AltLex corpus has been only used in the work in which it was presented (Hidey and McKeown, 2016), therefore we consider their method as the state of the art on that corpus."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method"
+        ],
+        "title": "4.1 Baselines",
+        "first_sentence": "We consider two baselines in order to compare our proposal."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "results"
+        ],
+        "title": "4.2 Results",
+        "first_sentence": "The results reached by our system are shown in Table 5.1 The Precision, Recall and F1 values were used to measure the performance of the system in the Causal Class, and the Accuracy to measure the overall performance of the system."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "other"
+        ],
+        "title": "4.3 Analysis",
+        "first_sentence": "As mentioned in the previous sections, there are some linguistic constructions that can represent a causal meaning in some contexts, but not in other and vice-versa."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "5 Conclusions and Future Work",
+        "first_sentence": "We defined the task of causation classification as a task composed of another two subtasks: causal meaning classification and causal argument classifi- cation."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "neural network",
+      "causality classification",
+      "natural language processing",
+      "lexical markers"
+    ],
+    "language": "en",
+    "confidence": 0.9,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "other"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "method",
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "other"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "neural network",
+      "causality classification",
+      "natural language processing",
+      "lexical markers"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T10181",
+        "name": "Natural Language Processing Techniques",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.9,
+    "paper_type": "empirical",
+    "secondary_areas": [],
+    "field_confidence": 0.9,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.95
+  }
+}

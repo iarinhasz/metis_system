@@ -1,0 +1,2073 @@
+{
+  "sha256": "94fae1bc3bebcfc60bcee55fd76cc879ead81fa0a46a38ff2de5ebb41b9b9d19",
+  "version": "2a9b3bd344b6070b",
+  "created_at": "2026-11-17T03:23:40.565740+00:00",
+  "article": {
+    "title": "Neural Disambiguation of Causal Lexical Markers based on Context",
+    "authors": [
+      "Anonymous ACL submission"
+    ],
+    "language": "en",
+    "model": "google/gemini-2.5-flash",
+    "sections": [
+      {
+        "id": "sec_1",
+        "title": "Abstract",
+        "level": 1,
+        "parent_id": null,
+        "key": "abstract",
+        "text": "Causation is a psychological tool of humans to understand the world and it is projected in natural language. Causation relates two events, so in order to understand the causal relation of those events and the causal reasoning of humans, the study of causality classification is required. Herein, we propose a neural network architecture for the task of causality classification. We claim that the encoding of the meaning of a sentence is required for the disambiguation of its causal meaning. Our results show that our claim holds, and we outperform the state-of-the-art.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_2",
+        "title": "1 Introduction",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Causation is a psychological tool of humans to un-derstand the world independently of language, and it is one of the principles involved in the construc-tion of the human mental model of reality (Neele-man and van de Koot, 2012). Causal reasoning is the process of relating two events, namely cause and its effect. Following the words of Reinhart (2002), causal relations are imposed by humans on the input from the world, and the (computational) linguist's task is to understand what is about lan-guage that enables speakers to use it to describe their causal perceptions.\nThere are different theories concerning how nat-ural language approximates causation. Those the-ories based on generative semantics argue that the causal relation is encoded in the semantics of some verbs (Lakoff, 1970; McCawley, 1976) or in the syntactic structure of a sentence (Dowty, 1979; Ramchand, 2008). For instance, Pylkkänen (2008) argues that the causing event may be associated with the subject of the causal verb in a causal pred-icate. This principle is true in the sentence \"Pe-ter eventually killed John by hitting him with a hammer\", in which the event of Peter hitting John with a hammer caused the death of John. But, the following sentence can be used as a counterexam-ple: \"A hammer eventually killed John\". In the later sentence the subject of “killed” is the “ham-mer\", which does not constitute a causing event for the event “kill John”. Therefore, the syntax-grounded construction of causality defined by those theories is far away from the human mental model of causation. Indeed, Neeleman and van de Koot (2012) showed that the later approaches cannot be proven by standard syntactic tests, because neither the causing event nor causal relation correspond to a syntactic constituent. Neeleman and van de Koot (2012) concluded that the linguistic approxi-mation of causation by culmination of events is not exclusive of causal verbs, and it is also found in non-causative verb classes.\nCausation or causality has also been studied in computational linguistics. There are some seman-tic and discourse resources that take into account causality in the range of linguistic phenomena that they annotate. PropBank (Palmer et al., 2005) is a semantic resource that annotates the argument structure of verbs. The type of causation annotated in PropBank is related to the syntax and semantics of the verbs. For the sentences John broke the win-dow and \"The hammer broke the window\", \"John\" and \"the hammer\" are the cause arguments of the verb \"broke\". Although, “John” and “the hammer\" are required arguments for the event expressed by \"break\", they do not represent the causing event of the window breaking event.\nCausality is one of the discourse relations in Penn Discourse Tree Bank (PDTB) (Prasad et al., 2008). Causality is annotated in PDTB as either an explicit or an implicit relation between events. When causality is explicit, it is signalled by a lexi-cal marker such as because or since between others.\nHowever, there are some scenarios where the causal discourse relation is not signalled by a known lexi-cal marker, but by other expressions that are called Alternative Lexicalizations (AltLex). The existence of AltLex means that the expression of causality is not defined by a limited number of lexical con-structions, so the coverage of the total number of possible causal expressions is restricted to the grade of coverage of the base corpus of PDTB.\nThe previous paragraphs and the works de-scribed in Section 2 show that causality is driven by a limited set of lexical elements and syntactic con-structions. However, causality does not have a fixed list of lexical or syntactic constructions. Hidey and McKeown (2016) stressed the issue of the limited coverage of causal expressions and released a cor-pus with a larger amount of causal expressions than PDTB. They also proposed a classification method, which is based on the use of features from the cor-pus and features from lexical resources. The last set of features reduces the ability of the system to classify causality, because they restrict the system to the causal definition of the lexical resources.\nCausal meaning disambiguation is the task of identifying whether there is a causal relation be-tween two events. We hypothesize that neural net-works are able to encode the meaning of those events, and discover whether the underlying rela-tion between them is causal. Herein, we contribute a neural network architecture for the task of causal-ity disambiguation and we assess it in the corpus of Hidey and McKeown (2016). Empiric results on this corpus show that our claim indeed holds.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_3",
+        "title": "2 Related Work",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "Khoo et al. (1998) presented one of the first works related to the classification of causal relations. The authors defined a set of linguistic rules for the identification of cause-effect relations, and developed a pattern matching system based on those rules. The errors of the system show the common errors of a full linguistically grounded classification system, which are related to the ambiguity of some causal links such as by or as or the lexical and syntactic ambiguity of some causative verbs. Those errors are related to the lack of evidence of the syntax basis of causation (Neeleman and van de Koot, 2012).\n\nGirju (2003) proposed a decision tree learning method to classify causal relations between events. The type of relations studied by the author are those conveyed by a verb and two noun phrases. The classification method uses as lexical features whether the verb of the sentence belongs to a list of ambiguous causative verbs, and whether the nouns belongs to one of the nine semantic hierarchies in WordNet. Again, the main source of errors is the ambiguity of the projection of causality in natural language.\n\nBethard and Martin (2008) defined a method for the classification of causal relations between verbal events in conjunction constructions, namely conjoined events. Since the method was defined for a specific kind of causal relation between events, the authors had to first create a corpus following that requirement. The authors developed a supervised classification system using syntactic and semantic features from WordNet, and they used SVM as a classification algorithm. The drawback of the method is its reduced flexibility, because it is only defined for a specific causal construction and its confidence in syntactic features. Moreover, the authors conclude that semantic features are more adequate for causality classification than syntactic features, which goes in the direction of our claim.\n\nThe first attempt of encoding the contextual information for causality classification between events is found in Do et al. (2011). The authors defined a measure of the causality relation between two events according to the co-occurrence frequency between the predicates and their arguments. The measure is inspired by the causality score defined by Riaz and Girju (2010).\n\nFollowing the work of Do et al. (2011), Riaz and Girju (2013, 2014) built a knowledge base for causal events, first for events related by a pair of verbs, and then for events conveyed by pairs of verbs and noun phrases. In these works, the authors attempted to go in the direction of using distributional semantics in order to encode the causal meaning, but they still rely on the use of lexical and syntactic features. Thus, the main drawbacks of those papers are the complex featuring engineering process to detect the causal relation, and the restricted coverage of the resulting knowledge bases.\n\nFollowing the previous approaches, Mirza and Tonelli (2016) described a causal classification system built upon a rule based system and a machine learning algorithm based on lexical, syntactic and semantic features. The novelty lies in the use of features of temporal relations. The work of Mirza and Tonelli (2016) has similar issues to the work of (Bethard and Martin, 2008), because they use similar features to represent causality.\n\nThe previous works support the idea that causality is defined by a specific syntactic construction or the semantics of verbs known as causative verbs. On the other hand, some of the works restricted their study to a narrow kind of syntactic constructions, such as the conjoined events of Bethard and Martin (2008). In contrast, we argue that the representation of causality should not be limited by syntactic patterns or the coverage of semantic resources, due to the lack of a particular linguistic construction for causality. Therefore, we propose the neural encoding of the context of the relation in order to disambiguate its causal meaning.",
+        "has_footnotes": false,
+        "coverage": 0.9084768659236744,
+        "fidelity": 0.9940643548890972
+      },
+      {
+        "id": "sec_4",
+        "title": "3 Causality classification",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "The next sections expose the definition of the task (Section 3.1), the data used in the experiments (Sec-tion 3.2) and the proposed system (Section 3.3).",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_5",
+        "title": "3.1 Definition",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "Causality is defined as the semantic relation be-tween two events (e1, e2), namely causing event(cause, e₁) and caused event (effect, e2). An eventmay be a verb, whose arguments may be explicitlypresent or not (subject, verb, object), or a nounphrase. The relation can be explicit or implicit, incase it is explicitly expressed, it is signalled by alexical marker (l), which may be a verb, a preposi-tion, an adverb or an expression such as as a resultof, see Table 1.\nSome researchers impose two additional restric-tions: the temporal restriction, which means thatthe causing event should take place before thecaused event, and the counterfactual one, whichsays if the causing event did not occur, the causedevent would not have occurred either. Thus, cau-sation can be formally defined as e1 → e2. Anexample from the test set used in the experimentsthat follows the three restrictions is the following:\nA government affidavit in 2006 stated that (the leak)e1(caused 558,125 injuries, including 38,478 temporary par-tial injuries and approximately 3,900 severely and perma-nently disabling injuries)e2\nIt is evident that e₁ is before e2 and if the leakdid not occur, the set of events in e2 would notoccur. Nevertheless, we support the same opinionas Neeleman and van de Koot (2012) and we do notadd the counterfactual constraint in our definition,because it is not true in all the cases. For example:\n(The argument between John's parents)e, (broke thewindow)e2\nIf we follow the counterfactual constraint, theevent of the argument between the John's parents should be the causing event. However, the humanmental model of causality does not usually relate anargument with the breaking of a window. Causationis concerned with the human understanding of theworld and not with the world itself.\nConcerning the temporal restriction, it should beinterpreted as a physical ordering constraint and notas a positional one. That means, the causing eventdoes not always appear before the caused event inthe sentence. The caused event (e2) is before thecausing event (e₁) in the following example:\n(This water was diverted)e2 ([due to] a combination of im-proper maintenance, leaking and clogging, and eventuallyended up in the MIC storage tank.)e1\nSome related work attempted to identify thecausing, the caused event and its direction (Mirzaand Tonelli, 2016), but for that purpose, they re-stricted the study to a specific syntactic construc-tion. We claim that the task of causality classifi-cation has not to be restricted to a syntactic con-struction and it has to be set up as a two steps task:causal meaning classification and causal argumentsidentification. The task of causal meaning classifi-cation is a binary classification task that is definedas the disambiguation of the causal meaning of therelation of two events. The input of the task is twoevents and the output is the meaning of the relation(Causal or Non Causal). The task of causalargument identification is focused on the identifica-tion of the causing (e1) and caused (e2) events. Theaim of this paper is to contribute to the first sub-task, so given two events (e1, e2) and the expressionsusceptible of signalling causality (l), the system re-turns the meaning of the relation (Causal or NonCausal). The following sentence is an exampleof the input of our system.\n(He fell in love with her and changed his life)e, ([so] hecould help her)e2",
+        "has_footnotes": false,
+        "coverage": 0.7717799795011958,
+        "fidelity": 0.9790497568275346
+      },
+      {
+        "id": "sec_6",
+        "title": "3.2 Data",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "Causality may be signalled by a verb (cause), a preposition (because), an adverb (subsequently) or an expression such as as a result of. Some of those causal expressions are almost unambiguous, but the causal meaning of others totally depends on the context. For instance, according to PDTB, the preposition because is an unambiguous lexical marker of causation, but there are other expressions whose causal meaning is not unarguable, such as since or after that may have a temporal or a causal interpretation, see Table 2. Therefore, we need a corpus in which the events, the lexical marker and the meaning of the relation are annotated.\n\nTo the best of our knowledge, there are three available corpora. The first one was exposed in Bethard and Martin (2008) and it is built on top of the Penn TreeBank corpus. The corpus only provides the position of the related events in each sentence and whether the relation is causal. Unfor-tunately, the corpus is not freely available, and is also not large enough to train neural methods.\n\nThe second corpus is Causal-TimeBank (Mirza et al., 2014), which is built on top of the TimeML corpus. Annotation was restricted to explicit causal relations. They followed the same annotation schema of TimeML, so they defined the label C-SIGNAL for the causal lexical markers, and C-LINK to mark the causal relation between two events. The authors manually annotated the causal relations between the identified events in TimeML. The fact that the causal lexical markers are anno-tated agrees with our data requirements, but as the previous corpus, Causal-TimeBank is too small to train neural methods.\n\nRecently, the AltLex corpus has been freely re-leased (Hidey and McKeown, 2016). The corpus was built on the idea that causation can be ex-pressed by different kinds of linguistic construc-tions. This is validated by the fact that in PDTB there are explicit causal lexical markers, and other sort of expressions that have a discourse meaning, which are called AltLex. The relations signalled by an AltLex expression are implicit relations, in which the annotator did not find an appropriate con-nective to insert between the events, because the meaning of the relation is entailed by other expres-sions, namely AltLex. Furthermore, some causal lexical markers can be perceived as variations of the basic ones, but those variations are not usu-ally in the list of discourse connectives. Thus, the authors of the AltLex corpus decided to develop a method to identify a larger amount of AltLex expressions with causal meaning. The corpus con-struction leveraged Simple Wikipedia, by aligning sentences from Wikipedia that consist of unknown lexical causal markers with sentences from Simple Wikipedia that contain corresponding known lexi-cal causal markers. Once a first set of causal and non-causal sentences were identified, a bootsrap-ping method was applied to enhance the corpus. We call \"non bootstrapping\" to the first version of the corpus and \"bootstrapping\" to the second one. The corpus size is shown in Table 3. For further details see (Hidey and McKeown, 2016).\n\nThe class distribution of the lexical markers should be studied, because one of the features of the corpus is the annotation of the lexical markers sus-ceptible of expressing causation. Table 4 shows the class distribution of the lexical markers, as well as the the number of unarguable ones and the number of lexical markers with mostly a different mean-ing in the training and the test set. According to the Table 4, there are few ambiguous connectives, 121 in the “non bootstrapping\" corpus and 147 in the \"bootstrapping\" version. However, there is an important difference between the two versions of the corpus: there are no differences between the training and the test set in the “non bootstrapping\" version, but there are in the \"bootstrapping\" one. This fact means that the “bootstrapping\" version of the corpus has some instances that do not follow the class distribution of the training set, so they represent a higher difficulty for the classification system. Section 4.3 exposes the good performance of the proposed system in some of those instances.",
+        "has_footnotes": false,
+        "coverage": 0.865160848733744,
+        "fidelity": 0.9884603704828424
+      },
+      {
+        "id": "sec_7",
+        "title": "3.3 Disambiguation of the Causal Meaning",
+        "level": 2,
+        "parent_id": "sec_4",
+        "key": null,
+        "text": "Kruengkrai et al. (2017) describe a Multi-column Convolutional Neural Network (CNN) that uses background knowledge for the identification of the causal meaning of an input sentence in Japanese. Convolutional networks excel at pattern learning in input data, however causation does not have a particular syntactic structure as it was mentioned. Moreover, CNN requires the definition of the kernel size, which means that we should know beforehand the length of the context that projects the causal meaning of the sentence. Nevertheless, the list of expressions that may represent a causal meaning is not limited and some sentences implicitly express causality. On the other hand, Long short-term memory (LSTM) recurrent neural networks (RNN) (Hochreiter and Schmidhuber, 1997) can encode the sequential information of the input text. Melamud et al. (2016) also showed that using an LSTM results in a more precise context encoding and substantially improve performance in several tasks upon the common average-of-words-embeddings representation. Therefore, we propose the use of LSTM RNN instead of a CNN, because we argue that LSTM has a higher capacity of encoding meaning for the task of causality classification.\n\nWe propose a neural network architecture with two inputs, which is mainly based on the encoding of the two inputs with an LSTM and the use of several dense layers with a tanh activation function. Following the assumption that some sort of relation should exist between the two events of a causal relation, the first evaluated model consists of two connected LSTMs, or in other words, the LSTM network of the second event of the causal relation is initialized with the last state of the first LSTM. We call to this architecture \"Stated_Pair_LSTM\". We also evaluated the same architecture but without the connection between the two LSTMs. We call to this second architecture \"Pair_LSTM\" and it is depicted in Figure 1.\n\nAccording to Figure 1, the first input of the system is the first event of the relation, and the second input is the concatenation of the lexical marker and the second event. The text processing starts with the tokenization of the two inputs, and the representation of them as a matrix of word embedding vectors. The set of pre-trained embeddings used was Glove (Pennington et al., 2014), specifically the 300 dimension reference vectors of the 840B cased tokens set.\n\nThe lengths of the first (n) and the second (m) input are not the same, so three zero-padding strategies were evaluated to measure which of them is the most convenient to encode the causal meaning. The maximum, the mean and mode of the length of the two inputs were calculated:\n\nVx ∈ IRnxd and ∀y ∈ IRmxd pad(x) = {max(x), mean(x), mode(x)} where x and y are the first and second input and d is the length of the word embedding vectors.\n\nSubsequently, each of the two outputs of the encoding layer are vectorized to a vector of length 100 by a dense layer with a tanh activation function. The context of the causal relation is represented by the concatenation of the two vectors.\n\nWEIR100xnd and b∈ IR100 vec(x): IRnxd → IRnd tanh(Wx+b) context: (vec(x), vec(y))",
+        "has_footnotes": false,
+        "coverage": 0.8269073010664479,
+        "fidelity": 0.9532
+      },
+      {
+        "id": "sec_8",
+        "title": "4 Experiments and Results",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "As far as we know, the AltLex corpus has been only used in the work in which it was presented (Hidey and McKeown, 2016), therefore we consider their method as the state of the art on that corpus. Moreover, as it has been mentioned several times, the task of causality classification lacks of representative or large enough corpus that covers a wide range of causal expressions, as well as without the restriction of being composed of specific causal constructions. Therefore, the methods were only evaluated with the AltLex corpus. We have used the two versions of the corpus (“non bootstrapping\" and \"bootstrapping”) in our experiments. The size of each of them is shown in Table 3.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_9",
+        "title": "4.1 Baselines",
+        "level": 2,
+        "parent_id": "sec_8",
+        "key": null,
+        "text": "We consider two baselines in order to compare our proposal. The first one (B1) is founded on the use of the most common class of each causal connective according to its class in the training data. For example, if the lexical marker since has mostly a causal meaning, B1 always classifies the relation signalled by since as Causal. A similar approach was also used in (Hidey and McKeown, 2016).\n\nThe second baseline (B2) is the system of Hidey and McKeown (2016), which is based on SVM with a large set of features generated from the com-bination of features from the original parallel cor-pus and some lexical resources (WordNet, Verb-Net and PropBank). The fact of relying on lexical resources restricts the recall of the system to the linguistic coverage of the lexical resources. In con-trast, we propose a neural network architecture fed only by a set of word embedding vectors, which has a higher ability of generalization as it is shown later in the paper.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_10",
+        "title": "4.2 Results",
+        "level": 2,
+        "parent_id": "sec_8",
+        "key": null,
+        "text": "The results reached by our system are shown in Table 5.1 The Precision, Recall and F1 values were used to measure the performance of the system in the Causal Class, and the Accuracy to measure the overall performance of the system.\n\nThe performance of B1 defines a hard baseline for the two versions of the corpus. On the other hand, the good performance of B1 might indicate that the training corpus is composed of few unambiguous causal connectives. Concerning the results reached by the proposed systems, all the configurations in Table 5 outperform the baseline B1, which means that the system learns beyond the class distribution of the lexical markers in the training data.\n\nThose configurations that use Adadelta as optimizer outperform the system B2 in the “non bootstrapping\" version of the corpus. The behaviour of B2 shows a big difference between Precision and Recall, indicating that the system has many false positives, i.e. a large number of sentences without a causal meaning. This is not a desirable behaviour. On the other hand, our system has a high Precision with lower Recall, indicating it mainly classifies correctly sentences with unambiguous connectives. Figure 2 shows that the most frequent connectives in the Causal class do not have any instance in the Non Causal class, which supports our last assertion. The best configuration (“Pair_LSTM_ Max_Adadelta\") uses the maximum operation for the zero-padding strategy and Adadelta as learning optimizer. Our proposal in this scenario improves the state of the art by 2.13% according to F1 in the Causal class (C) and 7.72% according to Accuracy. We observe a similar trend in the performance of the system with the \"bootstrapping\" version of the corpus, i.e. the system architecture “Pair_LSTM” tends to reach better results than the architecture \"Stated_LSTM\". This behaviour means that our assumption about the relation between the meanings of the two input events does not hold, so it is better to encode each argument independently and then to measure the relation between the arguments by using dense layers. Concerning the optimizers, the results show a similar behaviour in both architectures. The Adadelta optimizer promotes the Recall and penalizes Precision, whereas the system reaches a higher value of Precision and a smaller difference between Precision and Recall when Adam optimizer is used, which is a more desirable behaviour. A high value of Precision and a high value of Recall mean that there is a good balance between the accuracy in the disambiguation of the causal meaning of the relation and the coverage of different ways of expressing causality. To conclude, the system that reached the highest performance is the one that used the mean strategy for zero-padding and the optimizer Adam.\n\nMost of the configurations of the proposed neural network outperform the baseline B2. If we look at the values of Precision, our proposal improves the Precision value of B2 by 3.89% . However, B2 is better 2.41% according to the Recall value. The good Recall value of B2 system entails a drop in the performance according to the Precision. This behaviour is also developed by the neural network configurations that use maximum strategy for zero-padding and Adadelta as optimizer, but in those cases the Recall and the Pre- cision are greater. As previously mentioned, this means that the systems have a large number of false positive instances, so they might not be correctly learning the characteristics of the Causal class. In contrast, \"Pair_LSTM_Mean_Adam\" reached the best Precision in the Causal class and the less difference between Precision and Recall, thus it also reached a better balance between the accuracy in the disambiguation of the causal relation and the coverage of different ways of expressing causality.\n\nThe class distribution of the AltLex corpus is not balanced (see Table 3), so we reduced the number of instances of the Non Causal by a factor of ten with the aim of evaluating our system with a more balanced dataset. The new corpus size is in Table 6. We assessed the performance of the baseline B1 and the system “Pair_LSTM_Mean_Adam\" and the results are in Table 7. Regarding the performance of B1 in the \"non bootstrapping version”, the Precision is lower and the Recall is higher than in the previous experiments, which means that the number of false positives is large, so it is not learning the characteristics of the class Causal. As in the previous set of experiments, B1 promotes Recall and penalizes Precision in the \"bootstrapping\" version of the corpus, which is not a desirable behaviour. In contrast, our network architecture followed the same trend in both set of experiments and with the both version of the corpus. “Pair_LSTM_Mean_Adam\" significantly improves the performance of B1 according to the McNemar's test with a P-value of 0.005 and 0.05 respectively.",
+        "has_footnotes": true,
+        "coverage": 0.7906546990496304,
+        "fidelity": 0.9850706478272461
+      },
+      {
+        "id": "sec_11",
+        "title": "4.3 Analysis",
+        "level": 2,
+        "parent_id": "sec_8",
+        "key": null,
+        "text": "As mentioned in the previous sections, there are some linguistic constructions that can represent a causal meaning in some contexts, but not in other and vice-versa. A better balance between Precision and Recall in the Causal class means that the system learns the causal meaning better. Roughly speaking, the quality of the causal disambiguation is better, also for those lexical markers that are mostly Causal in the training data. We present some correctly classified examples by our best configuration and misclassified by B2 in Table 8. It shows the class of the instance in the test corpus and the value of the most frequent class in the train- ing corpus. The behaviour of the verb break should be stressed since it is considered as a causative verb. However, there are some other uses of break that do not have a causal meaning (see Table 8).\n\nThe behaviour of the proposed system with the connective which then is also remarkable. That connective is totally ambiguous, because it only has one instance labelled as Causal and other as Non Causal in the training data. We have to take into account that we work with word embed- dings, so if the individual words which and then are over-represented in one class, that fact can de- termine the behaviour of the classification system.\n\nThe individual term which does not appear in any instance of the training corpus, while the word then is mostly in sentences without a causal meaning. Despite the difficulty of the expression which then, we can see in Table 8 that our proposed system cor- rectly disambiguate its causal meaning, while the system of Hidey and McKeown (2016) does not. Therefore, the results reached and those examples allow us to confirm our claim that the encoding of the context is required for the disambiguation of the causal meaning as we have shown in this paper.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_12",
+        "title": "5 Conclusions and Future Work",
+        "level": 1,
+        "parent_id": null,
+        "key": null,
+        "text": "We defined the task of causation classification as a task composed of another two subtasks: causal meaning classification and causal argument classifi- cation. The paper was focused on the first subtask, and we claim that the encoding of the two events of the relation is required for a suitable disambigua- tion of causality. We proposed an encoding system based on a neural network with two inputs, one for the first event and the other for the lexical marker and the second event. Our proposed system outper- forms the state-of-the-art. We also showed the suc- cess of the system in some non-causative sentences but with commonly causative verbs (see Table 8).\n\nOne of the problems of the task is the lack of resources, so, as future work, we plan the creation of a new corpus for the two subtasks of causality classification, namely causality disambiguation and causality argument classification.",
+        "has_footnotes": false,
+        "coverage": 1.0,
+        "fidelity": 1.0
+      },
+      {
+        "id": "sec_13",
+        "title": "References",
+        "level": 1,
+        "parent_id": null,
+        "key": "references",
+        "text": "Steven Bethard and James H. Martin. 2008. Learning semantic links from a corpus of parallel temporal and causal relations. In Proceedings of the 46th Annual Meeting of the ACL on Human Language Technologies: Short Papers. Association for Computational Linguistics, Stroudsburg, PA, USA, HLT-Short '08, pages 177-180. http://dl.acm.org/citation.cfm?id=1557690.1557740.\n\nQuang Xuan Do, Yee Seng Chan, and Dan Roth. 2011. Minimally supervised event causality identification. In Proceedings of the Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Stroudsburg, PA, USA, EMNLP '11, pages 294-303. http://dl.acm.org/citation.cfm?id=2145432.2145466.\n\nDavid R. Dowty. 1979. Word meaning and Montague grammar: The semantics of verbs and times in generative semantics and in Montague's PTQ. Dordrecht, D. and Reidel Pub. Co.\n\nRoxana Girju. 2003. Automatic detection of causal relations for question answering. In Proceedings of the ACL 2003 Workshop on Multilingual Summarization and Question Answering - Volume 12. Association for Computational Linguistics, Stroudsburg, PA, USA, MultiSumQA '03, pages 76–83. https://doi.org/10.3115/1119312.1119322.\n\nChristopher Hidey and Kathy McKeown. 2016. Identifying causal relations using parallel wikipedia articles. In Proceedings of the 54th Annual Meeting of the ACL (Volume 1: Long Papers). Association for Computational Linguistics, Berlin, Germany, pages 1424-1433. http://www.aclweb.org/anthology/P16-1135.\n\nSepp Hochreiter and Jürgen Schmidhuber. 1997. Long short-term memory. Neural Comput. 9(8):1735-1780. https://doi.org/10.1162/neco.1997.9.8.1735.\n\nChristopher S. G. Khoo, Jaklin Kornfilt, Robert N. Oddy, and Sung Hyon Myaeng. 1998. Automatic extraction of cause-effect information from newspaper text without knowledge-based inferencing. Literary and Linguistic Computing 13(4):177–186. https://doi.org/10.1093/llc/13.4.177.\n\nDiederik P. Kingma and Jimmy Ba. 2015. Adam: A method for stochastic optimization. In 3rd International Conference for Learning Representations, San Diego, 2015. http://arxiv.org/abs/1412.6980.\n\nCanasai Kruengkrai, Kentaro Torisawa, Chikara Hashimoto, Julien Kloetzer, Jong-Hoon Oh, and Masahiro Tanaka. 2017. Improving event causality recognition with multiple background knowledge sources using multi-column convolutional neural networks. In Proceedings of the 31st AAAI Conference on Artificial Intelligence (AAAI-17). San Francisco, California, USA, page to appear.\n\nGeorge Lakoff. 1970. Irregularity in Syntax. Holt, Rinehart and Winston, New York.\n\nJames McCawley. 1976. Grammar and Meaning. New York Academic Press.\n\nOren Melamud, Jacob Goldberger, and Ido Dagan. 2016. context2vec: Learning generic context embedding with bidirectional LSTM. In Proceedings of the 20th SIGNLL Conference on Computational Natural Language Learning, CoNLL 2016, Berlin, Germany, August 11-12, 2016. pages 51–61. http://aclweb.org/anthology/K/K16/K16-1006.pdf.\n\nParamita Mirza, Rachele Sprugnoli, Sara Tonelli, and Manuela Speranza. 2014. Annotating causality in the tempeval-3 corpus. In Proceedings of the EACL 2014 Workshop on Computational Approaches to Causality in Language (CAtoCL). Association for Computational Linguistics, Gothenburg, Sweden, pages 10-19. http://www.aclweb.org/anthology/W14-0702.\n\nParamita Mirza and Sara Tonelli. 2016. Catena: Causal and temporal relation extraction from natural language texts. In Proceedings of COLING 2016, the 26th International Conference on Computational Linguistics: Technical Papers. The COLING 2016 Organizing Committee, Osaka, Japan, pages 64-75. http://aclweb.org/anthology/C16-1007.\n\nAd Neeleman and Hans van de Koot. 2012. The linguistic expression of causation. In Martin Everaert, Marijana Marelj, and Tal Siloni, editors, The Theta System: Argument Structure at the Interface, Oxford University Press, pages 20-51.\n\nMartha Palmer, Daniel Gildea, and Paul Kingsbury. 2005. The proposition bank: An annotated corpus of semantic roles. Comput. Linguist. 31(1):71–106. https://doi.org/10.1162/0891201053630264.\n\nJeffrey Pennington, Richard Socher, and Christopher D. Manning. 2014. Glove: Global vectors for word representation. In Empirical Methods in Natural Language Processing (EMNLP). pages 1532-1543. http://www.aclweb.org/anthology/D14-1162.\n\nRashmi Prasad, Nikhil Dinesh, Alan Leeand, Eleni Miltsakaki, Livio Robaldo, Aravind Joshi, and Bonnie Webber. 2008. The penn discourse treebank 2.0. In Proceedings of the Sixth International Conference on Language Resources and Evaluation (LREC'08). European Language Resources Association (ELRA), Marrakech, Morocco. Http://www.lrec-conf.org/proceedings/lrec2008/.\n\nLiina Pylkkänen. 2008. Introducing arguments, volume 49. MIT press.\n\nGillian Catriona Ramchand. 2008. Verb Meaning and the Lexicon: A First Phase Syntax. Cambridge University Press, Cambridge. https://doi.org/10.1017/CBO9780511486319.\n\nTanya Reinhart. 2002. The Theta System: Syntactic Realization of Verbal Concepts. Cambridge, Mass: The MIT Press.\n\nMehwish Riaz and Roxana Girju. 2010. Another look at causality: Discovering scenario-specific contingency relationships with no supervision. In Proceedings of the 2010 IEEE Fourth International Conference on Semantic Computing. IEEE Computer Society, Washington, DC, USA, ICSC '10, pages 361-368. https://doi.org/10.1109/ICSC.2010.19.\n\nMehwish Riaz and Roxana Girju. 2013. Toward a better understanding of causality between verbal events: Extraction and analysis of the causal power of verb-verb associations. In Proceedings of the SIGDIAL 2013 Conference. Association for Computational Linguistics, Metz, France, page 21-30. http://www.aclweb.org/anthology/W13-4004.\n\nMehwish Riaz and Roxana Girju. 2014. In-depth exploitation of noun and verb semantics to identify causation in verb-noun pairs. In Proceedings of the 15th Annual Meeting of the Special Interest Group on Discourse and Dialogue (SIGDIAL). Association for Computational Linguistics, Philadelphia, PA, U.S.A., pages 161–170. http://www.aclweb.org/anthology/W14-4322.\n\nMatthew D. Zeiler. 2012. ADADELTA: an adaptive learning rate method. CoRR abs/1212.5701. http://arxiv.org/abs/1212.5701.",
+        "has_footnotes": false,
+        "coverage": 0.9902413970210581,
+        "fidelity": 0.9950643776824034
+      }
+    ],
+    "references": [
+      {
+        "id": "ref_1",
+        "raw": "Steven Bethard and James H. Martin. 2008. Learning semantic links from a corpus of parallel temporal and causal relations. In Proceedings of the 46th Annual Meeting of the ACL on Human Language Technologies: Short Papers. Association for Computational Linguistics, Stroudsburg, PA, USA, HLT-Short '08, pages 177-180. http://dl.acm.org/citation.cfm?id=1557690.1557740.",
+        "marker": null,
+        "authors": [
+          "Steven Bethard",
+          "James H. Martin"
+        ],
+        "title": "Learning semantic links from a corpus of parallel temporal and causal relations",
+        "year": "2008",
+        "venue": "Proceedings of the 46th Annual Meeting of the ACL on Human Language Technologies: Short Papers. Association for Computational Linguistics, Stroudsburg, PA, USA, HLT-Short '08",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_2",
+        "raw": "Quang Xuan Do, Yee Seng Chan, and Dan Roth. 2011. Minimally supervised event causality identification. In Proceedings of the Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Stroudsburg, PA, USA, EMNLP '11, pages 294-303. http://dl.acm.org/citation.cfm?id=2145432.2145466.",
+        "marker": null,
+        "authors": [
+          "Quang Xuan Do",
+          "Yee Seng Chan",
+          "Dan Roth"
+        ],
+        "title": "Minimally supervised event causality identification",
+        "year": "2011",
+        "venue": "Proceedings of the Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Stroudsburg, PA, USA, EMNLP '11",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_3",
+        "raw": "David R. Dowty. 1979. Word meaning and Montague grammar: The semantics of verbs and times in generative semantics and in Montague's PTQ. Dordrecht, D. and Reidel Pub. Co.",
+        "marker": null,
+        "authors": [
+          "David R. Dowty"
+        ],
+        "title": "Word meaning and Montague grammar: The semantics of verbs and times in generative semantics and in Montague's PTQ",
+        "year": "1979",
+        "venue": "Dordrecht, D. and Reidel Pub. Co.",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_4",
+        "raw": "Roxana Girju. 2003. Automatic detection of causal relations for question answering. In Proceedings of the ACL 2003 Workshop on Multilingual Summarization and Question Answering - Volume 12. Association for Computational Linguistics, Stroudsburg, PA, USA, MultiSumQA '03, pages 76–83. https://doi.org/10.3115/1119312.1119322.",
+        "marker": null,
+        "authors": [
+          "Roxana Girju"
+        ],
+        "title": "Automatic detection of causal relations for question answering",
+        "year": "2003",
+        "venue": "Proceedings of the ACL 2003 Workshop on Multilingual Summarization and Question Answering - Volume 12. Association for Computational Linguistics, Stroudsburg, PA, USA, MultiSumQA '03",
+        "doi": "10.3115/1119312.1119322",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_5",
+        "raw": "Christopher Hidey and Kathy McKeown. 2016. Identifying causal relations using parallel wikipedia articles. In Proceedings of the 54th Annual Meeting of the ACL (Volume 1: Long Papers). Association for Computational Linguistics, Berlin, Germany, pages 1424-1433. http://www.aclweb.org/anthology/P16-1135.",
+        "marker": null,
+        "authors": [
+          "Christopher Hidey",
+          "Kathy McKeown"
+        ],
+        "title": "Identifying causal relations using parallel wikipedia articles",
+        "year": "2016",
+        "venue": "Proceedings of the 54th Annual Meeting of the ACL (Volume 1: Long Papers). Association for Computational Linguistics, Berlin, Germany",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_6",
+        "raw": "Sepp Hochreiter and Jürgen Schmidhuber. 1997. Long short-term memory. Neural Comput. 9(8):1735-1780. https://doi.org/10.1162/neco.1997.9.8.1735.",
+        "marker": null,
+        "authors": [
+          "Sepp Hochreiter",
+          "Jürgen Schmidhuber"
+        ],
+        "title": "Long short-term memory",
+        "year": "1997",
+        "venue": "Neural Comput. 9(8):1735-1780",
+        "doi": "10.1162/neco.1997.9.8.1735",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_7",
+        "raw": "Christopher S. G. Khoo, Jaklin Kornfilt, Robert N. Oddy, and Sung Hyon Myaeng. 1998. Automatic extraction of cause-effect information from newspaper text without knowledge-based inferencing. Literary and Linguistic Computing 13(4):177–186. https://doi.org/10.1093/llc/13.4.177.",
+        "marker": null,
+        "authors": [
+          "Christopher S. G. Khoo",
+          "Jaklin Kornfilt",
+          "Robert N. Oddy",
+          "Sung Hyon Myaeng"
+        ],
+        "title": "Automatic extraction of cause-effect information from newspaper text without knowledge-based inferencing",
+        "year": "1998",
+        "venue": "Literary and Linguistic Computing 13(4):177–186",
+        "doi": "10.1093/llc/13.4.177",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_8",
+        "raw": "Diederik P. Kingma and Jimmy Ba. 2015. Adam: A method for stochastic optimization. In 3rd International Conference for Learning Representations, San Diego, 2015. http://arxiv.org/abs/1412.6980.",
+        "marker": null,
+        "authors": [
+          "Diederik P. Kingma",
+          "Jimmy Ba"
+        ],
+        "title": "Adam: A method for stochastic optimization",
+        "year": "2015",
+        "venue": "3rd International Conference for Learning Representations, San Diego, 2015",
+        "doi": null,
+        "arxiv_id": "1412.6980"
+      },
+      {
+        "id": "ref_9",
+        "raw": "Canasai Kruengkrai, Kentaro Torisawa, Chikara Hashimoto, Julien Kloetzer, Jong-Hoon Oh, and Masahiro Tanaka. 2017. Improving event causality recognition with multiple background knowledge sources using multi-column convolutional neural networks. In Proceedings of the 31st AAAI Conference on Artificial Intelligence (AAAI-17). San Francisco, California, USA, page to appear.",
+        "marker": null,
+        "authors": [
+          "Canasai Kruengkrai",
+          "Kentaro Torisawa",
+          "Chikara Hashimoto",
+          "Julien Kloetzer",
+          "Jong-Hoon Oh",
+          "Masahiro Tanaka"
+        ],
+        "title": "Improving event causality recognition with multiple background knowledge sources using multi-column convolutional neural networks",
+        "year": "2017",
+        "venue": "Proceedings of the 31st AAAI Conference on Artificial Intelligence (AAAI-17). San Francisco, California, USA",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_10",
+        "raw": "George Lakoff. 1970. Irregularity in Syntax. Holt, Rinehart and Winston, New York.",
+        "marker": null,
+        "authors": [
+          "George Lakoff"
+        ],
+        "title": "Irregularity in Syntax",
+        "year": "1970",
+        "venue": "Holt, Rinehart and Winston, New York",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_11",
+        "raw": "James McCawley. 1976. Grammar and Meaning. New York Academic Press.",
+        "marker": null,
+        "authors": [
+          "James McCawley"
+        ],
+        "title": "Grammar and Meaning",
+        "year": "1976",
+        "venue": "New York Academic Press",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_12",
+        "raw": "Oren Melamud, Jacob Goldberger, and Ido Dagan. 2016. context2vec: Learning generic context embedding with bidirectional LSTM. In Proceedings of the 20th SIGNLL Conference on Computational Natural Language Learning, CoNLL 2016, Berlin, Germany, August 11-12, 2016. pages 51–61. http://aclweb.org/anthology/K/K16/K16-1006.pdf.",
+        "marker": null,
+        "authors": [
+          "Oren Melamud",
+          "Jacob Goldberger",
+          "Ido Dagan"
+        ],
+        "title": "context2vec: Learning generic context embedding with bidirectional LSTM",
+        "year": "2016",
+        "venue": "Proceedings of the 20th SIGNLL Conference on Computational Natural Language Learning, CoNLL 2016, Berlin, Germany, August 11-12, 2016",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_13",
+        "raw": "Paramita Mirza, Rachele Sprugnoli, Sara Tonelli, and Manuela Speranza. 2014. Annotating causality in the tempeval-3 corpus. In Proceedings of the EACL 2014 Workshop on Computational Approaches to Causality in Language (CAtoCL). Association for Computational Linguistics, Gothenburg, Sweden, pages 10-19. http://www.aclweb.org/anthology/W14-0702.",
+        "marker": null,
+        "authors": [
+          "Paramita Mirza",
+          "Rachele Sprugnoli",
+          "Sara Tonelli",
+          "Manuela Speranza"
+        ],
+        "title": "Annotating causality in the tempeval-3 corpus",
+        "year": "2014",
+        "venue": "Proceedings of the EACL 2014 Workshop on Computational Approaches to Causality in Language (CAtoCL). Association for Computational Linguistics, Gothenburg, Sweden",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_14",
+        "raw": "Paramita Mirza and Sara Tonelli. 2016. Catena: Causal and temporal relation extraction from natural language texts. In Proceedings of COLING 2016, the 26th International Conference on Computational Linguistics: Technical Papers. The COLING 2016 Organizing Committee, Osaka, Japan, pages 64-75. http://aclweb.org/anthology/C16-1007.",
+        "marker": null,
+        "authors": [
+          "Paramita Mirza",
+          "Sara Tonelli"
+        ],
+        "title": "Catena: Causal and temporal relation extraction from natural language texts",
+        "year": "2016",
+        "venue": "Proceedings of COLING 2016, the 26th International Conference on Computational Linguistics: Technical Papers. The COLING 2016 Organizing Committee, Osaka, Japan",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_15",
+        "raw": "Ad Neeleman and Hans van de Koot. 2012. The linguistic expression of causation. In Martin Everaert, Marijana Marelj, and Tal Siloni, editors, The Theta System: Argument Structure at the Interface, Oxford University Press, pages 20-51.",
+        "marker": null,
+        "authors": [
+          "Ad Neeleman",
+          "Hans van de Koot"
+        ],
+        "title": "The linguistic expression of causation",
+        "year": "2012",
+        "venue": "Martin Everaert, Marijana Marelj, and Tal Siloni, editors, The Theta System: Argument Structure at the Interface, Oxford University Press",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_16",
+        "raw": "Martha Palmer, Daniel Gildea, and Paul Kingsbury. 2005. The proposition bank: An annotated corpus of semantic roles. Comput. Linguist. 31(1):71–106. https://doi.org/10.1162/0891201053630264.",
+        "marker": null,
+        "authors": [
+          "Martha Palmer",
+          "Daniel Gildea",
+          "Paul Kingsbury"
+        ],
+        "title": "The proposition bank: An annotated corpus of semantic roles",
+        "year": "2005",
+        "venue": "Comput. Linguist. 31(1):71–106",
+        "doi": "10.1162/0891201053630264",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_17",
+        "raw": "Jeffrey Pennington, Richard Socher, and Christopher D. Manning. 2014. Glove: Global vectors for word representation. In Empirical Methods in Natural Language Processing (EMNLP). pages 1532-1543. http://www.aclweb.org/anthology/D14-1162.",
+        "marker": null,
+        "authors": [
+          "Jeffrey Pennington",
+          "Richard Socher",
+          "Christopher D. Manning"
+        ],
+        "title": "Glove: Global vectors for word representation",
+        "year": "2014",
+        "venue": "Empirical Methods in Natural Language Processing (EMNLP)",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_18",
+        "raw": "Rashmi Prasad, Nikhil Dinesh, Alan Leeand, Eleni Miltsakaki, Livio Robaldo, Aravind Joshi, and Bonnie Webber. 2008. The penn discourse treebank 2.0. In Proceedings of the Sixth International Conference on Language Resources and Evaluation (LREC'08). European Language Resources Association (ELRA), Marrakech, Morocco. Http://www.lrec-conf.org/proceedings/lrec2008/.",
+        "marker": null,
+        "authors": [
+          "Rashmi Prasad",
+          "Nikhil Dinesh",
+          "Alan Leeand",
+          "Eleni Miltsakaki",
+          "Livio Robaldo",
+          "Aravind Joshi",
+          "Bonnie Webber"
+        ],
+        "title": "The penn discourse treebank 2.0",
+        "year": "2008",
+        "venue": "Proceedings of the Sixth International Conference on Language Resources and Evaluation (LREC'08). European Language Resources Association (ELRA), Marrakech, Morocco",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_19",
+        "raw": "Liina Pylkkänen. 2008. Introducing arguments, volume 49. MIT press.",
+        "marker": null,
+        "authors": [
+          "Liina Pylkkänen"
+        ],
+        "title": "Introducing arguments, volume 49",
+        "year": "2008",
+        "venue": "MIT press",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_20",
+        "raw": "Gillian Catriona Ramchand. 2008. Verb Meaning and the Lexicon: A First Phase Syntax. Cambridge University Press, Cambridge. https://doi.org/10.1017/CBO9780511486319.",
+        "marker": null,
+        "authors": [
+          "Gillian Catriona Ramchand"
+        ],
+        "title": "Verb Meaning and the Lexicon: A First Phase Syntax",
+        "year": "2008",
+        "venue": "Cambridge University Press, Cambridge",
+        "doi": "10.1017/CBO9780511486319",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_21",
+        "raw": "Tanya Reinhart. 2002. The Theta System: Syntactic Realization of Verbal Concepts. Cambridge, Mass: The MIT Press.",
+        "marker": null,
+        "authors": [
+          "Tanya Reinhart"
+        ],
+        "title": "The Theta System: Syntactic Realization of Verbal Concepts",
+        "year": "2002",
+        "venue": "Cambridge, Mass: The MIT Press",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_22",
+        "raw": "Mehwish Riaz and Roxana Girju. 2010. Another look at causality: Discovering scenario-specific contingency relationships with no supervision. In Proceedings of the 2010 IEEE Fourth International Conference on Semantic Computing. IEEE Computer Society, Washington, DC, USA, ICSC '10, pages 361-368. https://doi.org/10.1109/ICSC.2010.19.",
+        "marker": null,
+        "authors": [
+          "Mehwish Riaz",
+          "Roxana Girju"
+        ],
+        "title": "Another look at causality: Discovering scenario-specific contingency relationships with no supervision",
+        "year": "2010",
+        "venue": "Proceedings of the 2010 IEEE Fourth International Conference on Semantic Computing. IEEE Computer Society, Washington, DC, USA, ICSC '10",
+        "doi": "10.1109/ICSC.2010.19",
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_23",
+        "raw": "Mehwish Riaz and Roxana Girju. 2013. Toward a better understanding of causality between verbal events: Extraction and analysis of the causal power of verb-verb associations. In Proceedings of the SIGDIAL 2013 Conference. Association for Computational Linguistics, Metz, France, page 21-30. http://www.aclweb.org/anthology/W13-4004.",
+        "marker": null,
+        "authors": [
+          "Mehwish Riaz",
+          "Roxana Girju"
+        ],
+        "title": "Toward a better understanding of causality between verbal events: Extraction and analysis of the causal power of verb-verb associations",
+        "year": "2013",
+        "venue": "Proceedings of the SIGDIAL 2013 Conference. Association for Computational Linguistics, Metz, France",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_24",
+        "raw": "Mehwish Riaz and Roxana Girju. 2014. In-depth exploitation of noun and verb semantics to identify causation in verb-noun pairs. In Proceedings of the 15th Annual Meeting of the Special Interest Group on Discourse and Dialogue (SIGDIAL). Association for Computational Linguistics, Philadelphia, PA, U.S.A., pages 161–170. http://www.aclweb.org/anthology/W14-4322.",
+        "marker": null,
+        "authors": [
+          "Mehwish Riaz",
+          "Roxana Girju"
+        ],
+        "title": "In-depth exploitation of noun and verb semantics to identify causation in verb-noun pairs",
+        "year": "2014",
+        "venue": "Proceedings of the 15th Annual Meeting of the Special Interest Group on Discourse and Dialogue (SIGDIAL). Association for Computational Linguistics, Philadelphia, PA, U.S.A.",
+        "doi": null,
+        "arxiv_id": null
+      },
+      {
+        "id": "ref_25",
+        "raw": "Matthew D. Zeiler. 2012. ADADELTA: an adaptive learning rate method. CoRR abs/1212.5701. http://arxiv.org/abs/1212.5701.",
+        "marker": null,
+        "authors": [
+          "Matthew D. Zeiler"
+        ],
+        "title": "ADADELTA: an adaptive learning rate method",
+        "year": "2012",
+        "venue": "CoRR abs/1212.5701",
+        "doi": null,
+        "arxiv_id": "1212.5701"
+      }
+    ],
+    "citations": [
+      {
+        "reference_id": "ref_21",
+        "marker": "Reinhart (2002)",
+        "sentence": "Following the words of Reinhart (2002), causal relations are imposed by humans on the input from the world, and the (computational) linguist's task is to understand what is about lan-guage that enables speakers to use it to describe their causal perceptions.",
+        "section_id": "sec_2",
+        "start": 338,
+        "end": 353
+      },
+      {
+        "reference_id": "ref_19",
+        "marker": "Pylkkänen (2008)",
+        "sentence": "For instance, Pylkkänen (2008) argues that the causing event may be associated with the subject of the causal verb in a causal pred-icate.",
+        "section_id": "sec_2",
+        "start": 899,
+        "end": 915
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown (2016)",
+        "sentence": "Hidey and McKeown (2016) stressed the issue of the limited coverage of causal expressions and released a cor-pus with a larger amount of causal expressions than PDTB.",
+        "section_id": "sec_2",
+        "start": 3705,
+        "end": 3729
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown (2016)",
+        "sentence": "We hypothesize that neural net-works are able to encode the meaning of those events, and discover whether the underlying rela-tion between them is causal. Herein, we contribute a neural network architecture for the task of causal-ity disambiguation and we assess it in the corpus of Hidey and McKeown (2016).",
+        "section_id": "sec_2",
+        "start": 4570,
+        "end": 4594
+      },
+      {
+        "reference_id": null,
+        "marker": "Neele-man and van de Koot, 2012",
+        "sentence": "Causation is a psychological tool of humans to un-derstand the world independently of language, and it is one of the principles involved in the construc-tion of the human mental model of reality (Neele-man and van de Koot, 2012).",
+        "section_id": "sec_2",
+        "start": 196,
+        "end": 227
+      },
+      {
+        "reference_id": "ref_10",
+        "marker": "Lakoff, 1970",
+        "sentence": "Those the-ories based on generative semantics argue that the causal relation is encoded in the semantics of some verbs (Lakoff, 1970; McCawley, 1976) or in the syntactic structure of a sentence (Dowty, 1979; Ramchand, 2008).",
+        "section_id": "sec_2",
+        "start": 780,
+        "end": 792
+      },
+      {
+        "reference_id": "ref_11",
+        "marker": "McCawley, 1976",
+        "sentence": "Those the-ories based on generative semantics argue that the causal relation is encoded in the semantics of some verbs (Lakoff, 1970; McCawley, 1976) or in the syntactic structure of a sentence (Dowty, 1979; Ramchand, 2008).",
+        "section_id": "sec_2",
+        "start": 794,
+        "end": 808
+      },
+      {
+        "reference_id": "ref_3",
+        "marker": "Dowty, 1979",
+        "sentence": "Those the-ories based on generative semantics argue that the causal relation is encoded in the semantics of some verbs (Lakoff, 1970; McCawley, 1976) or in the syntactic structure of a sentence (Dowty, 1979; Ramchand, 2008).",
+        "section_id": "sec_2",
+        "start": 855,
+        "end": 866
+      },
+      {
+        "reference_id": "ref_20",
+        "marker": "Ramchand, 2008",
+        "sentence": "Those the-ories based on generative semantics argue that the causal relation is encoded in the semantics of some verbs (Lakoff, 1970; McCawley, 1976) or in the syntactic structure of a sentence (Dowty, 1979; Ramchand, 2008).",
+        "section_id": "sec_2",
+        "start": 868,
+        "end": 882
+      },
+      {
+        "reference_id": "ref_16",
+        "marker": "Palmer et al., 2005",
+        "sentence": "PropBank (Palmer et al., 2005) is a semantic resource that annotates the argument structure of verbs.",
+        "section_id": "sec_2",
+        "start": 2210,
+        "end": 2229
+      },
+      {
+        "reference_id": "ref_18",
+        "marker": "Prasad et al., 2008",
+        "sentence": "Causality is one of the discourse relations in Penn Discourse Tree Bank (PDTB) (Prasad et al., 2008).",
+        "section_id": "sec_2",
+        "start": 2787,
+        "end": 2806
+      },
+      {
+        "reference_id": "ref_7",
+        "marker": "Khoo et al. (1998)",
+        "sentence": "Khoo et al. (1998) presented one of the first works related to the classification of causal relations.",
+        "section_id": "sec_3",
+        "start": 0,
+        "end": 18
+      },
+      {
+        "reference_id": "ref_4",
+        "marker": "Girju (2003)",
+        "sentence": "Girju (2003) proposed a decision tree learning method to classify causal relations between events.",
+        "section_id": "sec_3",
+        "start": 620,
+        "end": 632
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Bethard and Martin (2008)",
+        "sentence": "Bethard and Martin (2008) defined a method for the classification of causal relations between verbal events in conjunction constructions, namely conjoined events.",
+        "section_id": "sec_3",
+        "start": 1131,
+        "end": 1156
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Do et al. (2011)",
+        "sentence": "The first attempt of encoding the contextual information for causality classification between events is found in Do et al. (2011).",
+        "section_id": "sec_3",
+        "start": 2046,
+        "end": 2062
+      },
+      {
+        "reference_id": "ref_22",
+        "marker": "Riaz and Girju (2010)",
+        "sentence": "The measure is inspired by the causality score defined by Riaz and Girju (2010).",
+        "section_id": "sec_3",
+        "start": 2282,
+        "end": 2303
+      },
+      {
+        "reference_id": "ref_2",
+        "marker": "Do et al. (2011)",
+        "sentence": "Following the work of Do et al. (2011), Riaz and Girju (2013, 2014) built a knowledge base for causal events, first for events related by a pair of verbs, and then for events conveyed by pairs of verbs and noun phrases.",
+        "section_id": "sec_3",
+        "start": 2328,
+        "end": 2344
+      },
+      {
+        "reference_id": "ref_23",
+        "marker": "Riaz and Girju (2013, 2014)",
+        "sentence": "Following the work of Do et al. (2011), Riaz and Girju (2013, 2014) built a knowledge base for causal events, first for events related by a pair of verbs, and then for events conveyed by pairs of verbs and noun phrases.",
+        "section_id": "sec_3",
+        "start": 2346,
+        "end": 2373
+      },
+      {
+        "reference_id": "ref_24",
+        "marker": "Riaz and Girju (2013, 2014)",
+        "sentence": "Following the work of Do et al. (2011), Riaz and Girju (2013, 2014) built a knowledge base for causal events, first for events related by a pair of verbs, and then for events conveyed by pairs of verbs and noun phrases.",
+        "section_id": "sec_3",
+        "start": 2346,
+        "end": 2373
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "Mirza and Tonelli (2016)",
+        "sentence": "Following the previous approaches, Mirza and Tonelli (2016) described a causal classification system built upon a rule based system and a machine learning algorithm based on lexical, syntactic and semantic features.",
+        "section_id": "sec_3",
+        "start": 2942,
+        "end": 2966
+      },
+      {
+        "reference_id": "ref_14",
+        "marker": "Mirza and Tonelli (2016)",
+        "sentence": "The work of Mirza and Tonelli (2016) has similar issues to the work of (Bethard and Martin, 2008), because they use similar features to represent causality.",
+        "section_id": "sec_3",
+        "start": 3198,
+        "end": 3222
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Bethard and Martin (2008)",
+        "sentence": "On the other hand, some of the works restricted their study to a narrow kind of syntactic constructions, such as the conjoined events of Bethard and Martin (2008).",
+        "section_id": "sec_3",
+        "start": 3632,
+        "end": 3657
+      },
+      {
+        "reference_id": "ref_15",
+        "marker": "Neeleman and van de Koot, 2012",
+        "sentence": "Those errors are related to the lack of evidence of the syntax basis of causation (Neeleman and van de Koot, 2012).",
+        "section_id": "sec_3",
+        "start": 586,
+        "end": 616
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Bethard and Martin, 2008",
+        "sentence": "The work of Mirza and Tonelli (2016) has similar issues to the work of (Bethard and Martin, 2008), because they use similar features to represent causality.",
+        "section_id": "sec_3",
+        "start": 3258,
+        "end": 3282
+      },
+      {
+        "reference_id": null,
+        "marker": "Mirzaand Tonelli, 2016",
+        "sentence": "Some related work attempted to identify thecausing, the caused event and its direction (Mirzaand Tonelli, 2016), but for that purpose, they re-stricted the study to a specific syntactic construc-tion.",
+        "section_id": "sec_5",
+        "start": 2326,
+        "end": 2348
+      },
+      {
+        "reference_id": "ref_1",
+        "marker": "Bethard and Martin (2008)",
+        "sentence": "The first one was exposed in Bethard and Martin (2008) and it is built on top of the Penn TreeBank corpus.",
+        "section_id": "sec_6",
+        "start": 734,
+        "end": 759
+      },
+      {
+        "reference_id": "ref_13",
+        "marker": "Mirza et al., 2014",
+        "sentence": "The second corpus is Causal-TimeBank (Mirza et al., 2014), which is built on top of the TimeML corpus.",
+        "section_id": "sec_6",
+        "start": 1070,
+        "end": 1088
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown, 2016",
+        "sentence": "Recently, the AltLex corpus has been freely re-leased (Hidey and McKeown, 2016).",
+        "section_id": "sec_6",
+        "start": 1691,
+        "end": 1714
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown, 2016",
+        "sentence": "For further details see (Hidey and McKeown, 2016).",
+        "section_id": "sec_6",
+        "start": 3083,
+        "end": 3106
+      },
+      {
+        "reference_id": "ref_9",
+        "marker": "Kruengkrai et al. (2017)",
+        "sentence": "Kruengkrai et al. (2017) describe a Multi-column Convolutional Neural Network (CNN) that uses background knowledge for the identification of the causal meaning of an input sentence in Japanese.",
+        "section_id": "sec_7",
+        "start": 0,
+        "end": 24
+      },
+      {
+        "reference_id": "ref_12",
+        "marker": "Melamud et al. (2016)",
+        "sentence": "Melamud et al. (2016) also showed that using an LSTM results in a more precise context encoding and substantially improve performance in several tasks upon the common average-of-words-embeddings representation.",
+        "section_id": "sec_7",
+        "start": 832,
+        "end": 853
+      },
+      {
+        "reference_id": "ref_6",
+        "marker": "Hochreiter and Schmidhuber, 1997",
+        "sentence": "On the other hand, Long short-term memory (LSTM) recurrent neural networks (RNN) (Hochreiter and Schmidhuber, 1997) can encode the sequential information of the input text.",
+        "section_id": "sec_7",
+        "start": 741,
+        "end": 773
+      },
+      {
+        "reference_id": "ref_17",
+        "marker": "Pennington et al., 2014",
+        "sentence": "The set of pre-trained embeddings used was Glove (Pennington et al., 2014), specifically the 300 dimension reference vectors of the 840B cased tokens set.",
+        "section_id": "sec_7",
+        "start": 2296,
+        "end": 2319
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown, 2016",
+        "sentence": "As far as we know, the AltLex corpus has been only used in the work in which it was presented (Hidey and McKeown, 2016), therefore we consider their method as the state of the art on that corpus.",
+        "section_id": "sec_8",
+        "start": 95,
+        "end": 118
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown (2016)",
+        "sentence": "The second baseline (B2) is the system of Hidey and McKeown (2016), which is based on SVM with a large set of features generated from the com-bination of features from the original parallel cor-pus and some lexical resources (WordNet, Verb-Net and PropBank).",
+        "section_id": "sec_9",
+        "start": 437,
+        "end": 461
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown, 2016",
+        "sentence": "For example, if the lexical marker since has mostly a causal meaning, B1 always classifies the relation signalled by since as Causal. A similar approach was also used in (Hidey and McKeown, 2016).",
+        "section_id": "sec_9",
+        "start": 368,
+        "end": 391
+      },
+      {
+        "reference_id": "ref_5",
+        "marker": "Hidey and McKeown (2016)",
+        "sentence": "Despite the difficulty of the expression which then, we can see in Table 8 that our proposed system cor- rectly disambiguate its causal meaning, while the system of Hidey and McKeown (2016) does not.",
+        "section_id": "sec_11",
+        "start": 1606,
+        "end": 1630
+      }
+    ],
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "table",
+        "label": "Table 1",
+        "number": "1",
+        "page": 3,
+        "caption": "Table 1: Explicit and implicit causal relations",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents examples of sentences illustrating explicit and implicit causal relations.",
+          "data_read": [
+            "The table has two columns: 'Sentence' and 'Type'.",
+            "The first row under the header is: \"(Cathay Pacific delayed both legs of its quadruple daily Hong Kong to London route)e₁ ([due to]1 this disruption in air traffic services.)e₂\" with 'Type' as \"Explicit\".",
+            "The second row is: \"(The factory was not well equipped to handle the gas)e₁ (created by the sudden addition of water to the MIC tank.)e₂\" with 'Type' as \"Implicit\"."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table provides examples of sentences that are explicitly or implicitly expressed, and for the explicit case, it shows a lexical marker 'due to', which aligns with the claim that explicit relations are signaled by a lexical marker.",
+          "issues": [],
+          "table_markdown": "| Sentence | Type |\n|---|---|\n| (Cathay Pacific delayed both legs of its quadruple daily Hong Kong to London route)e₁ ([due to]1 this disruption in air traffic services.)e₂ | Explicit |\n| (The factory was not well equipped to handle the gas)e₁ (created by the sudden addition of water to the MIC tank.)e₂ | Implicit |"
+        }
+      },
+      {
+        "id": "fig_2",
+        "kind": "table",
+        "label": "Table 2",
+        "number": "2",
+        "page": 4,
+        "caption": "Table 2: Examples of different meanings of the prepositions since and after taken from the AltLex corpus",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents examples of sentences using the prepositions \"since\" and \"after\" and their corresponding meanings (Temporal or Causal).",
+          "data_read": [
+            "Sentence",
+            "Meaning",
+            "An undercroft is traditionally a cellar or storage room, often brick-lined and vaulted, and used for storage in buildings since medieval times",
+            "Temporal",
+            "Additionally if one is to use a large scan range then sensitivity of the instrument is decreased due to performing fewer scans per second since each scan will have to detect a wide range of mass fragments",
+            "Causal",
+            "In stark contrast to his predecessor, five days after his election he spoke of his determination to do what he could to bring peace",
+            "Temporal",
+            "Bischoff in a round table discussion claimed he fired Austin after he refused to do a taping in Atlanta",
+            "Causal"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table provides examples where 'since' and 'after' can have both 'Temporal' and 'Causal' interpretations, directly supporting the claim that their causal meaning is not unarguable and depends on context.",
+          "issues": [],
+          "table_markdown": "| Sentence | Meaning |\n|---|---|\n| An undercroft is traditionally a cellar or storage room, often brick-lined and vaulted, and used for storage in buildings since medieval times | Temporal |\n| Additionally if one is to use a large scan range then sensitivity of the instrument is decreased due to performing fewer scans per second since each scan will have to detect a wide range of mass fragments | Causal |\n| In stark contrast to his predecessor, five days after his election he spoke of his determination to do what he could to bring peace | Temporal |\n| Bischoff in a round table discussion claimed he fired Austin after he refused to do a taping in Atlanta | Causal |"
+        }
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "label": "Table 3",
+        "number": "3",
+        "page": 4,
+        "caption": "Table 3: Number of instances in the AltLex corpus",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table shows the number of instances in the AltLex corpus, categorized by version (non bootstrapping and bootstrapping) and type of causality (Causal and Non-Causal), for training, development, and test sets.",
+          "data_read": [
+            "Corpus: Training, Development, Test",
+            "Version: non bootstrapping, bootstrapping",
+            "Causal (non bootstrapping, Training): 7,606",
+            "Non-Causal (non bootstrapping, Training): 79,290",
+            "Total (non bootstrapping, Training): 86,896",
+            "Causal (bootstrapping, Training): 12,534",
+            "Non-Causal (bootstrapping, Training): 88,210",
+            "Total (bootstrapping, Training): 100,744",
+            "Causal (Development): 181",
+            "Non-Causal (Development): 307",
+            "Total (Development): 488",
+            "Causal (Test): 315",
+            "Non-Causal (Test): 296",
+            "Total (Test): 611"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table shows the corpus size for both 'non bootstrapping' and 'bootstrapping' versions, with totals of 86,896 and 100,744 instances respectively for the training set, supporting the claim 'The corpus size is shown in Table 3.' and 'The size of each of them is shown in Table 3.'. It also clearly shows that the 'Non Causal' class has significantly more instances than the 'Causal' class across all sets and versions (e.g., 79,290 vs 7,606 for non bootstrapping training), supporting the claim 'The class distribution of the AltLex corpus is not balanced'.",
+          "issues": [],
+          "table_markdown": "| Corpus | Version | Causal | Non-Causal | Total |\n|---|---|---|---|---|\n| Training | non bootstrapping | 7,606 | 79,290 | 86,896 |\n| | bootstrapping | 12,534 | 88,210 | 100,744 |\n| Development | | 181 | 307 | 488 |\n| Test | | 315 | 296 | 611 |"
+        }
+      },
+      {
+        "id": "fig_4",
+        "kind": "table",
+        "label": "Table 4",
+        "number": "4",
+        "page": 5,
+        "caption": "Table 4: Distribution of the lexical markers",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table shows the distribution of lexical markers across two versions of a corpus: \"non bootstrapping\" and \"bootstrapping\". It categorizes markers by their causal ambiguity and their presence in training and test sets.",
+          "data_read": [
+            "The table has columns: \"Bootstrapping\", \"No\", and \"Yes\".",
+            "Rows include: \"Total\", \"Unambiguous in Causal class\", \"Unambiguous in Non Causal class\", \"Causal in train, Non Causal in test\", and \"Non Causal in train, Causal in test\".",
+            "For \"Total\", the \"No\" column shows 8214 and \"Yes\" shows 8854.",
+            "For \"Unambiguous in Causal class\", \"No\" shows 922 and \"Yes\" shows 1034.",
+            "For \"Unambiguous in Non Causal class\", \"No\" shows 7171 and \"Yes\" shows 7673.",
+            "For \"Causal in train, Non Causal in test\", \"No\" shows 0 and \"Yes\" shows 27.",
+            "For \"Non Causal in train, Causal in test\", \"No\" shows 0 and \"Yes\" shows 8."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states: \"According to the Table 4, there are few ambiguous connectives, 121 in the “non bootstrapping\" corpus and 147 in the \"bootstrapping\" version.\" This is supported by the table's \"Unambiguous in Causal class\" (922 for No, 1034 for Yes) and \"Unambiguous in Non Causal class\" (7171 for No, 7673 for Yes) rows, which show a large number of unambiguous markers, implying few ambiguous ones. The article also mentions \"an important difference between the two versions of the corpus\" regarding instances that do not follow the class distribution of the training set, which is reflected in the \"Causal in train, Non Causal in test\" and \"Non Causal in train, Causal in test\" rows, showing non-zero values (27 and 8 respectively) only for the \"Bootstrapping\" (Yes) version.",
+          "issues": [],
+          "table_markdown": "| | Bootstrapping |\n|---|---|---|\n| | No | Yes |\n| Total | 8214 | 8854 |\n| Unambiguous in Causal class | 922 | 1034 |\n| Unambiguous in Non Causal class | 7171 | 7673 |\n| Causal in train, Non Causal in test | 0 | 27 |\n| Non Causal in train, Causal in test | 0 | 8 |"
+        }
+      },
+      {
+        "id": "fig_5",
+        "kind": "figure",
+        "label": "Figure 1",
+        "number": "1",
+        "page": 5,
+        "caption": "Figure 1: The network architecture",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "diagram",
+          "description": "This figure illustrates the architecture of the \"Pair_LSTM\" neural network. It shows two main input streams, one for \"Event 1\" and another for the concatenation of \"Lexical Marker\" and \"Event 2\", which are processed through LSTM layers and then combined for classification.",
+          "data_read": [
+            "The diagram shows two main input branches.",
+            "The top branch takes \"Event 1\" as input, which goes through an LSTM layer.",
+            "The bottom branch takes \"Lexical Marker\" and \"Event 2\" as concatenated input, which also goes through an LSTM layer.",
+            "The outputs of both LSTM layers are then processed by \"tanh (reshape)\" layers.",
+            "These reshaped outputs are concatenated.",
+            "The concatenated output then passes through a \"tanh\" layer, followed by another \"tanh\" layer, and finally a \"Softmax\" layer, leading to the \"Causal / Non Causal\" classification."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure clearly depicts the \"Pair_LSTM\" architecture as described in the text. It shows the first input as \"Event 1\" and the second input as the concatenation of \"Lexical Marker\" and \"Event 2\", which aligns with the claims made in the article.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "label": "Table 5",
+        "number": "5",
+        "page": 7,
+        "caption": "Table 5: Results of the baselines (B1 and B2) and the configurations evaluated",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the performance metrics (Precision C., Recall C., F1 C., and Accuracy) for two baselines (B1 and B2) and several configurations of the proposed system, evaluated on two different corpus versions: \"Non bootstrapping\" and \"Bootstrapping\".",
+          "data_read": [
+            "The table has columns for 'Corpus', 'Method', 'Precision C.', 'Recall C.', 'F1 C.', and 'Accuracy'.",
+            "For 'Non bootstrapping' corpus:",
+            "- B1: Precision C. 68.92%, Recall C. 54.92%, F1 C. 61.13%, Accuracy 63.99%.",
+            "- B2: Precision C. 70.28%, Recall C. 77.60%, F1 C. 73.76%, Accuracy 71.86%.",
+            "- Stated_Pair_LSTM_Mean_Adadelta: Precision C. 90.04%, Recall C. 60.31%, F1 C. 72.24%, Accuracy 76.10%.",
+            "- Stated_Pair_LSTM_Mode_Adadelta: Precision C. 89.23%, Recall C. 63.17%, F1 C. 73.97%, Accuracy 77.08%.",
+            "- Pair_LSTM_Max_Adadelta: Precision C. 88.46%, Recall C. 65.71%, F1 C. 75.40%, Accuracy 77.90%.",
+            "- Pair_LSTM_Mean_Adadelta: Precision C. 89.33%, Recall C. 63.80%, F1 C. 74.44%, Accuracy 77.41%.",
+            "For 'Bootstrapping' corpus:",
+            "- B1: Precision C. 74.38%, Recall C. 86.66%, F1 C. 80.05%, Accuracy 77.74%.",
+            "- B2: Precision C. 77.29%, Recall C. 84.85%, F1 C. 80.90%, Accuracy 79.58%.",
+            "- Stated_Pair_LSTM_Max_Adadelta: Precision C. 78.69%, Recall C. 84.44%, F1 C. 81.47%, Accuracy 80.19%.",
+            "- Stated_Pair_LSTM_Mean_Adam: Precision C. 80.00%, Recall C. 82.53%, F1 C. 81.25%, Accuracy 80.36%.",
+            "- Stated_Pair_LSTM_Mode_Adam: Precision C. 80.24%, Recall C. 82.53%, F1 C. 81.37%, Accuracy 80.52%.",
+            "- Pair_LSTM_Max_Adadelta: Precision C. 78.07%, Recall C. 84.76%, F1 C. 81.12%, Accuracy 79.86%.",
+            "- Pair_LSTM_Mean_Adadelta: Precision C. 78.48%, Recall C. 85.71%, F1 C. 81.94%, Accuracy 80.52%.",
+            "- Pair_LSTM_Mean_Adam: Precision C. 80.30%, Recall C. 82.85%, F1 C. 81.56%, Accuracy 80.68%.",
+            "- Pair_LSTM_Mode_Adam: Precision C. 77.24%, Recall C. 87.30%, F1 C. 81.96%, Accuracy 80.19%."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article claims that \"all the configurations in Table 5 outperform the baseline B1\". Looking at the 'F1 C.' and 'Accuracy' columns for the 'Non bootstrapping' corpus, all listed configurations (Stated_Pair_LSTM_Mean_Adadelta, Stated_Pair_LSTM_Mode_Adadelta, Pair_LSTM_Max_Adadelta, Pair_LSTM_Mean_Adadelta) show higher F1 C. and Accuracy values compared to B1 (F1 C. 61.13%, Accuracy 63.99%). Similarly, for the 'Bootstrapping' corpus, all configurations also show higher F1 C. and Accuracy values compared to B1 (F1 C. 80.05%, Accuracy 77.74%). This supports the claim.",
+          "issues": [],
+          "table_markdown": "| Corpus            | Method                          | Precision C. | Recall C. | F1 C. | Accuracy |\n|-------------------|---------------------------------|--------------|-----------|-------|----------|\n|                   | B1                              | 68.92%       | 54.92%    | 61.13% | 63.99%   |\n|                   | B2                              | 70.28%       | 77.60%    | 73.76% | 71.86%   |\n| Non bootstrapping | Stated_Pair_LSTM_Mean_Adadelta  | 90.04%       | 60.31%    | 72.24% | 76.10%   |\n|                   | Stated_Pair_LSTM_Mode_Adadelta  | 89.23%       | 63.17%    | 73.97% | 77.08%   |\n|                   | Pair_LSTM_Max_Adadelta          | 88.46%       | 65.71%    | 75.40% | 77.90%   |\n|                   | Pair_LSTM_Mean_Adadelta         | 89.33%       | 63.80%    | 74.44% | 77.41%   |\n|                   | B1                              | 74.38%       | 86.66%    | 80.05% | 77.74%   |\n|                   | B2                              | 77.29%       | 84.85%    | 80.90% | 79.58%   |\n| Bootstrapping     | Stated_Pair_LSTM_Max_Adadelta   | 78.69%       | 84.44%    | 81.47% | 80.19%   |\n|                   | Stated_Pair_LSTM_Mean_Adam      | 80.00%       | 82.53%    | 81.25% | 80.36%   |\n|                   | Stated_Pair_LSTM_Mode_Adam      | 80.24%       | 82.53%    | 81.37% | 80.52%   |\n|                   | Pair_LSTM_Max_Adadelta          | 78.07%       | 84.76%    | 81.12% | 79.86%   |\n|                   | Pair_LSTM_Mean_Adadelta         | 78.48%       | 85.71%    | 81.94% | 80.52%   |\n|                   | Pair_LSTM_Mean_Adam             | 80.30%       | 82.85%    | 81.56% | 80.68%   |\n|                   | Pair_LSTM_Mode_Adam             | 77.24%       | 87.30%    | 81.96% | 80.19%   |"
+        }
+      },
+      {
+        "id": "fig_7",
+        "kind": "figure",
+        "label": "Figure 2",
+        "number": "2",
+        "page": 7,
+        "caption": "Figure 2: Distribution of the most frequent connectives in the class Cause",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "bar chart",
+          "description": "This bar chart shows the frequency of various connectives in the 'Causal' class, and their corresponding frequency in the 'Non Causal' class. The connectives are listed on the x-axis, and their frequency is on the y-axis.",
+          "data_read": [
+            "The y-axis is labeled 'Frequency' and ranges from 0 to 2000.",
+            "The x-axis lists connectives such as 'because', 'thus', 'so that', 'so', 'because of', 'hence', 'therefore', 'as a result of', 'so in', 'due to', 'thereby', 'in response to', 'se', 'se os', 'for', 'os pue', 'and', 'due', 'consequently', 'since', 'then', 'So', 'because in', 'Because of', 'after', 'so for', 'when', 'so on', 'us:', 'Thus', 'so at', 'so by', 'thus', 'so with', 'that because', 'can therefore', 'because at', 'so much that', 'Therefore', 'so after', 'so because', 'so impressed by', 'essful that', 'in order', 'ccordingly', 'can thus', 'and because', 'so impressed with', 'so succes', 'acc', 'so far as', 'so from'.",
+            "The legend indicates 'Causal' (blue bars) and 'Non Causal' (red bars).",
+            "For 'because', the Causal frequency is approximately 1800, and the Non Causal frequency is 0.",
+            "For 'thus', the Causal frequency is approximately 1200, and the Non Causal frequency is 0.",
+            "For 'so that', the Causal frequency is approximately 1000, and the Non Causal frequency is 0.",
+            "For 'so', the Causal frequency is approximately 800, and the Non Causal frequency is 0.",
+            "For 'because of', the Causal frequency is approximately 600, and the Non Causal frequency is 0.",
+            "All connectives shown have a non-zero frequency in the 'Causal' class and a zero frequency in the 'Non Causal' class."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The figure clearly shows that for all the most frequent connectives in the 'Causal' class (represented by blue bars), the 'Non Causal' class (represented by red bars) has a frequency of 0. This directly supports the claim that 'the most frequent connectives in the Causal class do not have any instance in the Non Causal class'.",
+          "issues": [],
+          "table_markdown": null
+        }
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "label": "Table 6",
+        "number": "6",
+        "page": 7,
+        "caption": "Table 6: Number of relations in the reduced version of the AltLex Corpus",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the number of causal and non-causal relations in the reduced version of the AltLex Corpus, categorized by corpus version (Non bootstrapping and Bootstrapping) and total.",
+          "data_read": [
+            "Corpus: Training",
+            "Version: Non bootstrapping, Bootstrapping",
+            "Causal: 7,606 (Non bootstrapping), 12,534 (Bootstrapping)",
+            "Non Causal: 7,929 (Non bootstrapping), 8,821 (Bootstrapping)",
+            "Total: 15,534 (Non bootstrapping), 21,354 (Bootstrapping)"
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states, \"The new corpus size is in Table 6.\" The table indeed shows the 'Total' column with the new corpus sizes for both 'Non bootstrapping' (15,534) and 'Bootstrapping' (21,354) versions, directly supporting this claim.",
+          "issues": [],
+          "table_markdown": "| Corpus | Version | Causal | Non Causal | Total |\n|---|---|---|---|---|\n| Training | Non bootstrapping | 7,606 | 7,929 | 15,534 |\n| | Bootstrapping | 12,534 | 8,821 | 21,354 |"
+        }
+      },
+      {
+        "id": "fig_9",
+        "kind": "table",
+        "label": "Table 7",
+        "number": "7",
+        "page": 8,
+        "caption": "Table 7: Results of B1 and Pair_LSTM_Mean_Adam with the reduced version of the AltLex corpus",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents the performance metrics (Precision C., Recall C., F1 C., and Accuracy) for two baseline methods (B1) and two configurations of the Pair_LSTM_Mean_Adam system, evaluated on the reduced version of the AltLex corpus. The results are shown for both 'Non bootstrapping' and 'Bootstrapping' corpus versions.",
+          "data_read": [
+            "The table has columns: 'Corpus', 'Method', 'Precision C.', 'Recall C.', 'F1 C.', and 'Accuracy'.",
+            "For 'Non bootstrapping' corpus:",
+            "- B1: Precision C. 63.70%, Recall C. 84.12%, F1 C. 72.50%, Accuracy 67.10%.",
+            "- Pair_LSTM_Mean_Adam: Precision C. 76.38%, Recall C. 69.84%, F1 C. 72.96%, Accuracy 73.32%.",
+            "For 'Bootstrapping' corpus:",
+            "- B1: Precision C. 67.34%, Recall C. 94.28%, F1 C. 78.57%, Accuracy 73.48%.",
+            "- Pair_LSTM_Mean_Adam: Precision C. 72.65%, Recall C. 88.57%, F1 C. 79.82%, Accuracy 76.92%."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The article states: \"We assessed the performance of the baseline B1 and the system “Pair_LSTM_Mean_Adam\" and the results are in Table 7.\" The table indeed presents the performance metrics for both B1 and Pair_LSTM_Mean_Adam, allowing for their assessment.",
+          "issues": [],
+          "table_markdown": "| Corpus            | Method                  | Precision C. | Recall C. | F1 C.  | Accuracy |\n|-------------------|-------------------------|--------------|-----------|--------|----------|\n| Non bootstrapping | B1                      | 63.70%       | 84.12%    | 72.50% | 67.10%   |\n|                   | Pair_LSTM_Mean_Adam   | 76.38%       | 69.84%    | 72.96% | 73.32%   |\n| Bootstrapping     | B1                      | 67.34%       | 94.28%    | 78.57% | 73.48%   |\n|                   | Pair_LSTM_Mean_Adam   | 72.65%       | 88.57%    | 79.82% | 76.92%   |"
+        }
+      },
+      {
+        "id": "fig_10",
+        "kind": "table",
+        "label": "Table 8",
+        "number": "8",
+        "page": 8,
+        "caption": "Table 8: Some correctly classified examples by our best configuration and misclassified by B2",
+        "fidelity": 1.0,
+        "description": {
+          "figure_class": "table",
+          "description": "This table presents examples of sentences classified by the proposed system (Our proposal) and misclassified by the B2 system. It includes the original sentence, its 'Training' class, and the 'Test' class for both B2 and Our proposal.",
+          "data_read": [
+            "The table has four columns: 'Sentence', 'Training', 'Test B2', and 'Test Our proposal'.",
+            "Row 1: Sentence: 'The United States decided to break off economic relations with Cuba (which means that they would stop buying things from them).', Training: 'Causal', Test B2: 'Causal', Test Our proposal: 'Non Causal'.",
+            "Row 2: Sentence: 'Although Roosevelt had promised to keep the United States out of the war, he nevertheless took concrete steps to prepare for war.', Training: 'Causal', Test B2: 'Causal', Test Our proposal: 'Non Causal'.",
+            "Row 3: Sentence: 'Greatly alarmed and with Hitler making further demands on the Free City of Danzig, Britain and France guaranteed their support for Polish independence; when Italy conquered Albania in April 1939, the same guarantee was extended to Romania and Greece.', Training: 'Causal', Test B2: 'Causal', Test Our proposal: 'Non Causal'.",
+            "Row 4: Sentence: 'One of these fragments gives rise to fibrils of amyloid beta, which then form clumps that deposit outside neurons in dense formations known as senile plaques.', Training: 'Ambiguous', Test B2: 'Non Causal', Test Our proposal: 'Causal'."
+          ],
+          "supports_claims": true,
+          "support_rationale": "The table supports the claims by showing instances where the proposed system correctly disambiguates causal meaning, while B2 misclassifies them. For example, in the last row, the sentence with 'which then' is correctly classified as 'Causal' by 'Our proposal' but as 'Non Causal' by 'B2', aligning with the claim that the proposed system correctly disambiguates its causal meaning for this expression.",
+          "issues": [],
+          "table_markdown": "| Sentence | Training | Test B2 | Our proposal |\n|---|---|---|---|\n| The United States decided to break off economic relations with Cuba (which means that they would stop buying things from them). | Causal | Causal | Non Causal |\n| Although Roosevelt had promised to keep the United States out of the war, he nevertheless took concrete steps to prepare for war. | Causal | Causal | Non Causal |\n| Greatly alarmed and with Hitler making further demands on the Free City of Danzig, Britain and France guaranteed their support for Polish independence; when Italy conquered Albania in April 1939, the same guarantee was extended to Romania and Greece. | Causal | Causal | Non Causal |\n| One of these fragments gives rise to fibrils of amyloid beta, which then form clumps that deposit outside neurons in dense formations known as senile plaques. | Ambiguous | Non Causal | Causal |"
+        }
+      }
+    ],
+    "figure_mentions": [
+      {
+        "figure_id": "fig_1",
+        "marker": "Table 1",
+        "sentence": "The relation can be explicit or implicit, incase it is explicitly expressed, it is signalled by alexical marker (l), which may be a verb, a preposi-tion, an adverb or an expression such as as a resultof, see Table 1.",
+        "section_id": "sec_5",
+        "start": 460,
+        "end": 467
+      },
+      {
+        "figure_id": "fig_2",
+        "marker": "Table 2",
+        "sentence": "For instance, according to PDTB, the preposition because is an unambiguous lexical marker of causation, but there are other expressions whose causal meaning is not unarguable, such as since or after that may have a temporal or a causal interpretation, see Table 2.",
+        "section_id": "sec_6",
+        "start": 515,
+        "end": 522
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 3",
+        "sentence": "The corpus size is shown in Table 3.",
+        "section_id": "sec_6",
+        "start": 3049,
+        "end": 3056
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Table 4",
+        "sentence": "Table 4 shows the class distribution of the lexical markers, as well as the the number of unarguable ones and the number of lexical markers with mostly a different mean-ing in the training and the test set.",
+        "section_id": "sec_6",
+        "start": 3296,
+        "end": 3303
+      },
+      {
+        "figure_id": "fig_4",
+        "marker": "Table 4",
+        "sentence": "According to the Table 4, there are few ambiguous connectives, 121 in the “non bootstrapping\" corpus and 147 in the \"bootstrapping\" version.",
+        "section_id": "sec_6",
+        "start": 3520,
+        "end": 3527
+      },
+      {
+        "figure_id": "fig_5",
+        "marker": "Figure 1",
+        "sentence": "We call to this second architecture \"Pair_LSTM\" and it is depicted in Figure 1.",
+        "section_id": "sec_7",
+        "start": 1922,
+        "end": 1930
+      },
+      {
+        "figure_id": "fig_5",
+        "marker": "Figure 1",
+        "sentence": "According to Figure 1, the first input of the system is the first event of the relation, and the second input is the concatenation of the lexical marker and the second event.",
+        "section_id": "sec_7",
+        "start": 1946,
+        "end": 1954
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 3",
+        "sentence": "The size of each of them is shown in Table 3.",
+        "section_id": "sec_8",
+        "start": 675,
+        "end": 682
+      },
+      {
+        "figure_id": null,
+        "marker": "Table 5.1",
+        "sentence": "The results reached by our system are shown in Table 5.1 The Precision, Recall and F1 values were used to measure the performance of the system in the Causal Class, and the Accuracy to measure the overall performance of the system.",
+        "section_id": "sec_10",
+        "start": 47,
+        "end": 56
+      },
+      {
+        "figure_id": "fig_6",
+        "marker": "Table 5",
+        "sentence": "Concerning the results reached by the proposed systems, all the configurations in Table 5 outperform the baseline B1, which means that the system learns beyond the class distribution of the lexical markers in the training data.",
+        "section_id": "sec_10",
+        "start": 534,
+        "end": 541
+      },
+      {
+        "figure_id": "fig_7",
+        "marker": "Figure 2",
+        "sentence": "Figure 2 shows that the most frequent connectives in the Causal class do not have any instance in the Non Causal class, which supports our last assertion.",
+        "section_id": "sec_10",
+        "start": 1180,
+        "end": 1188
+      },
+      {
+        "figure_id": "fig_3",
+        "marker": "Table 3",
+        "sentence": "The class distribution of the AltLex corpus is not balanced (see Table 3), so we reduced the number of instances of the Non Causal by a factor of ten with the aim of evaluating our system with a more balanced dataset.",
+        "section_id": "sec_10",
+        "start": 3881,
+        "end": 3888
+      },
+      {
+        "figure_id": "fig_8",
+        "marker": "Table 6",
+        "sentence": "The new corpus size is in Table 6.",
+        "section_id": "sec_10",
+        "start": 4060,
+        "end": 4067
+      },
+      {
+        "figure_id": "fig_9",
+        "marker": "Table 7",
+        "sentence": "We assessed the performance of the baseline B1 and the system “Pair_LSTM_Mean_Adam\" and the results are in Table 7.",
+        "section_id": "sec_10",
+        "start": 4176,
+        "end": 4183
+      },
+      {
+        "figure_id": "fig_10",
+        "marker": "Table 8",
+        "sentence": "We present some correctly classified examples by our best configuration and misclassified by B2 in Table 8.",
+        "section_id": "sec_11",
+        "start": 533,
+        "end": 540
+      },
+      {
+        "figure_id": "fig_10",
+        "marker": "Table 8",
+        "sentence": "However, there are some other uses of break that do not have a causal meaning (see Table 8).",
+        "section_id": "sec_11",
+        "start": 841,
+        "end": 848
+      },
+      {
+        "figure_id": "fig_10",
+        "marker": "Table 8",
+        "sentence": "Despite the difficulty of the expression which then, we can see in Table 8 that our proposed system cor- rectly disambiguate its causal meaning, while the system of Hidey and McKeown (2016) does not.",
+        "section_id": "sec_11",
+        "start": 1508,
+        "end": 1515
+      },
+      {
+        "figure_id": "fig_10",
+        "marker": "Table 8",
+        "sentence": "We also showed the suc- cess of the system in some non-causative sentences but with commonly causative verbs (see Table 8).",
+        "section_id": "sec_12",
+        "start": 654,
+        "end": 661
+      }
+    ],
+    "hidden_text_findings": [
+      {
+        "page": 7,
+        "text": "yc",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          77.0252150312,
+          324.7588501521768,
+          80.2015142312,
+          328.512727694202
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          77.0252150312,
+          338.8503604369739,
+          80.2015142312,
+          340.1979199465739
+        ]
+      },
+      {
+        "page": 7,
+        "text": "F",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          77.0252150312,
+          340.20917538,
+          80.2015142312,
+          342.0944472
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          98.67637462,
+          391.3880103386608,
+          103.25317462000001,
+          393.0509991386608
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          106.31795246000001,
+          391.38127399055867,
+          110.89475246000002,
+          393.2332387905587
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          117.7802048,
+          391.38181726821233,
+          122.35700480000001,
+          393.0448060682123
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          155.9873312,
+          391.38001276599454,
+          160.5641312,
+          393.3217411659945
+        ]
+      },
+      {
+        "page": 7,
+        "text": "rr",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          182.73224340000004,
+          391.37916534721694,
+          191.1299086,
+          393.32552266929764
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          201.83618800000002,
+          391.385878955522,
+          206.412988,
+          393.048867755522
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          217.11888600000003,
+          391.3805052387104,
+          221.69568600000002,
+          393.2324700387104
+        ]
+      },
+      {
+        "page": 7,
+        "text": "tt:",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          240.04331440000004,
+          391.3812107448584,
+          252.26146340000003,
+          393.2432400848868
+        ]
+      },
+      {
+        "page": 7,
+        "text": "rt",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          259.14687760000004,
+          391.3765841246628,
+          267.54454280000004,
+          393.32475399052004
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          270.6090918,
+          391.3884019803972,
+          275.18589180000004,
+          393.3301303803972
+        ]
+      },
+      {
+        "page": 7,
+        "text": "l",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          113.95933960000002,
+          394.18974401455233,
+          118.53613960000003,
+          395.5031272145523
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          121.60068860000001,
+          394.2980904641582,
+          126.17748860000002,
+          396.23981886415817
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          129.24203760000003,
+          394.27941143301234,
+          133.81883760000002,
+          396.13137623301236
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          136.883768,
+          394.277133921032,
+          141.460568,
+          396.129098721032
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          144.52511700000002,
+          394.37125113122244,
+          149.10191700000001,
+          395.6846343312224
+        ]
+      },
+      {
+        "page": 7,
+        "text": "l",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          167.4495454,
+          394.1866863041323,
+          172.0263454,
+          395.5000695041323
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          198.01532280000004,
+          394.3820211773988,
+          202.59212280000003,
+          395.6954043773988
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          209.477537,
+          394.37935356226154,
+          214.054337,
+          396.23131836226156
+        ]
+      },
+      {
+        "page": 7,
+        "text": "tr",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          224.76023500000002,
+          394.2996278752566,
+          233.15790020000003,
+          396.2413562752566
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          251.50552860000005,
+          394.29809161643936,
+          256.08232860000004,
+          396.23982001643935
+        ]
+      },
+      {
+        "page": 7,
+        "text": "l",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          266.78822660000003,
+          394.1821163929572,
+          271.3650266000001,
+          395.4954995929572
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          113.95933960000002,
+          395.50355013433636,
+          118.53613960000003,
+          397.3555149343364
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          117.7802048,
+          395.93466345698994,
+          122.35700480000001,
+          399.289410376774
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          155.9873312,
+          396.2124492,
+          160.5641312,
+          397.875438
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          163.62868020000002,
+          395.50049242391634,
+          172.0263454,
+          398.23906904753954
+        ]
+      },
+      {
+        "page": 7,
+        "text": "tf",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          182.73224340000004,
+          396.2116017812224,
+          191.1299086,
+          399.37633943126195
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          209.477537,
+          396.2305253858948,
+          214.054337,
+          397.54390858589477
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          224.76023500000002,
+          396.2220940011828,
+          229.33703500000001,
+          397.5354772011828
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          259.14687760000004,
+          396.2317882687233,
+          263.7236776000001,
+          398.0837530687233
+        ]
+      },
+      {
+        "page": 7,
+        "text": "tt",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          106.31795246000001,
+          399.12301328122237,
+          114.71527440000001,
+          401.68318629
+        ]
+      },
+      {
+        "page": 7,
+        "text": "lf",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          117.7802048,
+          399.1305268981636,
+          126.17748860000002,
+          400.7935156981636
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          140.70425180000004,
+          400.09596069012684,
+          145.28105180000003,
+          402.03768909012683
+        ]
+      },
+      {
+        "page": 7,
+        "text": "it",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          171.27002920000004,
+          399.87689069,
+          179.66769440000002,
+          402.13224051
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          182.73224340000004,
+          398.0847620427684,
+          187.30904340000004,
+          399.74775084276837
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          228.58110020000004,
+          399.13206430926203,
+          233.15790020000003,
+          400.795053109262
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          240.04331440000004,
+          399.12301376311115,
+          244.62011440000003,
+          400.97497856311116
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          251.50552860000005,
+          399.1305280504448,
+          256.08232860000004,
+          400.7935168504448
+        ]
+      },
+      {
+        "page": 7,
+        "text": "f",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          259.14687760000004,
+          398.08399336399077,
+          263.7236776000001,
+          399.74698216399077
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          262.9677428,
+          399.11832341532653,
+          267.54454280000004,
+          400.97028821532655
+        ]
+      },
+      {
+        "page": 7,
+        "text": "rtr",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          270.6090918,
+          398.2396976387233,
+          282.8272408000001,
+          401.6847237010984
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          282.071306,
+          398.8710018359549,
+          286.64810600000004,
+          400.8127302359549
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          247.68466340000003,
+          402.92546726999996,
+          252.26146340000003,
+          404.77743207
+        ]
+      },
+      {
+        "page": 7,
+        "text": "li",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          259.14687760000004,
+          400.96968027008575,
+          271.3650266000001,
+          404.1438126159816
+        ]
+      },
+      {
+        "page": 7,
+        "text": "ff",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          274.4295756,
+          400.8129705312224,
+          286.64810600000004,
+          404.7397343312224
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          121.60068860000001,
+          403.7007566301269,
+          126.17748860000002,
+          405.64248503012686
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          228.58110020000004,
+          403.70229404122523,
+          233.15790020000003,
+          405.6440224412252
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          251.50552860000005,
+          403.700757782408,
+          256.08232860000004,
+          405.642486182408
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          140.70425180000004,
+          407.93900054999995,
+          145.28105180000003,
+          409.79096534999996
+        ]
+      },
+      {
+        "page": 7,
+        "text": "fr",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          262.9677428,
+          405.80076664222435,
+          271.3650266000001,
+          408.4421311626344
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          117.7802048,
+          408.9649263060184,
+          122.35700480000001,
+          412.4084059607776
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          270.6090918,
+          408.56368434,
+          275.18589180000004,
+          409.87706754
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          121.60068860000001,
+          411.54379649,
+          126.17748860000002,
+          413.39576129
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          220.93975120000002,
+          411.15137975436255,
+          225.5165512,
+          414.5061290774489
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          228.58110020000004,
+          411.5453339010984,
+          233.15790020000003,
+          414.8990499558576
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          236.22244920000003,
+          412.4251828626568,
+          240.79924920000002,
+          414.3669112626568
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          129.24203760000003,
+          417.25342611796196,
+          133.81883760000002,
+          419.19515451796195
+        ]
+      },
+      {
+        "page": 7,
+        "text": "r",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          209.477537,
+          416.6451744226568,
+          214.054337,
+          418.5869028226568
+        ]
+      },
+      {
+        "page": 7,
+        "text": "t",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          220.93975120000002,
+          420.39590476999996,
+          225.5165512,
+          422.24786957
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          129.24203760000003,
+          423.69038637,
+          133.81883760000002,
+          425.00376957
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          236.22244920000003,
+          421.9671420259444,
+          240.79924920000002,
+          424.7822752759816
+        ]
+      },
+      {
+        "page": 7,
+        "text": "i",
+        "reasons": [
+          "size"
+        ],
+        "bbox": [
+          209.477537,
+          426.18713358594437,
+          214.054337,
+          427.50051678594434
+        ]
+      }
+    ]
+  }
+}

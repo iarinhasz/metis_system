@@ -1,0 +1,423 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T10320",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "INCREMENTAL NETWORK QUANTIZATION: TOWARDS LOSSLESS CNNS WITH LOW-PRECISION WEIGHTS",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "page": 3,
+        "label": "Figure 1",
+        "caption": "Figure 1: An overview of our incremental network quantization method. (a) Pre-trained full-precision model used as a reference. (b) Model update with three proposed operations: weight partition, group-wise quantization (green connections) and re-training (blue connections). (c) Final low-precision model with all the weights constrained to be either powers of two or zero. In the fig-ure, operation (1) represents a single run of (b), and operation (2) denotes the procedure of repeating operation (1) on the latest re-trained weight group until all the non-zero weights are quantized. Our method does not lead to accuracy loss when using 5-bit, 4-bit and even 3-bit approximations in net-work quantization. For better visualization, here we just use a 3-layer fully connected network as an illustrative example, and the newly re-trained weights are divided into two disjoint groups of the same size at each run of operation (1) except the last run which only performs quantization on the re-trained floating-point weights occupying 12.5% of the model weights."
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "page": 5,
+        "label": "Figure 2",
+        "caption": "Figure 2: Result illustrations. First row: results from the 1st iteration of the proposed three oper-ations. The top left cube illustrates weight partition operation generating two disjoint groups, the middle image illustrates the quantization operation on the first weight group (green cells), and the top right cube illustrates the re-training operation on the second weight group (light blue cells). Sec-ond row: results from the 2nd, 3rd and 4th iterations of the INQ. In the figure, the accumulated portion of the weights which have been quantized undergoes from 50%\\u219275%\\u219287.5%\\u2192100%."
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 1",
+        "caption": "Table 1: Our INQ well converts diverse full-precision deep CNN models (including AlexNet, VGG-16, GoogleNet, ResNet-18 and ResNet-50) to 5-bit low-precision versions with consistently im-proved model accuracy."
+      },
+      {
+        "id": "fig_4",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 2",
+        "caption": "Table 2: Comparison of two different strategies for weight partition on ResNet-18."
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "page": 9,
+        "label": "Table 3",
+        "caption": "Table 3: Our INQ generates extremely low-precision (4-bit and 3-bit) models with improved or very similar accuracy compared with the full-precision ResNet-18 model."
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "page": 9,
+        "label": "Table 4",
+        "caption": "Table 4: Comparison of our 2-bit ternary model and some other binary or ternary models, including the BWN and the TWN approximations of ResNet-18."
+      },
+      {
+        "id": "fig_7",
+        "kind": "table",
+        "page": 10,
+        "label": "Table 5",
+        "caption": "Table 5: Comparison of the combination of our INQ and DNS, and deep compression method on AlexNet. Conv: Convolutional layer, FC: Fully connected layer, P: Pruning, Q: Quantization, H: Huffman coding."
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "page": 13,
+        "label": "Table 6",
+        "caption": "Table 6: A statistical distribution of the quantized weights in our 5-bit AlexNet model."
+      },
+      {
+        "id": "fig_9",
+        "kind": "table",
+        "page": 13,
+        "label": "Table 7",
+        "caption": "Table 7: Comparison of our VGG-16 model with 5-bit weights and 4-bit activations, and the pre-trained reference with 32-bit floating-point weights and 32-bit float-point activations."
+      }
+    ],
+    "abstract": "This paper presents incremental network quantization (INQ), a novel method, tar-geting to efficiently convert any pre-trained full-precision convolutional neural network (CNN) model into a low-precision version whose weights are constrained to be either powers of two or zero. Unlike existing methods which are struggled in noticeable accuracy loss, our INQ has the potential to resolve this issue, as benefiting from two innovations. On one hand, we introduce three interdependent operations, namely weight partition, group-wise quantization and re-training. A well-proven measure is employed to divide the weights in each layer of a pre-trained CNN model into two disjoint groups. The weights in the first group are responsible to form a low-precision base, thus they are quantized by a variable-length encoding method. The weights in the other group are responsible to com-pensate for the accuracy loss from the quantization, thus they are the ones to be re-trained. On the other hand, these three operations are repeated on the latest re-trained group in an iterative manner until all the weights are converted into low-precision ones, acting as an incremental network quantization and accura-cy enhancement procedure. Extensive experiments on the ImageNet classification task using almost all known deep CNN architectures including AlexNet, VGG-16, GoogleNet and ResNets well testify the efficacy of the proposed method. Specifi-cally, at 5-bit quantization (a variable-length encoding: 1 bit for representing zero value, and the remaining 4 bits represent at most 16 different values for the pow-ers of two) , our models have improved accuracy than the 32-bit floating-point references. Taking ResNet-18 as an example, we further show that our quantized models with 4-bit, 3-bit and 2-bit ternary weights have improved or very simi-lar accuracy against its 32-bit floating-point baseline. Besides, impressive results with the combination of network pruning and INQ are also reported. We believe that our method sheds new insights on how to make deep CNNs to be applicable on mobile or embedded devices. The code will be made publicly available.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 INTRODUCTION",
+        "first_sentence": "Deep convolutional neural networks (CNNs) have demonstrated record breaking results on a va- riety of computer vision tasks such as image classification (Krizhevsky et al., 2012; Simonyan & Zisserman, 2015), face recognition (Taigman et al., 2014; Sun et al., 2014), semantic segmentation (Long et al., 2015; Chen et al., 2015a) and object detection (Girshick, 2015; Ren et al., 2015)."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "method"
+        ],
+        "title": "2 INCREMENTAL NETWORK QUANTIZATION",
+        "first_sentence": "In this section, we clarify the insight of our INQ, describe its key components, and detail its imple-mentation."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "2.1 WEIGHT QUANTIZATION WITH VARIABLE-LENGTH ENCODING",
+        "first_sentence": "Suppose a pre-trained full-precision (i.e., 32-bit floating-point) CNN model can be represented by {W₁ : 1 < 1 < L}, where W₁ denotes the weight set of the Ith layer, and L denotes the number of learnable layers in the model."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "method"
+        ],
+        "title": "2.2 INCREMENTAL QUANTIZATION STRATEGY",
+        "first_sentence": "We can naturally use the above described method to quantize any pre-trained full-precision CNN model."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "method"
+        ],
+        "title": "2.3 INCREMENTAL NETWORK QUANTIZATION ALGORITHM",
+        "first_sentence": "Now, we come to the training method."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "results"
+        ],
+        "title": "3 EXPERIMENTAL RESULTS",
+        "first_sentence": "To analyze the performance of our INQ, we perform extensive experiments on the ImageNet large scale classification task, which is known as the most challenging image classification benchmark so far."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "results"
+        ],
+        "title": "3.1 RESULTS ON IMAGENET",
+        "first_sentence": "Setting expected bit-width to 5, the first set of experiments is performed to testify the efficacy of our INQ on different CNN architectures."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method",
+          "results"
+        ],
+        "title": "3.2 ANALYSIS OF WEIGHT PARTITION STRATEGIES",
+        "first_sentence": "In our INQ, the first operation is weight partition whose result will directly affect the following group-wise quantization and re-training operations."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "method"
+        ],
+        "title": "3.3 THE TRADE-OFF BETWEEN EXPECTED BIT-WIDTH AND MODEL ACCURACY",
+        "first_sentence": "The third set of experiments is performed to explore the limit of the expected bit-width under which our INQ can still achieve lossless network quantization."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "related_work"
+        ],
+        "title": "3.4 Low-BIT DEEP COMPRESSION",
+        "first_sentence": "In the literature, recently proposed deep compression method (Han et al., 2016) reports so far best results on network compression without loss of model accuracy."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "4 CONCLUSIONS",
+        "first_sentence": "In this paper, we present INQ, a new network quantization method, to address the problem of how to convert any pre-trained full-precision (i.e., 32-bit floating-point) CNN model into a lossless low-precision version whose weights are constrained to be either powers of two or zero."
+      },
+      {
+        "id": "sec_14",
+        "roles": [
+          "results"
+        ],
+        "title": "A APPENDIX 1: STATISTICAL ANALYSIS OF THE QUANTIZED WEIGHTS",
+        "first_sentence": "Taking our 5-bit AlexNet model as an example, we analyze the distribution of the quantized weights."
+      },
+      {
+        "id": "sec_15",
+        "roles": [
+          "results"
+        ],
+        "title": "B APPENDIX 2: LOSSLESS CNNS WITH LOW-PRECISION WEIGHTS AND LOW-PRECISION ACTIVATIONS",
+        "first_sentence": "B APPENDIX 2: LOSSLESS CNNS WITH LOW-PRECISION WEIGHTS AND LOW-PRECISION ACTIVATIONS\n\nTable 7: Comparison of our VGG-16 model with 5-bit weights and 4-bit activations, and the pre-trained reference with 32-bit floating-point weights and 32-bit float-point activations."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "incremental network quantization",
+      "convolutional neural network",
+      "low-precision weights",
+      "ImageNet classification",
+      "deep CNN architectures",
+      "network pruning"
+    ],
+    "language": "en",
+    "confidence": 0.95,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method",
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_14"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_15"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "incremental network quantization",
+      "convolutional neural network",
+      "low-precision weights",
+      "ImageNet classification",
+      "deep CNN architectures",
+      "network pruning"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T10320",
+        "name": "Neural Networks and Applications",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.9,
+    "paper_type": "empirical",
+    "secondary_areas": [
+      {
+        "code": "https://openalex.org/fields/22",
+        "name": "Engineering",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/fields/26",
+        "name": "Mathematics",
+        "level": "field"
+      }
+    ],
+    "field_confidence": 0.95,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.9
+  }
+}

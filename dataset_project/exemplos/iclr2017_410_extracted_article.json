@@ -1,0 +1,1697 @@
+{
+  "title": "A BASELINE FOR DETECTING MISCLASSIFIED AND OUT-OF-DISTRIBUTION EXAMPLES IN NEURAL NETWORKS",
+  "authors": [
+    "Dan Hendrycks",
+    "Kevin Gimpel"
+  ],
+  "language": "en",
+  "model": "google/gemini-2.5-flash",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "ABSTRACT",
+      "level": 1,
+      "parent_id": null,
+      "key": "abstract",
+      "text": "We consider the two related problems of detecting if an example is misclassified or out-of-distribution. We present a simple baseline that utilizes probabilities from softmax distributions. Correctly classified examples tend to have greater maxi- mum softmax probabilities than erroneously classified and out-of-distribution ex- amples, allowing for their detection. We assess performance by defining sev- eral tasks in computer vision, natural language processing, and automatic speech recognition, showing the effectiveness of this baseline across all. We then show the baseline can sometimes be surpassed, demonstrating the room for future re- search on these underexplored detection tasks.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_2",
+      "title": "1 INTRODUCTION",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "When machine learning classifiers are employed in real-world tasks, they tend to fail when the training and test distributions differ. Worse, these classifiers often fail silently by providing high-confidence predictions while being woefully incorrect (Goodfellow et al., 2015; Amodei et al., 2016). Classifiers failing to indicate when they are likely mistaken can limit their adoption or cause serious accidents. For example, a medical diagnosis model may consistently classify with high confidence, even while it should flag difficult examples for human intervention. The resulting unflagged, erroneous diagnoses could blockade future machine learning technologies in medicine. More generally and importantly, estimating when a model is in error is of great concern to AI Safety (Amodei et al., 2016).\n\nThese high-confidence predictions are frequently produced by softmaxes because softmax probabil- ities are computed with the fast-growing exponential function. Thus minor additions to the softmax inputs, i.e. the logits, can lead to substantial changes in the output distribution. Since the soft- max function is a smooth approximation of an indicator function, it is uncommon to see a uniform distribution outputted for out-of-distribution examples. Indeed, random Gaussian noise fed into an MNIST image classifier gives a “prediction confidence\" or predicted class probability of 91%, as we show later. Throughout our experiments we establish that the prediction probability from a softmax distribution has a poor direct correspondence to confidence. This is consistent with a great deal of anecdotal evidence from researchers (Nguyen & O'Connor, 2015; Yu et al., 2010; Provost et al., 1998; Nguyen et al., 2015).\n\nHowever, in this work we also show the prediction probability of incorrect and out-of-distribution examples tends to be lower than the prediction probability for correct examples. Therefore, cap- turing prediction probability statistics about correct or in-sample examples is often sufficient for detecting whether an example is in error or abnormal, even though the prediction probability viewed in isolation can be misleading.\n\nThese prediction probabilities form our detection baseline, and we demonstrate its efficacy through various computer vision, natural language processing, and automatic speech recognition tasks. While these prediction probabilities create a consistently useful baseline, at times they are less ef- fective, revealing room for improvement. To give ideas for future detection research, we contribute one method which outperforms the baseline on some (but not all) tasks. This new method evaluates the quality of a neural network's input reconstruction to determine if an example is abnormal.\n\nIn addition to the baseline methods, another contribution of this work is the designation of standard tasks and evaluation metrics for assessing the automatic detection of errors and out-of-distribution examples. We use a large number of well-studied tasks across three research areas, using standard neural network architectures that perform well on them. For out-of-distribution detection, we pro- vide ways to supply the out-of-distribution examples at test time like using images from different datasets and realistically distorting inputs. We hope that other researchers will pursue these tasks in future work and surpass the performance of our baselines.\n\nIn summary, while softmax classifier probabilities are not directly useful as confidence estimates, estimating model confidence is not as bleak as previously believed. Simple statistics derived from softmax distributions provide a surprisingly effective way to determine whether an example is mis- classified or from a different distribution from the training data, as demonstrated by our experimental results spanning computer vision, natural language processing, and speech recognition tasks. This creates a strong baseline for detecting errors and out-of-distribution examples which we hope future research surpasses.",
+      "has_footnotes": true,
+      "coverage": 0.9723502304147466,
+      "fidelity": 0.9940938762822505
+    },
+    {
+      "id": "sec_3",
+      "title": "2 PROBLEM FORMULATION AND EVALUATION",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "In this paper, we are interested in two related problems. The first is error and success prediction: can we predict whether a trained classifier will make an error on a particular held-out test example; can we predict if it will correctly classify said example? The second is in- and out-of-distribution detection: can we predict whether a test example is from a different distribution from the training data; can we predict if it is from within the same distribution? Below we present a simple baseline for solving these two problems. To evaluate our solution, we use two evaluation metrics.\n\nBefore mentioning the two evaluation metrics, we first note that comparing detectors is not as straightforward as using accuracy. For detection we have two classes, and the detector outputs a score for both the positive and negative class. If the negative class is far more likely than the positive class, a model may always guess the negative class and obtain high accuracy, which can be mislead- ing (Provost et al., 1998). We must then specify a score threshold so that some positive examples are classified correctly, but this depends upon the trade-off between false negatives (fn) and false positives (fp).\n\nFaced with this issue, we employ the Area Under the Receiver Operating Characteristic curve (AU- ROC) metric, which is a threshold-independent performance evaluation (Davis & Goadrich, 2006). The ROC curve is a graph showing the true positive rate (tpr = tp/(tp + fn)) and the false positive rate (fpr = fp/(fp + tn)) against each other. Moreover, the AUROC can be interpreted as the prob- ability that a positive example has a greater detector score/value than a negative example (Fawcett, 2005). Consequently, a random positive example detector corresponds to a 50% AUROC, and a \"perfect\" classifier corresponds to 100%.\n\nThe AUROC sidesteps the issue of threshold selection, as does the Area Under the Precision-Recall curve (AUPR) which is sometimes deemed more informative (Manning & Schütze, 1999). This is because the AUROC is not ideal when the positive class and negative class have greatly differing base rates, and the AUPR adjusts for these different positive and negative base rates. For this reason, the AUPR is our second evaluation metric. The PR curve plots the precision (tp/(tp+fp)) and recall (tp/(tp + fn)) against each other. The baseline detector has an AUPR approximately equal to the precision (Saito & Rehmsmeier, 2015), and a \"perfect\" classifier has an AUPR of 100%. Conse- quently, the base rate of the positive class greatly influences the AUPR, so for detection we must specify which class is positive. In view of this, we show the AUPRs when we treat success/normal classes as positive, and then we show the areas when we treat the error/abnormal classes as positive. We can treat the error/abnormal classes as positive by multiplying the scores by -1 and labeling them positive. Note that treating error/abnormal classes as positive classes does not change the AU-",
+      "has_footnotes": true,
+      "coverage": 0.8205019140791153,
+      "fidelity": 0.9836769759450171
+    },
+    {
+      "id": "sec_4",
+      "title": "3 SOFTMAX PREDICTION PROBABILITY AS A BASELINE",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "In what follows we retrieve the maximum/predicted class probability from a softmax distribution and thereby detect whether an example is erroneously classified or out-of-distribution. Specifically, we separate correctly and incorrectly classified test set examples and, for each example, compute the softmax probability of the predicted class, i.e., the maximum softmax probability. From these two groups we obtain the area under PR and ROC curves. These areas summarize the performance of a binary classifier discriminating with values/scores (in this case, maximum probabilities from the softmaxes) across different thresholds. This description treats correctly classified examples as the positive class, denoted \"Success\" or \"Succ\" in our tables. In \"Error\" or \"Err\" we treat the the incorrectly classified examples as the positive class; to do this we label incorrectly classified examples as positive and take the negatives of the softmax probabilities of the predicted classes as the scores.\n\nFor \"In,\" we treat the in-distribution, correctly classified test set examples as positive and use the softmax probability for the predicted class as a score, while for \"Out\" we treat the out-of-distribution examples as positive and use the negative of the aforementioned probability. Since the AUPRs for Success, Error, In, Out classifiers depend on the rate of positive examples, we list what area a random detector would achieve with \"Base” values. Also in the upcoming results we list the mean predicted class probability of wrongly classified examples (Pred Prob Wrong (mean)) to demonstrate that the softmax prediction probability is a misleading confidence proxy when viewed in isolation. The \"Pred. Prob (mean)” columns show this same shortcoming but for out-of-distribution examples.\n\nTable labels aside, we begin experimentation with datasets from vision then consider tasks in natural language processing and automatic speech recognition. In all of the following experiments, the AU-ROCs differ from the random baselines with high statistical significance according to the Wilcoxon rank-sum test.",
+      "has_footnotes": true,
+      "coverage": 0.9992917847025495,
+      "fidelity": 0.9883220651505839
+    },
+    {
+      "id": "sec_5",
+      "title": "3.1 COMPUTER VISION",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": null,
+      "text": "In the following computer vision tasks, we use three datasets: MNIST, CIFAR-10, and CIFAR-100 (Krizhevsky, 2009). MNIST is a dataset of handwritten digits, consisting of 60000 training and 10000 testing examples. Meanwhile, CIFAR-10 has colored images belonging to 10 different classes, with 50000 training and 10000 testing examples. CIFAR-100 is more difficult, as it has 100 different classes with 50000 training and 10000 testing examples.\n\nIn Table 1, we see that correctly classified and incorrectly classified examples are sufficiently distinct and thus allow reliable discrimination. Note that the area under the curves degrade with image recognizer test error.\n\nNext, let us consider using softmax distributions to determine whether an example is in- or out-of-distribution. We use all test set examples as the in-distribution (positive) examples. For out-of-distribution (negative) examples, we use realistic images and noise. For CIFAR-10 and CIFAR-100, we use realistic images from the Scene UNderstanding dataset (SUN), which consists of 397 different scenes (Xiao et al., 2010). For MNIST, we use grayscale realistic images from three sources. Omniglot (Lake et al., 2015) images are handwritten characters rather than the handwritten digits in MNIST. Next, notMNIST (Bulatov, 2011) consists of typeface characters. Last of the realistic images, CIFAR-10bw are black and white rescaled CIFAR-10 images. The synthetic \"Gaussian\" data is random normal noise, and \"Uniform\" data is random uniform noise. Images are resized when necessary.\n\nThe results are shown in Table 2. Notice that the mean predicted/maximum class probabilities (Pred. Prob (mean)) are above 75%, but if the prediction probability alone is translated to confidence, the softmax distribution should be more uniform for CIFAR-100. This again shows softmax probabilities should not be viewed as a direct representation of confidence. Fortunately, out-of-distribution examples sufficiently differ in the prediction probabilities from in-distribution examples, allowing for successful detection and generally high area under PR and ROC curves.\n\nFor reproducibility, let us specify the model architectures. The MNIST classifier is a three-layer, 256 neuron-wide, fully-connected network trained for 30 epochs with Adam (Kingma & Ba, 2015). It uses a GELU nonlinearity (Hendrycks & Gimpel, 2016b), x(x), where Φ(x) is the CDF of the standard normal distribution. We initialize our weights according to (Hendrycks & Gimpel, 2016c), as it is suited for arbitrary nonlinearities. For CIFAR-10 and CIFAR-100, we train a 40-4 wide residual network (Zagoruyko & Komodakis, 2016) for 50 epochs with stochastic gradient descent using restarts (Loshchilov & Hutter, 2016), the GELU nonlinearity, and standard mirroring and cropping data augmentation.",
+      "has_footnotes": true,
+      "coverage": 0.762576398683592,
+      "fidelity": 0.9826007326007326
+    },
+    {
+      "id": "sec_6",
+      "title": "3.2 NATURAL LANGUAGE PROCESSING",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": null,
+      "text": "Let us turn to a variety of tasks and architectures used in natural language processing.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_7",
+      "title": "3.2.1 SENTIMENT CLASSIFICATION",
+      "level": 3,
+      "parent_id": "sec_6",
+      "key": null,
+      "text": "The first NLP task is binary sentiment classification using the IMDB dataset (Maas et al., 2011), a dataset of polarized movie reviews with 25000 training and 25000 test reviews. This task allows us to determine if classifiers trained on a relatively small dataset still produce informative softmax distributions. For this task we use a linear classifier taking as input the average of trainable, randomly initialized word vectors with dimension 50 (Joulin et al., 2016; Iyyer et al., 2015). We train for 15 epochs with Adam and early stopping based upon 5000 held-out training reviews. Again, Table 3 shows that the softmax distributions differ between correctly and incorrectly classified examples, so prediction probabilities allow us to detect reliably which examples are right and wrong.\n\nNow we use the Customer Review (Hu & Liu, 2004) and Movie Review (Pang et al., 2002) datasets as out-of-distribution examples. The Customer Review dataset has reviews of products rather than only movies, and the Movie Review dataset has snippets from professional movie reviewers rather than full-length amateur reviews. We leave all test set examples from IMDB as in-distribution examples, and out-of-distribution examples are the 500 or 1000 test reviews from Customer Review and Movie Review datasets, respectively. Table 4 displays detection results, showing a similar story to Table 2.",
+      "has_footnotes": false,
+      "coverage": 0.8061041292639138,
+      "fidelity": 0.9854413102820746
+    },
+    {
+      "id": "sec_8",
+      "title": "3.2.2 TEXT CATEGORIZATION",
+      "level": 3,
+      "parent_id": "sec_6",
+      "key": null,
+      "text": "We turn to text categorization tasks to determine whether softmax distributions are useful for de- tecting similar but out-of-distribution examples. In the following text categorization tasks, we train classifiers to predict the subject of the text they are processing. In the 20 Newsgroups dataset (Lang, 1995), there are 20 different newsgroup subjects with a total of 20000 documents for the whole dataset. The Reuters 8 (Lewis et al., 2004) dataset has eight different news subjects with nearly 8000 stories in total. The Reuters 52 dataset has 52 news subjects with slightly over 9000 news stories; this dataset can have as few as three stories for a single subject.\n\nFor the 20 Newsgroups dataset we train a linear classifier on 30-dimensional word vectors for 20 epochs. Meanwhile, Reuters 8 and Retuers 52 use one-layer neural networks with a bag-of-words input and a GELU nonlinearity, all optimized with Adam for 5 epochs. We train on a subset of subjects, leaving out 5 newsgroup subjects from 20 Newsgroups, 2 news subjects from Reuters 8, and 12 news subjects from Reuters 52, leaving the rest as out-of-distribution examples. Table 5 shows that with these datasets and architectures, we can detect errors dependably, and Table 6 informs us that the softmax prediction probabilities allow for detecting out-of-distribution subjects.",
+      "has_footnotes": false,
+      "coverage": 0.9148418491484185,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_9",
+      "title": "3.2.3 PART-OF-SPEECH TAGGING",
+      "level": 3,
+      "parent_id": "sec_6",
+      "key": null,
+      "text": "Part-of-speech (POS) tagging of newswire and social media text is our next challenge. We use the Wall Street Journal portion of the Penn Treebank (Marcus et al., 1993) which contains 45 distinct POS tags. For social media, we use POS-annotated tweets (Gimpel et al., 2011; Owoputi et al., 2013) which contain 25 tags. For the WSJ tagger, we train a bidirectional long short-term memory recurrent neural network (Hochreiter & Schmidhuber, 1997) with three layers, 128 neurons per layer, with randomly initialized word vectors, and this is trained on 90% of the corpus for 10 epochs with stochastic gradient descent with a batch size of 32. The tweet tagger is simpler, as it is two-layer neural network with a GELU nonlinearity, a weight initialization according to (Hendrycks & Gimpel, 2016c), pretrained word vectors trained on a corpus of 56 million tweets (Owoputi et al., 2013), and a hidden layer size of 256, all while training on 1000 tweets for 30 epochs with Adam and early stopping with 327 validation tweets. Error detection results are in Table 7. For out-of-distribution detection, we use the WSJ tagger on the tweets as well as weblog data from the English Web Treebank (Bies et al., 2012). The results are shown in Table 8. Since the weblog data is closer in style to newswire than are the tweets, it is harder to detect whether a weblog sentence is out-of-distribution than a tweet. Indeed, since POS tagging is done at the word-level, we are detecting whether each word is out-of-distribution given the word and contextual features. With this in mind, we see that it is easier to detect words as out-of-distribution if they are from tweets than from blogs.",
+      "has_footnotes": false,
+      "coverage": 0.9115929941618015,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_10",
+      "title": "3.3 AUTOMATIC SPEECH RECOGNITION",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": null,
+      "text": "Now we consider a task which uses softmax values to construct entire sequences rather than deter-mine an input's class. Our sequence prediction system uses a bidirectional LSTM with two-layers and a clipped GELU nonlinearity, optimized for 60 epochs with RMSProp trained on 80% of the TIMIT corpus (Garofolo et al., 1993). The LSTM is trained with connectionist temporal classifica-tion (CTC) (Graves et al., 2006) for predicting sequences of phones given MFCCs, energy, and first and second deltas of a 25ms frame. When trained with CTC, the LSTM learns to have its phone label probabilities spike momentarily while mostly predicting blank symbols otherwise. In this way, the softmax is used differently from typical classification problems, providing a unique test for our detection methods.\n\nWe do not show how the system performs on correctness/incorrectness detection because errors are not binary and instead lie along a range of edit distances. However, we can perform out-of-distribution detection. Mixing the TIMIT audio with realistic noises from the Aurora-2 dataset (Hirsch & Pearce, 2000), we keep the TIMIT audio volume at 100% and noise volume at 30%, giving a mean SNR of approximately 5. Speakers are still clearly audible to the human ear but confuse the phone recognizer because the prediction edit distance more than doubles. For more out-of-distribution examples, we use the test examples from the THCHS-30 dataset (Wang & Zhang, 2015), a Chinese speech corpus. Table 9 shows the results. Crucially, when performing detection, we compute the softmax probabilities while ignoring the blank symbol's logit. With the blank symbol's presence, the softmax distributions at most time steps predict a blank symbol with high confidence, but without the blank symbol we can better differentiate between normal and abnormal distributions. With this modification, the softmax prediction probabilities allow us to detect whether an example is out-of-distribution.",
+      "has_footnotes": false,
+      "coverage": 0.9529667149059334,
+      "fidelity": 0.9880277252678009
+    },
+    {
+      "id": "sec_11",
+      "title": "4 ABNORMALITY DETECTION WITH AUXILIARY DECODERS",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "Having seen that softmax prediction probabilities enable abnormality detection, we now show there is other information sometimes more useful for detection. To demonstrate this, we exploit the learned internal representations of neural networks. We start by training a normal classifier and append an auxiliary decoder which reconstructs the input, shown in Figure 1. Auxiliary decoders are sometimes known to increase classification performance (Zhang et al., 2016). The decoder and scorer are trained jointly on in-distribution examples. Thereafter, the blue layers in Figure 1 are frozen. Then we train red layers on clean and noised training examples, and the sigmoid output of the red layers scores how normal the input is. Consequently, noised examples are in the abnormal class, clean examples are of the normal class, and the sigmoid is trained to output to which class an input belongs. After training we consequently have a normal classifier, an auxiliary decoder, and what we call an abnormality module. The gains from the abnormality module demonstrate there are possible research avenues for outperforming the baseline.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_12",
+      "title": "4.1 TIMIT",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": null,
+      "text": "We test the abnormality module by revisiting the TIMIT task with a different architecture and show how these auxiliary components can greatly improve detection. The system is a three-layer, 1024-neuron wide classifier with an auxiliary decoder and abnormality module. This network takes as input 11 frames and must predict the phone of the center frame, 26 features per frame. Weights are initialized according to (Hendrycks & Gimpel, 2016c). This network trains for 20 epochs, and the abnormality module trains for two. The abnormality module sees clean examples and, as negative examples, TIMIT examples distorted with either white noise, brown noise (noise with its spectral density proportional to 1/f²), or pink noise (noise with its spectral density proportional to 1/f) at various volumes.\n\nWe note that the abnormality module is not trained on the same type of noise added to the test examples. Nonetheless, Table 10 shows that simple noised examples translate to effective detection of realistically distorted audio. We detect abnormal examples by comparing the typical abnormality module outputs for clean examples with the outputs for the distorted examples. The noises are from Aurora-2 and are added to TIMIT examples with 30% volume. We also use the THCHS-30 dataset for Chinese speech. Unlike before, we use the THCHS-30 training examples rather than test set examples because fully connected networks can evaluate the whole training set sufficiently quickly. It is worth mentioning that fully connected deep neural networks are noise robust (Seltzer et al., 2013), yet the abnormality module can still detect whether an example is out-of-distribution. To see why this is remarkable, note that the network's frame classification error is 29.69% on the entire test (not core) dataset, and the average classification error for distorted examples is 30.43%—this is unlike the bidirectional LSTM which had a more pronounced performance decline. Because the classification degradation was only slight, the softmax statistics alone did not provide useful out-of-distribution detection. In contrast, the abnormality module provided scores which allowed the detection of different-but-similar examples. In practice, it may be important to determine whether an example is out-of-distribution even if it does not greatly confuse the network, and the abnormality module facilitates this.",
+      "has_footnotes": false,
+      "coverage": 0.9848184818481848,
+      "fidelity": 0.9899204244031831
+    },
+    {
+      "id": "sec_13",
+      "title": "4.2 MNIST",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": null,
+      "text": "Finally, much like in a previous experiment, we train an MNIST classifier with three layers of width 256. This time, we also use an auxiliary decoder and abnormality module rather than relying on only softmax statistics. For abnormal examples we blur, rotate, or add Gaussian noise to training images. Gains from the abnormality module are shown in Table 11, and there is a consistent out-of-sample detection improvement compared to softmax prediction probabilities. Even for highly dissimilar examples the abnormality module can further improve detection.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_14",
+      "title": "5 DISCUSSION AND FUTURE WORK",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "The abnormality module demonstrates that in some cases the baseline can be beaten by exploiting the representations of a network, suggesting myriad research directions. Some promising future avenues may utilize the intra-class variance: if the distance from an example to another of the same predicted class is abnormally high, it may be out-of-distribution (Giryes et al., 2015). Another path is to feed in a vector summarizing a layer's activations into an RNN, one vector for each layer. The RNN may determine that the activation patterns are abnormal for out-of-distribution examples. Others could make the detections fine-grained: is the out-of-distribution example a known-unknown or an unknown-unknown? A different avenue is not just to detect correct classifications but to output the probability of a correct detection. In Appendix B, we show a baseline and evaluation metrics that future research can utilize for estimating the probability of a correct classification. These are but a few ideas for improving error and out-of-distribution detection.\n\nWe hope that any new detection methods are tested on a variety of tasks and architectures of the researcher's choice. A basic demonstration could include the following datasets: MNIST, CIFAR, IMDB, and tweets because vision-only demonstrations may not transfer well to other architectures and datasets. Reporting the AUPR and AUROC values is important, and so is the underlying classi-fier's accuracy since an always-wrong classifier gets a maximum AUPR for error detection if error is the positive class. Also, future research need not use the exact values from this paper for com-parisons. Machine learning systems evolve, so tethering the evaluations to the exact architectures and datasets in this paper is needless. Instead, one could simply choose a variety of datasets and architectures possibly like those above and compare their detection method with a detector based on the softmax prediction probabilities from their classifiers. These are our basic recommendations for others who try to surpass the baseline on this underexplored challenge.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_15",
+      "title": "6 CONCLUSION",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "We demonstrated a softmax prediction probability baseline for error and out-of-distribution detec- tion across several architectures and numerous datasets. We then presented the abnormality module, which provided superior scores for discriminating between normal and abnormal examples on tested cases. The abnormality module demonstrates that the baseline can be beaten in some cases, and this implies there is room for future research. Our hope is that other researchers investigate architec- tures which make predictions in view of abnormality estimates, and that others pursue more reliable methods for detecting errors and out-of-distribution inputs because knowing when a machine learn- ing system fails strikes us as highly important.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_16",
+      "title": "ACKNOWLEDGMENTS",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "We would like to thank John Wieting, Hao Tang, Karen Livescu, Greg Shakhnarovich, and our reviewers for their suggestions. We also would like to thank NVIDIA Corporation for donating several TITAN X GPUs used in this research.",
+      "has_footnotes": false,
+      "coverage": 0.9246575342465754,
+      "fidelity": 0.8303030303030303
+    },
+    {
+      "id": "sec_17",
+      "title": "REFERENCES",
+      "level": 1,
+      "parent_id": null,
+      "key": "references",
+      "text": "Dario Amodei, Chris Olah, Jacob Steinhardt, Paul Christiano, John Schulman, and Dan Mané. Concrete problems in ai safety. arXiv, 2016.\n\nAnn Bies, Justin Mott, Colin Warner, and Seth Kulick. English Web Treebank, 2012.\n\nYaroslav Bulatov. notMNIST dataset. 2011.\n\nJesse Davis and Mark Goadrich. The relationship between precision-recall and ROC curves. In International Conference on Machine Learning (ICML), 2006.\n\nTom Fawcett. An introduction to ROC analysis. Pattern Recognition Letters, 2005.\n\nJohn Garofolo, Lori Lamel, William Fisher, Jonathan Fiscus, David Pallett, Nancy Dahlgren, and Victor Zue. TIMIT Acoustic-Phonetic Continuous Speech Corpus. Linguistic Data Consortium, 1993.\n\nKevin Gimpel, Nathan Schneider, Brendan O'Connor, Dipanjan Das, Daniel Mills, Jacob Eisenstein, Michael Heilman, Dani Yogatama, Jeffrey Flanigan, and Noah A. Smith. Part-of-Speech Tagging for Twitter: Annotation, Features, and Experiments. Association for Computational Linguistics (ACL), 2011.\n\nRaja Giryes, Guillermo Sapiro, and Alex M. Bronstein. Deep neural networks with random gaussian weights: A universal classification strategy? arXiv, 2015.\n\nIan J. Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversarial examples. In International Conference on Learning Representations (ICLR), 2015.\n\nAlex Graves, Santiago Fernández, Faustino Gomez, and Jürgen Schmidhuber. Connectionist temporal classification: Labeling unsegmented sequence data with recurrent neural networks. In International Conference on Machine Learning (ICML), 2006.\n\nDan Hendrycks and Kevin Gimpel. Methods for detecting adversarial images and a colorful saliency map. arXiv, 2016a.\n\nDan Hendrycks and Kevin Gimpel. Bridging nonlinearities and stochastic regularizers with Gaussian error linear units. arXiv, 2016b.\n\nDan Hendrycks and Kevin Gimpel. Adjusting for dropout variance in batch normalization and weight initialization. arXiv, 2016c.\n\nHans-Günter Hirsch and David Pearce. The Aurora experimental framework for the performance evaluation of speech recognition systems under noisy conditions. ISCA ITRW ASR2000, 2000.\n\nSepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. Neural Computation, 1997.\n\nMinqing Hu and Bing Liu. Mining and Summarizing Customer Reviews. Knowledge Discovery and Data Mining (KDD), 2004.\n\nMohit Iyyer, Varun Manjunatha, Jordan Boyd-Graber, and Hal Daumé Iii. Deep Unordered Composition Rivals Syntactic Methods for Text Classification. Association for Computational Linguistics (ACL), 2015.\n\nArmand Joulin, Edouard Grave, Piotr Bojanowski, and Tomas Mikolov. Bag of tricks for efficient text classification. arXiv, 2016.\n\nDiederik Kingma and Jimmy Ba. Adam: A Method for Stochastic Optimization. International Conference for Learning Representations (ICLR), 2015.\n\nAlex Krizhevsky. Learning Multiple Layers of Features from Tiny Images, 2009.\n\nBrenden M. Lake, Ruslan Salakhutdinov, and Joshua B. Tenenbaum. Human-level concept learning through probabilistic program induction. Science, 2015.\n\nKen Lang. Newsweeder: Learning to filter netnews. In International Conference on Machine Learning (ICML), 1995.\n\nDavid D. Lewis, Yiming Yang, Tony G. Rose, and Fan Li. Rcv1: A new benchmark collection for text categorization research. Journal of Machine Learning Research (JMLR), 2004.\n\nIlya Loshchilov and Frank Hutter. Sgdr: Stochastic gradient descent with restarts. arXiv, 2016.\n\nAndrew L. Maas, Raymond E. Daly, Peter T. Pham, Dan Huang, Andrew Y. Ng, and Christopher Potts. Learning word vectors for sentiment analysis. In Association for Computational Linguistics (ACL), 2011.\n\nChris Manning and Hinrich Schütze. Foundations of Statistical Natural Language Processing. MIT Press, 1999.\n\nMitchell P. Marcus, Mary Ann Marcinkiewicz, and Beatrice Santorini. Building a large annotated corpus of English: The Penn Treebank. Computational linguistics, 1993.\n\nAnh Nguyen, Jason Yosinski, and Jeff Clune. Deep neural networks are easily fooled: High confidence predictions for unrecognizable images. In Computer Vision and Pattern Recognition (CVPR), 2015.\n\nKhanh Nguyen and Brendan O'Connor. Posterior calibration and exploratory analysis for natural language processing models. In Empirical Methods in Natural Language Processing (EMNLP), 2015.\n\nOlutobi Owoputi, Brendan O'Connor, Chris Dyer, Kevin Gimpel, Nathan Schneider, and Noah A. Smith. Improved part-of-speech tagging for online conversational text with word clusters. In North American Chapter of the Association for Computational Linguistics (NAACL), 2013.\n\nBo Pang, Lillian Lee, and Shivakumar Vaithyanathan. Thumbs up? sentiment classification using machine learning techniques. In Empirical Methods in Natural Language Processing (EMNLP), 2002.\n\nJoan Pastor-Pellicer, Francisco Zamora-Martínez, Salvador España-Boquera, and María José Castro-Bleda. The case against accuracy estimation for comparing induction algorithms. In International Conference on Machine Learning (ICML), 1998.\n\nFoster Provost, Tom Fawcett, and Ron Kohavi. The case against accuracy estimation for comparing induction algorithms. In International Conference on Machine Learning (ICML), 1998.\n\nTakaya Saito and Marc Rehmsmeier. The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets. In PLoS ONE. 2015.\n\nMichael L. Seltzer, Dong Yu, and Yongqiang Wang. Investigation of deep neural networks for noise robust speech recognition. In IEEE International Conference on Acoustics, Speech, and Signal Processing (ICASSP), 2013.\n\nJacob Steinhardt and Percy Liang. Unsupervised risk estimation using only conditional independence structure. In Neural Information Processing Systems (NIPS), 2016.\n\nDong Wang and Xuewei Zhang. Thchs-30 : A free chinese speech corpus. In Technical Report, 2015.\n\nGethin Williams and Steve Renals. Confidence measures for hybrid hmm/ann speech recognition. In Proceedings of EuroSpeech, 1997.\n\nJianxiong Xiao, James Hays, Krista A. Ehinger, Aude Oliva, and Antonio Torralba. Sun database: Large-scale scene recognition from abbey to zoo. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2010.\n\nDong Yu, Jinyu Li, and Li Deng. Calibration of confidence measures in speech recognition. In IEEE Transactions on Audio, Speech, and Language, 2010.\n\nSergey Zagoruyko and Nikos Komodakis. Wide residual networks. British Machine Vision Conference, 2016.\n\nYuting Zhang, Kibok Lee, and Honglak Lee. Augmenting supervised neural networks with unsupervised objectives for large-scale image classification. In International Conference on Machine Learning (ICML), 2016.",
+      "has_footnotes": false,
+      "coverage": 0.9445831253120319,
+      "fidelity": 0.9736682195665384
+    },
+    {
+      "id": "sec_18",
+      "title": "A ABNORMALITY MODULE EXAMPLE",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "Figure 1: A neural network classifying a diamond image with an auxiliary decoder and an abnormal-ity module. Circles are neurons, either having a GELU or sigmoid activation. The blurred diamond reconstruction precedes subtraction and elementwise squaring. The probability vector is the soft-max probability vector. Blue layers train on in-distribution data, and red layers train on both in- and out-of-distribution examples.",
+      "has_footnotes": false,
+      "coverage": 1.0,
+      "fidelity": 1.0
+    },
+    {
+      "id": "sec_19",
+      "title": "B METRICS FOR MEANINGFUL CONFIDENCE VALUES",
+      "level": 1,
+      "parent_id": null,
+      "key": null,
+      "text": "Throughout this work, we show that the softmax probability of a predicted class is consistently high and thus is a poor proxy for estimating the “confidence” in a classification. In addition to being frequently high, the softmax prediction probability is bounded below by a value greater than zero. To see this, note that a binary sentiment classifier's minimum confidence in an out-of-distribution example is 50% since the highest softmax probability must be at least 50%. Yet for an out-of- distribution example we may want less confidence if confidence is to reflect the probability of correct classification.\n\nTo evaluate how well a confidence model reflects the probability of correct classification, we present two metrics. First, let us establish notation. Denote the confidence model by c : X → [0, 1], where X is a set of inputs. An output near 1 from e reflects high confidence, or a high probability that the underlying classification model f : X → Y correctly classified its input. Also, let 1(b) be 1 if b is True, and 0 if b is False. A possible confidence model evaluation metric is accuracy. To compute this, we must threshold the confidence at 0.5. However, the model can output probabilities slightly above or below 0.5 and obtain perfect accuracy. Probabilities all near 0.5 are insufficiently informative and lack numerical resolution, and for this reason we avoid thresholding in our metrics. Instead, we use the confidence itself in a metric which we call the probability alignment score,\n\nE(x,y)~(x,y) [21(f(x) = y) – 1][2c(x) – 1].\n\nNote that if f is a highly accurate model, then the confidence model can obtain a high proba- bility alignment by predicting 1 constantly. We meet this challenge by also calculating a \"soft\" F1 score (Pastor-Pellicer et al., 1998) for a test set {(xi, Yi)}m 1. We define the soft F1 score by first letting tp = 1(1 - c(xi))1(f(xi) ≠ Yi), fp = ∑i=1(1 − c(xi))1(f(xi) = Yi), fn = 1 c(xi)1(f(xi) ≠ yi), pr = tp/(tp + fp), and rc = tp/(tp + fn). Then the soft F1 score is\n\nm\nim\n\npr. rc\n2\npr + rc'\n\nand this is our second and final metric for evaluating a confidence model.\n\nUsing these metrics, we now establish a baseline using the logits of a softmax. Let li represent the logits vector (the input to the softmax) for example xi. Our baseline confidence model is c(xi) = σ(maxli), where o is the logistic sigmoid. Let us evaluate this baseline by using the same MNIST, Twitter, and IMDB setups from before. We take the median result over five runs. In the case of CIFAR-10, we train using a 40-2 WideResNet. The results are in Table 12, and they indicate that the probabilities are positively aligned and have a nonzero soft F1 score. However, these results also indicate wide room for improvement.\n\nDataset Probability Alignment Score Soft F1 Score Test Set Error MNIST 97 24 1.56 CIFAR-10 88 28 5.42 Twitter 74 29 13.6 IMDB 67 26 13.4\n\nTable 12: Confidence Model Baseline Results. All values are percentages.\n\nIn this appendix, we presented a simple baseline method for estimating classification confidence and metrics for evaluating the confidence model. The baseline draws on the idea of using softmax classification information to create a confidence model. We hope this appendix gives ideas for future research directions, serves as a baseline, or provides metrics for confidence model evaluation.",
+      "has_footnotes": false,
+      "coverage": 0.9633447880870561,
+      "fidelity": 0.9481946624803768
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Dario Amodei, Chris Olah, Jacob Steinhardt, Paul Christiano, John Schulman, and Dan Mané. Concrete problems in ai safety. arXiv, 2016.",
+      "marker": null,
+      "authors": [
+        "Dario Amodei",
+        "Chris Olah",
+        "Jacob Steinhardt",
+        "Paul Christiano",
+        "John Schulman",
+        "Dan Mané"
+      ],
+      "title": "Concrete problems in ai safety",
+      "year": "2016",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Ann Bies, Justin Mott, Colin Warner, and Seth Kulick. English Web Treebank, 2012.",
+      "marker": null,
+      "authors": [
+        "Ann Bies",
+        "Justin Mott",
+        "Colin Warner",
+        "Seth Kulick"
+      ],
+      "title": "English Web Treebank",
+      "year": "2012",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Yaroslav Bulatov. notMNIST dataset. 2011.",
+      "marker": null,
+      "authors": [
+        "Yaroslav Bulatov"
+      ],
+      "title": "notMNIST dataset",
+      "year": "2011",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "Jesse Davis and Mark Goadrich. The relationship between precision-recall and ROC curves. In International Conference on Machine Learning (ICML), 2006.",
+      "marker": null,
+      "authors": [
+        "Jesse Davis",
+        "Mark Goadrich"
+      ],
+      "title": "The relationship between precision-recall and ROC curves",
+      "year": "2006",
+      "venue": "International Conference on Machine Learning (ICML)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Tom Fawcett. An introduction to ROC analysis. Pattern Recognition Letters, 2005.",
+      "marker": null,
+      "authors": [
+        "Tom Fawcett"
+      ],
+      "title": "An introduction to ROC analysis",
+      "year": "2005",
+      "venue": "Pattern Recognition Letters",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "John Garofolo, Lori Lamel, William Fisher, Jonathan Fiscus, David Pallett, Nancy Dahlgren, and Victor Zue. TIMIT Acoustic-Phonetic Continuous Speech Corpus. Linguistic Data Consortium, 1993.",
+      "marker": null,
+      "authors": [
+        "John Garofolo",
+        "Lori Lamel",
+        "William Fisher",
+        "Jonathan Fiscus",
+        "David Pallett",
+        "Nancy Dahlgren",
+        "Victor Zue"
+      ],
+      "title": "TIMIT Acoustic-Phonetic Continuous Speech Corpus",
+      "year": "1993",
+      "venue": "Linguistic Data Consortium",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Kevin Gimpel, Nathan Schneider, Brendan O'Connor, Dipanjan Das, Daniel Mills, Jacob Eisenstein, Michael Heilman, Dani Yogatama, Jeffrey Flanigan, and Noah A. Smith. Part-of-Speech Tagging for Twitter: Annotation, Features, and Experiments. Association for Computational Linguistics (ACL), 2011.",
+      "marker": null,
+      "authors": [
+        "Kevin Gimpel",
+        "Nathan Schneider",
+        "Brendan O'Connor",
+        "Dipanjan Das",
+        "Daniel Mills",
+        "Jacob Eisenstein",
+        "Michael Heilman",
+        "Dani Yogatama",
+        "Jeffrey Flanigan",
+        "Noah A. Smith"
+      ],
+      "title": "Part-of-Speech Tagging for Twitter: Annotation, Features, and Experiments",
+      "year": "2011",
+      "venue": "Association for Computational Linguistics (ACL)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Raja Giryes, Guillermo Sapiro, and Alex M. Bronstein. Deep neural networks with random gaussian weights: A universal classification strategy? arXiv, 2015.",
+      "marker": null,
+      "authors": [
+        "Raja Giryes",
+        "Guillermo Sapiro",
+        "Alex M. Bronstein"
+      ],
+      "title": "Deep neural networks with random gaussian weights: A universal classification strategy?",
+      "year": "2015",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Ian J. Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversarial examples. In International Conference on Learning Representations (ICLR), 2015.",
+      "marker": null,
+      "authors": [
+        "Ian J. Goodfellow",
+        "Jonathon Shlens",
+        "Christian Szegedy"
+      ],
+      "title": "Explaining and harnessing adversarial examples",
+      "year": "2015",
+      "venue": "International Conference on Learning Representations (ICLR)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Alex Graves, Santiago Fernández, Faustino Gomez, and Jürgen Schmidhuber. Connectionist temporal classification: Labeling unsegmented sequence data with recurrent neural networks. In International Conference on Machine Learning (ICML), 2006.",
+      "marker": null,
+      "authors": [
+        "Alex Graves",
+        "Santiago Fernández",
+        "Faustino Gomez",
+        "Jürgen Schmidhuber"
+      ],
+      "title": "Connectionist temporal classification: Labeling unsegmented sequence data with recurrent neural networks",
+      "year": "2006",
+      "venue": "International Conference on Machine Learning (ICML)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Dan Hendrycks and Kevin Gimpel. Methods for detecting adversarial images and a colorful saliency map. arXiv, 2016a.",
+      "marker": null,
+      "authors": [
+        "Dan Hendrycks",
+        "Kevin Gimpel"
+      ],
+      "title": "Methods for detecting adversarial images and a colorful saliency map",
+      "year": "2016a",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Dan Hendrycks and Kevin Gimpel. Bridging nonlinearities and stochastic regularizers with Gaussian error linear units. arXiv, 2016b.",
+      "marker": null,
+      "authors": [
+        "Dan Hendrycks",
+        "Kevin Gimpel"
+      ],
+      "title": "Bridging nonlinearities and stochastic regularizers with Gaussian error linear units",
+      "year": "2016b",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Dan Hendrycks and Kevin Gimpel. Adjusting for dropout variance in batch normalization and weight initialization. arXiv, 2016c.",
+      "marker": null,
+      "authors": [
+        "Dan Hendrycks",
+        "Kevin Gimpel"
+      ],
+      "title": "Adjusting for dropout variance in batch normalization and weight initialization",
+      "year": "2016c",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Hans-Günter Hirsch and David Pearce. The Aurora experimental framework for the performance evaluation of speech recognition systems under noisy conditions. ISCA ITRW ASR2000, 2000.",
+      "marker": null,
+      "authors": [
+        "Hans-Günter Hirsch",
+        "David Pearce"
+      ],
+      "title": "The Aurora experimental framework for the performance evaluation of speech recognition systems under noisy conditions",
+      "year": "2000",
+      "venue": "ISCA ITRW ASR2000",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. Neural Computation, 1997.",
+      "marker": null,
+      "authors": [
+        "Sepp Hochreiter",
+        "Jürgen Schmidhuber"
+      ],
+      "title": "Long short-term memory",
+      "year": "1997",
+      "venue": "Neural Computation",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Minqing Hu and Bing Liu. Mining and Summarizing Customer Reviews. Knowledge Discovery and Data Mining (KDD), 2004.",
+      "marker": null,
+      "authors": [
+        "Minqing Hu",
+        "Bing Liu"
+      ],
+      "title": "Mining and Summarizing Customer Reviews",
+      "year": "2004",
+      "venue": "Knowledge Discovery and Data Mining (KDD)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "Mohit Iyyer, Varun Manjunatha, Jordan Boyd-Graber, and Hal Daumé Iii. Deep Unordered Composition Rivals Syntactic Methods for Text Classification. Association for Computational Linguistics (ACL), 2015.",
+      "marker": null,
+      "authors": [
+        "Mohit Iyyer",
+        "Varun Manjunatha",
+        "Jordan Boyd-Graber",
+        "Hal Daumé Iii"
+      ],
+      "title": "Deep Unordered Composition Rivals Syntactic Methods for Text Classification",
+      "year": "2015",
+      "venue": "Association for Computational Linguistics (ACL)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Armand Joulin, Edouard Grave, Piotr Bojanowski, and Tomas Mikolov. Bag of tricks for efficient text classification. arXiv, 2016.",
+      "marker": null,
+      "authors": [
+        "Armand Joulin",
+        "Edouard Grave",
+        "Piotr Bojanowski",
+        "Tomas Mikolov"
+      ],
+      "title": "Bag of tricks for efficient text classification",
+      "year": "2016",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Diederik Kingma and Jimmy Ba. Adam: A Method for Stochastic Optimization. International Conference for Learning Representations (ICLR), 2015.",
+      "marker": null,
+      "authors": [
+        "Diederik Kingma",
+        "Jimmy Ba"
+      ],
+      "title": "Adam: A Method for Stochastic Optimization",
+      "year": "2015",
+      "venue": "International Conference for Learning Representations (ICLR)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_20",
+      "raw": "Alex Krizhevsky. Learning Multiple Layers of Features from Tiny Images, 2009.",
+      "marker": null,
+      "authors": [
+        "Alex Krizhevsky"
+      ],
+      "title": "Learning Multiple Layers of Features from Tiny Images",
+      "year": "2009",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_21",
+      "raw": "Brenden M. Lake, Ruslan Salakhutdinov, and Joshua B. Tenenbaum. Human-level concept learning through probabilistic program induction. Science, 2015.",
+      "marker": null,
+      "authors": [
+        "Brenden M. Lake",
+        "Ruslan Salakhutdinov",
+        "Joshua B. Tenenbaum"
+      ],
+      "title": "Human-level concept learning through probabilistic program induction",
+      "year": "2015",
+      "venue": "Science",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_22",
+      "raw": "Ken Lang. Newsweeder: Learning to filter netnews. In International Conference on Machine Learning (ICML), 1995.",
+      "marker": null,
+      "authors": [
+        "Ken Lang"
+      ],
+      "title": "Newsweeder: Learning to filter netnews",
+      "year": "1995",
+      "venue": "International Conference on Machine Learning (ICML)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_23",
+      "raw": "David D. Lewis, Yiming Yang, Tony G. Rose, and Fan Li. Rcv1: A new benchmark collection for text categorization research. Journal of Machine Learning Research (JMLR), 2004.",
+      "marker": null,
+      "authors": [
+        "David D. Lewis",
+        "Yiming Yang",
+        "Tony G. Rose",
+        "Fan Li"
+      ],
+      "title": "Rcv1: A new benchmark collection for text categorization research",
+      "year": "2004",
+      "venue": "Journal of Machine Learning Research (JMLR)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_24",
+      "raw": "Ilya Loshchilov and Frank Hutter. Sgdr: Stochastic gradient descent with restarts. arXiv, 2016.",
+      "marker": null,
+      "authors": [
+        "Ilya Loshchilov",
+        "Frank Hutter"
+      ],
+      "title": "Sgdr: Stochastic gradient descent with restarts",
+      "year": "2016",
+      "venue": "arXiv",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_25",
+      "raw": "Andrew L. Maas, Raymond E. Daly, Peter T. Pham, Dan Huang, Andrew Y. Ng, and Christopher Potts. Learning word vectors for sentiment analysis. In Association for Computational Linguistics (ACL), 2011.",
+      "marker": null,
+      "authors": [
+        "Andrew L. Maas",
+        "Raymond E. Daly",
+        "Peter T. Pham",
+        "Dan Huang",
+        "Andrew Y. Ng",
+        "Christopher Potts"
+      ],
+      "title": "Learning word vectors for sentiment analysis",
+      "year": "2011",
+      "venue": "Association for Computational Linguistics (ACL)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_26",
+      "raw": "Chris Manning and Hinrich Schütze. Foundations of Statistical Natural Language Processing. MIT Press, 1999.",
+      "marker": null,
+      "authors": [
+        "Chris Manning",
+        "Hinrich Schütze"
+      ],
+      "title": "Foundations of Statistical Natural Language Processing",
+      "year": "1999",
+      "venue": "MIT Press",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_27",
+      "raw": "Mitchell P. Marcus, Mary Ann Marcinkiewicz, and Beatrice Santorini. Building a large annotated corpus of English: The Penn Treebank. Computational linguistics, 1993.",
+      "marker": null,
+      "authors": [
+        "Mitchell P. Marcus",
+        "Mary Ann Marcinkiewicz",
+        "Beatrice Santorini"
+      ],
+      "title": "Building a large annotated corpus of English: The Penn Treebank",
+      "year": "1993",
+      "venue": "Computational linguistics",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_28",
+      "raw": "Anh Nguyen, Jason Yosinski, and Jeff Clune. Deep neural networks are easily fooled: High confidence predictions for unrecognizable images. In Computer Vision and Pattern Recognition (CVPR), 2015.",
+      "marker": null,
+      "authors": [
+        "Anh Nguyen",
+        "Jason Yosinski",
+        "Jeff Clune"
+      ],
+      "title": "Deep neural networks are easily fooled: High confidence predictions for unrecognizable images",
+      "year": "2015",
+      "venue": "Computer Vision and Pattern Recognition (CVPR)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_29",
+      "raw": "Khanh Nguyen and Brendan O'Connor. Posterior calibration and exploratory analysis for natural language processing models. In Empirical Methods in Natural Language Processing (EMNLP), 2015.",
+      "marker": null,
+      "authors": [
+        "Khanh Nguyen",
+        "Brendan O'Connor"
+      ],
+      "title": "Posterior calibration and exploratory analysis for natural language processing models",
+      "year": "2015",
+      "venue": "Empirical Methods in Natural Language Processing (EMNLP)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_30",
+      "raw": "Olutobi Owoputi, Brendan O'Connor, Chris Dyer, Kevin Gimpel, Nathan Schneider, and Noah A. Smith. Improved part-of-speech tagging for online conversational text with word clusters. In North American Chapter of the Association for Computational Linguistics (NAACL), 2013.",
+      "marker": null,
+      "authors": [
+        "Olutobi Owoputi",
+        "Brendan O'Connor",
+        "Chris Dyer",
+        "Kevin Gimpel",
+        "Nathan Schneider",
+        "Noah A. Smith"
+      ],
+      "title": "Improved part-of-speech tagging for online conversational text with word clusters",
+      "year": "2013",
+      "venue": "North American Chapter of the Association for Computational Linguistics (NAACL)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_31",
+      "raw": "Bo Pang, Lillian Lee, and Shivakumar Vaithyanathan. Thumbs up? sentiment classification using machine learning techniques. In Empirical Methods in Natural Language Processing (EMNLP), 2002.",
+      "marker": null,
+      "authors": [
+        "Bo Pang",
+        "Lillian Lee",
+        "Shivakumar Vaithyanathan"
+      ],
+      "title": "Thumbs up? sentiment classification using machine learning techniques",
+      "year": "2002",
+      "venue": "Empirical Methods in Natural Language Processing (EMNLP)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_32",
+      "raw": "Joan Pastor-Pellicer, Francisco Zamora-Martínez, Salvador España-Boquera, and María José Castro-Bleda. The case against accuracy estimation for comparing induction algorithms. In International Conference on Machine Learning (ICML), 1998.",
+      "marker": null,
+      "authors": [
+        "Joan Pastor-Pellicer",
+        "Francisco Zamora-Martínez",
+        "Salvador España-Boquera",
+        "María José Castro-Bleda"
+      ],
+      "title": "The case against accuracy estimation for comparing induction algorithms",
+      "year": "1998",
+      "venue": "International Conference on Machine Learning (ICML)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_33",
+      "raw": "Foster Provost, Tom Fawcett, and Ron Kohavi. The case against accuracy estimation for comparing induction algorithms. In International Conference on Machine Learning (ICML), 1998.",
+      "marker": null,
+      "authors": [
+        "Foster Provost",
+        "Tom Fawcett",
+        "Ron Kohavi"
+      ],
+      "title": "The case against accuracy estimation for comparing induction algorithms",
+      "year": "1998",
+      "venue": "International Conference on Machine Learning (ICML)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_34",
+      "raw": "Takaya Saito and Marc Rehmsmeier. The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets. In PLoS ONE. 2015.",
+      "marker": null,
+      "authors": [
+        "Takaya Saito",
+        "Marc Rehmsmeier"
+      ],
+      "title": "The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets",
+      "year": "2015",
+      "venue": "PLoS ONE",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_35",
+      "raw": "Michael L. Seltzer, Dong Yu, and Yongqiang Wang. Investigation of deep neural networks for noise robust speech recognition. In IEEE International Conference on Acoustics, Speech, and Signal Processing (ICASSP), 2013.",
+      "marker": null,
+      "authors": [
+        "Michael L. Seltzer",
+        "Dong Yu",
+        "Yongqiang Wang"
+      ],
+      "title": "Investigation of deep neural networks for noise robust speech recognition",
+      "year": "2013",
+      "venue": "IEEE International Conference on Acoustics, Speech, and Signal Processing (ICASSP)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_36",
+      "raw": "Jacob Steinhardt and Percy Liang. Unsupervised risk estimation using only conditional independence structure. In Neural Information Processing Systems (NIPS), 2016.",
+      "marker": null,
+      "authors": [
+        "Jacob Steinhardt",
+        "Percy Liang"
+      ],
+      "title": "Unsupervised risk estimation using only conditional independence structure",
+      "year": "2016",
+      "venue": "Neural Information Processing Systems (NIPS)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_37",
+      "raw": "Dong Wang and Xuewei Zhang. Thchs-30 : A free chinese speech corpus. In Technical Report, 2015.",
+      "marker": null,
+      "authors": [
+        "Dong Wang",
+        "Xuewei Zhang"
+      ],
+      "title": "Thchs-30 : A free chinese speech corpus",
+      "year": "2015",
+      "venue": "Technical Report",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_38",
+      "raw": "Gethin Williams and Steve Renals. Confidence measures for hybrid hmm/ann speech recognition. In Proceedings of EuroSpeech, 1997.",
+      "marker": null,
+      "authors": [
+        "Gethin Williams",
+        "Steve Renals"
+      ],
+      "title": "Confidence measures for hybrid hmm/ann speech recognition",
+      "year": "1997",
+      "venue": "Proceedings of EuroSpeech",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_39",
+      "raw": "Jianxiong Xiao, James Hays, Krista A. Ehinger, Aude Oliva, and Antonio Torralba. Sun database: Large-scale scene recognition from abbey to zoo. In IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2010.",
+      "marker": null,
+      "authors": [
+        "Jianxiong Xiao",
+        "James Hays",
+        "Krista A. Ehinger",
+        "Aude Oliva",
+        "Antonio Torralba"
+      ],
+      "title": "Sun database: Large-scale scene recognition from abbey to zoo",
+      "year": "2010",
+      "venue": "IEEE Conference on Computer Vision and Pattern Recognition (CVPR)",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_40",
+      "raw": "Dong Yu, Jinyu Li, and Li Deng. Calibration of confidence measures in speech recognition. In IEEE Transactions on Audio, Speech, and Language, 2010.",
+      "marker": null,
+      "authors": [
+        "Dong Yu",
+        "Jinyu Li",
+        "Li Deng"
+      ],
+      "title": "Calibration of confidence measures in speech recognition",
+      "year": "2010",
+      "venue": "IEEE Transactions on Audio, Speech, and Language",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_41",
+      "raw": "Sergey Zagoruyko and Nikos Komodakis. Wide residual networks. British Machine Vision Conference, 2016.",
+      "marker": null,
+      "authors": [
+        "Sergey Zagoruyko",
+        "Nikos Komodakis"
+      ],
+      "title": "Wide residual networks",
+      "year": "2016",
+      "venue": "British Machine Vision Conference",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_42",
+      "raw": "Yuting Zhang, Kibok Lee, and Honglak Lee. Augmenting supervised neural networks with unsupervised objectives for large-scale image classification. In International Conference on Machine Learning (ICML), 2016.",
+      "marker": null,
+      "authors": [
+        "Yuting Zhang",
+        "Kibok Lee",
+        "Honglak Lee"
+      ],
+      "title": "Augmenting supervised neural networks with unsupervised objectives for large-scale image classification",
+      "year": "2016",
+      "venue": "International Conference on Machine Learning (ICML)",
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citations": [
+    {
+      "reference_id": "ref_9",
+      "marker": "Goodfellow et al., 2015",
+      "sentence": "Worse, these classifiers often fail silently by providing high-confidence predictions while being woefully incorrect (Goodfellow et al., 2015; Amodei et al., 2016).",
+      "section_id": "sec_2",
+      "start": 253,
+      "end": 276
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": "Amodei et al., 2016",
+      "sentence": "Worse, these classifiers often fail silently by providing high-confidence predictions while being woefully incorrect (Goodfellow et al., 2015; Amodei et al., 2016).",
+      "section_id": "sec_2",
+      "start": 278,
+      "end": 297
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": "Amodei et al., 2016",
+      "sentence": "More generally and importantly, estimating when a model is in error is of great concern to AI Safety (Amodei et al., 2016).",
+      "section_id": "sec_2",
+      "start": 783,
+      "end": 802
+    },
+    {
+      "reference_id": "ref_29",
+      "marker": "Nguyen & O'Connor, 2015",
+      "sentence": "This is consistent with a great deal of anecdotal evidence from researchers (Nguyen & O'Connor, 2015; Yu et al., 2010; Provost et al., 1998; Nguyen et al., 2015).",
+      "section_id": "sec_2",
+      "start": 1636,
+      "end": 1659
+    },
+    {
+      "reference_id": "ref_40",
+      "marker": "Yu et al., 2010",
+      "sentence": "This is consistent with a great deal of anecdotal evidence from researchers (Nguyen & O'Connor, 2015; Yu et al., 2010; Provost et al., 1998; Nguyen et al., 2015).",
+      "section_id": "sec_2",
+      "start": 1661,
+      "end": 1676
+    },
+    {
+      "reference_id": "ref_33",
+      "marker": "Provost et al., 1998",
+      "sentence": "This is consistent with a great deal of anecdotal evidence from researchers (Nguyen & O'Connor, 2015; Yu et al., 2010; Provost et al., 1998; Nguyen et al., 2015).",
+      "section_id": "sec_2",
+      "start": 1678,
+      "end": 1698
+    },
+    {
+      "reference_id": "ref_28",
+      "marker": "Nguyen et al., 2015",
+      "sentence": "This is consistent with a great deal of anecdotal evidence from researchers (Nguyen & O'Connor, 2015; Yu et al., 2010; Provost et al., 1998; Nguyen et al., 2015).",
+      "section_id": "sec_2",
+      "start": 1700,
+      "end": 1719
+    },
+    {
+      "reference_id": "ref_33",
+      "marker": "Provost et al., 1998",
+      "sentence": "If the negative class is far more likely than the positive class, a model may always guess the negative class and obtain high accuracy, which can be mislead- ing (Provost et al., 1998).",
+      "section_id": "sec_3",
+      "start": 997,
+      "end": 1017
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": "Davis & Goadrich, 2006",
+      "sentence": "Faced with this issue, we employ the Area Under the Receiver Operating Characteristic curve (AU- ROC) metric, which is a threshold-independent performance evaluation (Davis & Goadrich, 2006).",
+      "section_id": "sec_3",
+      "start": 1375,
+      "end": 1397
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": "Fawcett, 2005",
+      "sentence": "Moreover, the AUROC can be interpreted as the prob- ability that a positive example has a greater detector score/value than a negative example (Fawcett, 2005).",
+      "section_id": "sec_3",
+      "start": 1690,
+      "end": 1703
+    },
+    {
+      "reference_id": "ref_26",
+      "marker": "Manning & Schütze, 1999",
+      "sentence": "The AUROC sidesteps the issue of threshold selection, as does the Area Under the Precision-Recall curve (AUPR) which is sometimes deemed more informative (Manning & Schütze, 1999).",
+      "section_id": "sec_3",
+      "start": 1987,
+      "end": 2010
+    },
+    {
+      "reference_id": "ref_34",
+      "marker": "Saito & Rehmsmeier, 2015",
+      "sentence": "The baseline detector has an AUPR approximately equal to the precision (Saito & Rehmsmeier, 2015), and a \"perfect\" classifier has an AUPR of 100%.",
+      "section_id": "sec_3",
+      "start": 2428,
+      "end": 2452
+    },
+    {
+      "reference_id": "ref_20",
+      "marker": "Krizhevsky, 2009",
+      "sentence": "In the following computer vision tasks, we use three datasets: MNIST, CIFAR-10, and CIFAR-100 (Krizhevsky, 2009).",
+      "section_id": "sec_5",
+      "start": 95,
+      "end": 111
+    },
+    {
+      "reference_id": "ref_39",
+      "marker": "Xiao et al., 2010",
+      "sentence": "For CIFAR-10 and CIFAR-100, we use realistic images from the Scene UNderstanding dataset (SUN), which consists of 397 different scenes (Xiao et al., 2010).",
+      "section_id": "sec_5",
+      "start": 1073,
+      "end": 1090
+    },
+    {
+      "reference_id": "ref_21",
+      "marker": "Lake et al., 2015",
+      "sentence": "Omniglot (Lake et al., 2015) images are handwritten characters rather than the handwritten digits in MNIST.",
+      "section_id": "sec_5",
+      "start": 1168,
+      "end": 1185
+    },
+    {
+      "reference_id": "ref_3",
+      "marker": "Bulatov, 2011",
+      "sentence": "Next, notMNIST (Bulatov, 2011) consists of typeface characters.",
+      "section_id": "sec_5",
+      "start": 1282,
+      "end": 1295
+    },
+    {
+      "reference_id": "ref_19",
+      "marker": "Kingma & Ba, 2015",
+      "sentence": "The MNIST classifier is a three-layer, 256 neuron-wide, fully-connected network trained for 30 epochs with Adam (Kingma & Ba, 2015).",
+      "section_id": "sec_5",
+      "start": 2296,
+      "end": 2313
+    },
+    {
+      "reference_id": "ref_12",
+      "marker": "Hendrycks & Gimpel, 2016b",
+      "sentence": "It uses a GELU nonlinearity (Hendrycks & Gimpel, 2016b), x(x), where Φ(x) is the CDF of the standard normal distribution.",
+      "section_id": "sec_5",
+      "start": 2345,
+      "end": 2370
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": "Hendrycks & Gimpel, 2016c",
+      "sentence": "We initialize our weights according to (Hendrycks & Gimpel, 2016c), as it is suited for arbitrary nonlinearities.",
+      "section_id": "sec_5",
+      "start": 2478,
+      "end": 2503
+    },
+    {
+      "reference_id": "ref_41",
+      "marker": "Zagoruyko & Komodakis, 2016",
+      "sentence": "For CIFAR-10 and CIFAR-100, we train a 40-4 wide residual network (Zagoruyko & Komodakis, 2016) for 50 epochs with stochastic gradient descent using restarts (Loshchilov & Hutter, 2016), the GELU nonlinearity, and standard mirroring and cropping data augmentation.",
+      "section_id": "sec_5",
+      "start": 2619,
+      "end": 2646
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": "Loshchilov & Hutter, 2016",
+      "sentence": "For CIFAR-10 and CIFAR-100, we train a 40-4 wide residual network (Zagoruyko & Komodakis, 2016) for 50 epochs with stochastic gradient descent using restarts (Loshchilov & Hutter, 2016), the GELU nonlinearity, and standard mirroring and cropping data augmentation.",
+      "section_id": "sec_5",
+      "start": 2711,
+      "end": 2736
+    },
+    {
+      "reference_id": "ref_25",
+      "marker": "Maas et al., 2011",
+      "sentence": "The first NLP task is binary sentiment classification using the IMDB dataset (Maas et al., 2011), a dataset of polarized movie reviews with 25000 training and 25000 test reviews.",
+      "section_id": "sec_7",
+      "start": 78,
+      "end": 95
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": "Joulin et al., 2016",
+      "sentence": "For this task we use a linear classifier taking as input the average of trainable, randomly initialized word vectors with dimension 50 (Joulin et al., 2016; Iyyer et al., 2015).",
+      "section_id": "sec_7",
+      "start": 450,
+      "end": 469
+    },
+    {
+      "reference_id": "ref_17",
+      "marker": "Iyyer et al., 2015",
+      "sentence": "For this task we use a linear classifier taking as input the average of trainable, randomly initialized word vectors with dimension 50 (Joulin et al., 2016; Iyyer et al., 2015).",
+      "section_id": "sec_7",
+      "start": 471,
+      "end": 489
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": "Hu & Liu, 2004",
+      "sentence": "Now we use the Customer Review (Hu & Liu, 2004) and Movie Review (Pang et al., 2002) datasets as out-of-distribution examples.",
+      "section_id": "sec_7",
+      "start": 826,
+      "end": 840
+    },
+    {
+      "reference_id": "ref_31",
+      "marker": "Pang et al., 2002",
+      "sentence": "Now we use the Customer Review (Hu & Liu, 2004) and Movie Review (Pang et al., 2002) datasets as out-of-distribution examples.",
+      "section_id": "sec_7",
+      "start": 860,
+      "end": 877
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": "Lang, 1995",
+      "sentence": "In the 20 Newsgroups dataset (Lang, 1995), there are 20 different newsgroup subjects with a total of 20000 documents for the whole dataset.",
+      "section_id": "sec_8",
+      "start": 300,
+      "end": 310
+    },
+    {
+      "reference_id": "ref_23",
+      "marker": "Lewis et al., 2004",
+      "sentence": "The Reuters 8 (Lewis et al., 2004) dataset has eight different news subjects with nearly 8000 stories in total. The Reuters 52 dataset has 52 news subjects with slightly over 9000 news stories; this dataset can have as few as three stories for a single subject.",
+      "section_id": "sec_8",
+      "start": 425,
+      "end": 443
+    },
+    {
+      "reference_id": "ref_27",
+      "marker": "Marcus et al., 1993",
+      "sentence": "We use the Wall Street Journal portion of the Penn Treebank (Marcus et al., 1993) which contains 45 distinct POS tags.",
+      "section_id": "sec_9",
+      "start": 147,
+      "end": 166
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": "Gimpel et al., 2011",
+      "sentence": "For social media, we use POS-annotated tweets (Gimpel et al., 2011; Owoputi et al., 2013) which contain 25 tags.",
+      "section_id": "sec_9",
+      "start": 252,
+      "end": 271
+    },
+    {
+      "reference_id": "ref_30",
+      "marker": "Owoputi et al., 2013",
+      "sentence": "For social media, we use POS-annotated tweets (Gimpel et al., 2011; Owoputi et al., 2013) which contain 25 tags.",
+      "section_id": "sec_9",
+      "start": 273,
+      "end": 293
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": "Hochreiter & Schmidhuber, 1997",
+      "sentence": "For the WSJ tagger, we train a bidirectional long short-term memory recurrent neural network (Hochreiter & Schmidhuber, 1997) with three layers, 128 neurons per layer, with randomly initialized word vectors, and this is trained on 90% of the corpus for 10 epochs with stochastic gradient descent with a batch size of 32.",
+      "section_id": "sec_9",
+      "start": 412,
+      "end": 442
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": "Hendrycks & Gimpel, 2016c",
+      "sentence": "The tweet tagger is simpler, as it is two-layer neural network with a GELU nonlinearity, a weight initialization according to (Hendrycks & Gimpel, 2016c), pretrained word vectors trained on a corpus of 56 million tweets (Owoputi et al., 2013), and a hidden layer size of 256, all while training on 1000 tweets for 30 epochs with Adam and early stopping with 327 validation tweets.",
+      "section_id": "sec_9",
+      "start": 766,
+      "end": 791
+    },
+    {
+      "reference_id": "ref_30",
+      "marker": "Owoputi et al., 2013",
+      "sentence": "The tweet tagger is simpler, as it is two-layer neural network with a GELU nonlinearity, a weight initialization according to (Hendrycks & Gimpel, 2016c), pretrained word vectors trained on a corpus of 56 million tweets (Owoputi et al., 2013), and a hidden layer size of 256, all while training on 1000 tweets for 30 epochs with Adam and early stopping with 327 validation tweets.",
+      "section_id": "sec_9",
+      "start": 860,
+      "end": 880
+    },
+    {
+      "reference_id": "ref_2",
+      "marker": "Bies et al., 2012",
+      "sentence": "For out-of-distribution detection, we use the WSJ tagger on the tweets as well as weblog data from the English Web Treebank (Bies et al., 2012).",
+      "section_id": "sec_9",
+      "start": 1185,
+      "end": 1202
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": "Garofolo et al., 1993",
+      "sentence": "Our sequence prediction system uses a bidirectional LSTM with two-layers and a clipped GELU nonlinearity, optimized for 60 epochs with RMSProp trained on 80% of the TIMIT corpus (Garofolo et al., 1993).",
+      "section_id": "sec_10",
+      "start": 299,
+      "end": 320
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": "Graves et al., 2006",
+      "sentence": "The LSTM is trained with connectionist temporal classifica-tion (CTC) (Graves et al., 2006) for predicting sequences of phones given MFCCs, energy, and first and second deltas of a 25ms frame.",
+      "section_id": "sec_10",
+      "start": 394,
+      "end": 413
+    },
+    {
+      "reference_id": "ref_14",
+      "marker": "Hirsch & Pearce, 2000",
+      "sentence": "Mixing the TIMIT audio with realistic noises from the Aurora-2 dataset (Hirsch & Pearce, 2000), we keep the TIMIT audio volume at 100% and noise volume at 30%, giving a mean SNR of approximately 5.",
+      "section_id": "sec_10",
+      "start": 1079,
+      "end": 1100
+    },
+    {
+      "reference_id": "ref_37",
+      "marker": "Wang & Zhang, 2015",
+      "sentence": "For more out-of-distribution examples, we use the test examples from the THCHS-30 dataset (Wang & Zhang, 2015), a Chinese speech corpus.",
+      "section_id": "sec_10",
+      "start": 1437,
+      "end": 1455
+    },
+    {
+      "reference_id": "ref_42",
+      "marker": "Zhang et al., 2016",
+      "sentence": "Auxiliary decoders are sometimes known to increase classification performance (Zhang et al., 2016).",
+      "section_id": "sec_11",
+      "start": 446,
+      "end": 464
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": "Hendrycks & Gimpel, 2016c",
+      "sentence": "Weights are initialized according to (Hendrycks & Gimpel, 2016c).",
+      "section_id": "sec_12",
+      "start": 415,
+      "end": 440
+    },
+    {
+      "reference_id": "ref_35",
+      "marker": "Seltzer et al., 2013",
+      "sentence": "It is worth mentioning that fully connected deep neural networks are noise robust (Seltzer et al., 2013), yet the abnormality module can still detect whether an example is out-of-distribution.",
+      "section_id": "sec_12",
+      "start": 1558,
+      "end": 1578
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": "Giryes et al., 2015",
+      "sentence": "Some promising future avenues may utilize the intra-class variance: if the distance from an example to another of the same predicted class is abnormally high, it may be out-of-distribution (Giryes et al., 2015).",
+      "section_id": "sec_14",
+      "start": 359,
+      "end": 378
+    },
+    {
+      "reference_id": "ref_32",
+      "marker": "Pastor-Pellicer et al., 1998",
+      "sentence": "We meet this challenge by also calculating a \"soft\" F1 score (Pastor-Pellicer et al., 1998) for a test set {(xi, Yi)}m 1.",
+      "section_id": "sec_19",
+      "start": 1758,
+      "end": 1786
+    }
+  ],
+  "figures": [
+    {
+      "id": "fig_1",
+      "kind": "table",
+      "label": "Table 1",
+      "number": "1",
+      "page": 4,
+      "caption": "Table 1: The softmax predicted class probability allows for discrimination between correctly and incorrectly classified test set examples. “Pred. Prob Wrong(mean)\" is the mean softmax probability for wrongly classified examples, showcasing its shortcoming as a direct measure of confidence. Succ/Err Base values are the AUROCs or AUPRs achieved by random classifiers. All entries are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the performance metrics for discriminating between correctly and incorrectly classified examples using softmax predicted class probabilities across three image classification datasets: MNIST, CIFAR-10, and CIFAR-100. It includes AUROC, AUPR for successful and erroneous classifications, mean predicted probability for wrong classifications, and test set error.",
+        "data_read": [
+          "The table has columns: Dataset, AUROC /Base, AUPR Succ/Base, AUPR Err/Base, Pred. Prob Wrong(mean), and Test Set Error.",
+          "All entries are percentages.",
+          "For MNIST: AUROC is 97/50, AUPR Succ/Base is 100/98, AUPR Err/Base is 48/1.7, Pred. Prob Wrong(mean) is 86, and Test Set Error is 1.69.",
+          "For CIFAR-10: AUROC is 93/50, AUPR Succ/Base is 100/95, AUPR Err/Base is 43/5, Pred. Prob Wrong(mean) is 80, and Test Set Error is 4.96.",
+          "For CIFAR-100: AUROC is 87/50, AUPR Succ/Base is 96/79, AUPR Err/Base is 62/21, Pred. Prob Wrong(mean) is 66, and Test Set Error is 20.7.",
+          "The 'Base' values for AUROC are 50, for AUPR Succ are 98, 95, 79, and for AUPR Err are 1.7, 5, 21."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article claims that 'correctly classified and incorrectly classified examples are sufficiently distinct and thus allow reliable discrimination.' The table supports this by showing high AUROC values (97%, 93%, 87%) and high AUPR Succ/Base values (100%, 100%, 96%) for all datasets, indicating good discrimination. The 'Pred. Prob Wrong(mean)' values (86, 80, 66) are also relatively high, which the caption explains as showcasing the shortcoming of softmax probability as a direct measure of confidence, but the high AUROC and AUPR values still demonstrate effective discrimination.",
+        "issues": [],
+        "table_markdown": "| Dataset | AUROC /Base | AUPR Succ/Base | AUPR Err/Base | Pred. Prob Wrong(mean) | Test Set Error |\n|---|---|---|---|---|---|\n| MNIST | 97/50 | 100/98 | 48/1.7 | 86 | 1.69 |\n| CIFAR-10 | 93/50 | 100/95 | 43/5 | 80 | 4.96 |\n| CIFAR-100 | 87/50 | 96/79 | 62/21 | 66 | 20.7 |"
+      }
+    },
+    {
+      "id": "fig_2",
+      "kind": "table",
+      "label": "Table 2",
+      "number": "2",
+      "page": 4,
+      "caption": "Table 2: Distinguishing in- and out-of-distribution test set data for image classification. CIFAR-10/All is the same as CIFAR-10/(SUN, Gaussian). All values are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the results of distinguishing in- and out-of-distribution test set data for image classification across various datasets and out-of-distribution types. It shows AUROC, AUPR In, AUPR Out, and Pred. Prob (mean) values, all expressed as percentages.",
+        "data_read": [
+          "The table has columns: In-Distribution / Out-of-Distribution, AUROC /Base, AUPR In /Base, AUPR Out/Base, Pred. Prob (mean).",
+          "All values are percentages.",
+          "For CIFAR-10/SUN: AUROC/Base is 95/50, AUPR In/Base is 89/33, AUPR Out/Base is 97/67, Pred. Prob (mean) is 72.",
+          "For CIFAR-10/Gaussian: AUROC/Base is 97/50, AUPR In/Base is 98/49, AUPR Out/Base is 95/51, Pred. Prob (mean) is 77.",
+          "For CIFAR-10/All: AUROC/Base is 96/50, AUPR In/Base is 88/24, AUPR Out/Base is 98/76, Pred. Prob (mean) is 74.",
+          "For CIFAR-100/SUN: AUROC/Base is 91/50, AUPR In/Base is 83/27, AUPR Out/Base is 96/73, Pred. Prob (mean) is 56.",
+          "For CIFAR-100/Gaussian: AUROC/Base is 88/50, AUPR In/Base is 92/43, AUPR Out/Base is 80/57, Pred. Prob (mean) is 77.",
+          "For CIFAR-100/All: AUROC/Base is 90/50, AUPR In/Base is 81/21, AUPR Out/Base is 96/79, Pred. Prob (mean) is 63.",
+          "For MNIST/Omniglot: AUROC/Base is 96/50, AUPR In/Base is 97/52, AUPR Out/Base is 96/48, Pred. Prob (mean) is 86.",
+          "For MNIST/notMNIST: AUROC/Base is 85/50, AUPR In/Base is 86/50, AUPR Out/Base is 88/50, Pred. Prob (mean) is 92.",
+          "For MNIST/CIFAR-10bw: AUROC/Base is 95/50, AUPR In/Base is 95/50, AUPR Out/Base is 95/50, Pred. Prob (mean) is 87.",
+          "For MNIST/Gaussian: AUROC/Base is 90/50, AUPR In/Base is 90/50, AUPR Out/Base is 91/50, Pred. Prob (mean) is 91.",
+          "For MNIST/Uniform: AUROC/Base is 99/50, AUPR In/Base is 99/50, AUPR Out/Base is 98/50, Pred. Prob (mean) is 83.",
+          "For MNIST/All: AUROC/Base is 91/50, AUPR In/Base is 76/20, AUPR Out/Base is 98/80, Pred. Prob (mean) is 89."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states, 'The results are shown in Table 2. Notice that the mean predicted/maximum class probabilities (Pred. Prob (mean)) are above 75%, but if the prediction probability alone is translated to confidence, the softmax distribution should be more uniform for CIFAR-100. This again shows softmax probabilities should not be viewed as a direct representation of confidence. Fortunately, out-of-distribution examples sufficiently differ in the prediction probabilities from in-distribution examples, allowing for successful detection and generally high area under PR and ROC curves.' The 'Pred. Prob (mean)' column in Table 2 shows values mostly above 75%, supporting the claim about high mean predicted probabilities. The high AUROC and AUPR values (e.g., 95/50 for CIFAR-10/SUN AUROC, 97/67 for CIFAR-10/SUN AUPR Out/Base) indicate successful detection and high area under PR and ROC curves, supporting the claim that out-of-distribution examples sufficiently differ in prediction probabilities for detection.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base | AUPR In /Base | AUPR Out/Base | Pred. Prob (mean) |\n| :-------------------------------- | :---------- | :------------ | :------------ | :---------------- | \n| CIFAR-10/SUN                      | 95/50       | 89/33         | 97/67         | 72                |\n| CIFAR-10/Gaussian                 | 97/50       | 98/49         | 95/51         | 77                |\n| CIFAR-10/All                      | 96/50       | 88/24         | 98/76         | 74                |\n| CIFAR-100/SUN                     | 91/50       | 83/27         | 96/73         | 56                |\n| CIFAR-100/Gaussian                | 88/50       | 92/43         | 80/57         | 77                |\n| CIFAR-100/All                     | 90/50       | 81/21         | 96/79         | 63                |\n| MNIST/Omniglot                    | 96/50       | 97/52         | 96/48         | 86                |\n| MNIST/notMNIST                    | 85/50       | 86/50         | 88/50         | 92                |\n| MNIST/CIFAR-10bw                  | 95/50       | 95/50         | 95/50         | 87                |\n| MNIST/Gaussian                    | 90/50       | 90/50         | 91/50         | 91                |\n| MNIST/Uniform                     | 99/50       | 99/50         | 98/50         | 83                |\n| MNIST/All                         | 91/50       | 76/20         | 98/80         | 89                |"
+      }
+    },
+    {
+      "id": "fig_3",
+      "kind": "table",
+      "label": "Table 3",
+      "number": "3",
+      "page": 5,
+      "caption": "Table 3: Detecting correct and incorrect classifications for binary sentiment classification.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the performance metrics for detecting correct and incorrect classifications in binary sentiment classification using the IMDB dataset.",
+        "data_read": [
+          "The table has five columns: 'Dataset', 'AUROC /Base', 'AUPR Succ/Base', 'AUPR Err/Base', 'Pred. Prob Wrong(mean)', and 'Test Set Error'.",
+          "For the 'IMDB' dataset:",
+          "- 'AUROC /Base' is 82/50.",
+          "- 'AUPR Succ/Base' is 97/88.",
+          "- 'AUPR Err/Base' is 36/12.",
+          "- 'Pred. Prob Wrong(mean)' is 74.",
+          "- 'Test Set Error' is 11.9.",
+          "All values are percentages."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states, \"Again, Table 3 shows that the softmax distributions differ between correctly and incorrectly classified examples, so prediction probabilities allow us to detect reliably which examples are right and wrong.\" The table supports this by showing high AUPR Succ/Base (97/88) and a much lower AUPR Err/Base (36/12), indicating that correctly classified examples have significantly different (higher) prediction probabilities than incorrectly classified ones, allowing for their detection.",
+        "issues": [],
+        "table_markdown": "| Dataset | AUROC /Base | AUPR Succ/Base | AUPR Err/Base | Pred. Prob Wrong(mean) | Test Set Error |\n|---|---|---|---|---|---|\n| IMDB | 82/50 | 97/88 | 36/12 | 74 | 11.9 |"
+      }
+    },
+    {
+      "id": "fig_4",
+      "kind": "table",
+      "label": "Table 4",
+      "number": "4",
+      "page": 5,
+      "caption": "Table 4: Distinguishing in- and out-of-distribution test set data for binary sentiment classification. IMDB/All is the same as IMDB/(Customer Reviews, Movie Reviews). All values are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the results of distinguishing in- and out-of-distribution test set data for binary sentiment classification using the IMDB dataset. It shows performance metrics (AUROC, AUPR In, AUPR Out) and mean predicted probabilities for different out-of-distribution datasets.",
+        "data_read": [
+          "The table has columns: \"In-Distribution / Out-of-Distribution\", \"AUROC /Base\", \"AUPR In/Base\", \"AUPR Out/Base\", and \"Pred. Prob (mean)\".",
+          "All values are percentages.",
+          "For IMDB/Customer Reviews: AUROC/Base is 95/50, AUPR In/Base is 99/89, AUPR Out/Base is 60/11, Pred. Prob (mean) is 62.",
+          "For IMDB/Movie Reviews: AUROC/Base is 94/50, AUPR In/Base is 98/72, AUPR Out/Base is 80/28, Pred. Prob (mean) is 63.",
+          "For IMDB/All: AUROC/Base is 94/50, AUPR In/Base is 97/66, AUPR Out/Base is 84/34, Pred. Prob (mean) is 63."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states, \"Table 4 displays detection results, showing a similar story to Table 2.\" Comparing Table 4 with Table 2 (image classification), both tables show high AUROC and AUPR values for distinguishing in- and out-of-distribution data, indicating effective detection. For instance, IMDB/Customer Reviews has an AUROC of 95/50 and AUPR In of 99/89, which are comparable to the high values seen in Table 2 for image classification tasks (e.g., CIFAR-10/SUN with AUROC 95/50, AUPR In 89/33). This supports the claim that the detection results are similar.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base | AUPR In/Base | AUPR Out/Base | Pred. Prob (mean) |\n| :-------------------------------- | :---------- | :----------- | :------------ | :----------------- |\n| IMDB/Customer Reviews           | 95/50       | 99/89        | 60/11         | 62                 |\n| IMDB/Movie Reviews              | 94/50       | 98/72        | 80/28         | 63                 |\n| IMDB/All                        | 94/50       | 97/66        | 84/34         | 63                 |"
+      }
+    },
+    {
+      "id": "fig_5",
+      "kind": "table",
+      "label": "Table 5",
+      "number": "5",
+      "page": 5,
+      "caption": "Table 5: Detecting correct and incorrect classifications for text categorization.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the performance metrics for detecting correct and incorrect classifications in text categorization tasks using different datasets: 15 Newsgroups, Reuters 6, and Reuters 40. The metrics include AUROC, AUPR for successful and erroneous classifications, mean predicted probability for wrong classifications, and test set error.",
+        "data_read": [
+          "For '15 Newsgroups': AUROC/Base is 89/50, AUPR Succ/Base is 99/93, AUPR Err/Base is 42/7.3, Pred.Prob Wrong(mean) is 53, and Test Set Error is 7.31.",
+          "For 'Reuters 6': AUROC/Base is 89/50, AUPR Succ/Base is 100/98, AUPR Err/Base is 35/2.5, Pred.Prob Wrong(mean) is 77, and Test Set Error is 2.53.",
+          "For 'Reuters 40': AUROC/Base is 91/50, AUPR Succ/Base is 99/92, AUPR Err/Base is 45/7.6, Pred.Prob Wrong(mean) is 62, and Test Set Error is 7.55.",
+          "All values are percentages."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states that 'Table 5 shows that with these datasets and architectures, we can detect errors dependably'. The table supports this claim by showing high AUPR Succ/Base values (99/93, 100/98, 99/92) and AUROC/Base values (89/50, 89/50, 91/50) for all datasets, indicating good performance in detecting correct classifications. The AUPR Err/Base values (42/7.3, 35/2.5, 45/7.6) also suggest that errors can be detected, as these values are significantly higher than the random baseline of 7.3, 2.5, and 7.6 respectively.",
+        "issues": [],
+        "table_markdown": "| Dataset           | AUROC /Base | AUPR Succ/Base | AUPR Err/Base | Pred.Prob Wrong(mean) | Test Set Error |\n|:------------------|:------------|:---------------|:--------------|:-----------------------|:---------------|\n| 15 Newsgroups     | 89/50       | 99/93          | 42/7.3        | 53                     | 7.31           |\n| Reuters 6         | 89/50       | 100/98         | 35/2.5        | 77                     | 2.53           |\n| Reuters 40        | 91/50       | 99/92          | 45/7.6        | 62                     | 7.55           |"
+      }
+    },
+    {
+      "id": "fig_6",
+      "kind": "table",
+      "label": "Table 6",
+      "number": "6",
+      "page": 6,
+      "caption": "Table 6: Distinguishing in- and out-of-distribution test set data for text categorization.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the performance metrics for distinguishing in- and out-of-distribution test set data for text categorization tasks. It includes AUROC, AUPR In, AUPR Out, and Pred. Prob (mean) for different datasets.",
+        "data_read": [
+          "The table has columns: \"In-Distribution / Out-of-Distribution\", \"AUROC /Base\", \"AUPR In/Base\", \"AUPR Out/Base\", and \"Pred. Prob (mean)\".",
+          "For \"15/5 Newsgroups\": AUROC/Base is 75/50, AUPR In/Base is 92/84, AUPR Out/Base is 45/16, Pred. Prob (mean) is 65.",
+          "For \"Reuters6/Reuters2\": AUROC/Base is 92/50, AUPR In/Base is 100/95, AUPR Out/Base is 56/4.5, Pred. Prob (mean) is 72.",
+          "For \"Reuters40/Reuters12\": AUROC/Base is 95/50, AUPR In/Base is 100/93, AUPR Out/Base is 60/7.2, Pred. Prob (mean) is 47.",
+          "All values are percentages."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states that \"Table 6 informs us that the softmax prediction probabilities allow for detecting out-of-distribution subjects.\" The table shows AUROC values significantly above the 50% baseline for all datasets (75%, 92%, 95%), and AUPR Out/Base values also well above their respective baselines (16%, 4.5%, 7.2%), indicating that the softmax prediction probabilities are effective in distinguishing out-of-distribution subjects.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base | AUPR In/Base | AUPR Out/Base | Pred. Prob (mean) |\n|---|---|---|---|---|\n| 15/5 Newsgroups | 75/50 | 92/84 | 45/16 | 65 |\n| Reuters6/Reuters2 | 92/50 | 100/95 | 56/4.5 | 72 |\n| Reuters40/Reuters12 | 95/50 | 100/93 | 60/7.2 | 47 |"
+      }
+    },
+    {
+      "id": "fig_7",
+      "kind": "table",
+      "label": "Table 7",
+      "number": "7",
+      "page": 6,
+      "caption": "Table 7: Detecting correct and incorrect classifications for part-of-speech tagging.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the results for detecting correct and incorrect classifications in part-of-speech tagging for two datasets: WSJ and Twitter. It shows AUROC, AUPR for successful and erroneous classifications, mean predicted probability for wrong classifications, and test set error.",
+        "data_read": [
+          "Dataset: WSJ, Twitter",
+          "AUROC /Base: WSJ 96/50, Twitter 89/50",
+          "AUPR Succ/Base: WSJ 100/96, Twitter 98/87",
+          "AUPR Err/Base: WSJ 51/3.7, Twitter 53/13",
+          "Pred. Prob Wrong(mean): WSJ 71, Twitter 69",
+          "Test Set Error: WSJ 3.68, Twitter 12.59",
+          "All values are percentages."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states, \"Error detection results are in Table 7.\" The table indeed presents various metrics (AUROC, AUPR, Pred. Prob Wrong(mean), Test Set Error) related to detecting correct and incorrect classifications for part-of-speech tagging, which are results for error detection.",
+        "issues": [],
+        "table_markdown": "| Dataset | AUROC /Base | AUPR Succ/Base | AUPR Err/Base | Pred. Prob Wrong(mean) | Test Set Error |\n|---|---|---|---|---|---|\n| WSJ | 96/50 | 100/96 | 51/3.7 | 71 | 3.68 |\n| Twitter | 89/50 | 98/87 | 53/13 | 69 | 12.59 |"
+      }
+    },
+    {
+      "id": "fig_8",
+      "kind": "table",
+      "label": "Table 8",
+      "number": "8",
+      "page": 6,
+      "caption": "Table 8: Detecting out-of-distribution tweets and blog articles for part-of-speech tagging. All values are percentages. *These examples are atypically close to the training distribution.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the results of detecting out-of-distribution examples for part-of-speech tagging, comparing a baseline softmax method with an abnormality module (AbMod). It shows AUROC and AUPR values for both in-distribution and out-of-distribution detection, along with the mean predicted probability.",
+        "data_read": [
+          "The table has columns: \"In-Distribution / Out-of-Distribution\", \"AUROC /Base Softmax\", \"AUROC /Base AbMod\", \"AUPR In/Base Softmax\", \"AUPR In/Base AbMod\", \"AUPR Out/Base Softmax\", \"AUPR Out/Base AbMod\", and \"Pred. Prob (mean)\".",
+          "For \"WSJ/Twitter\": AUROC Softmax is 80/50, AUROC AbMod is 98/92, AUPR In Softmax is 41/7.7, AUPR In AbMod is 66/12, AUPR Out Softmax is 96/88, AUPR Out AbMod is 98/88, and Pred. Prob (mean) is 81.",
+          "For \"WSJ/Weblog*\": AUROC Softmax is 61/50, AUROC AbMod is 88/86, AUPR In Softmax is 30/14, AUPR In AbMod is 93, AUPR Out Softmax is 96/88, AUPR Out AbMod is 98/88, and Pred. Prob (mean) is 93.",
+          "The footnote indicates that \"*These examples are atypically close to the training distribution.\"",
+          "All values are percentages."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The table shows that the abnormality module (AbMod) consistently outperforms the softmax baseline across all metrics (AUROC and AUPR for both in- and out-of-distribution) for both WSJ/Twitter and WSJ/Weblog* tasks. For instance, for WSJ/Twitter, AUROC AbMod is 98/92 compared to Softmax's 80/50, and AUPR Out AbMod is 98/88 compared to Softmax's 96/88. This supports the claim that the abnormality module can improve detection.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base Softmax | AUROC /Base AbMod | AUPR In/Base Softmax | AUPR In/Base AbMod | AUPR Out/Base Softmax | AUPR Out/Base AbMod | Pred. Prob (mean) |\n|---|---|---|---|---|---|---|---|\n| WSJ/Twitter | 80/50 | 98/92 | 41/7.7 | 66/12 | 96/88 | 98/88 | 81 |\n| WSJ/Weblog* | 61/50 | 88/86 | 30/14 | 93 | 96/88 | 98/88 | 93 |"
+      }
+    },
+    {
+      "id": "fig_9",
+      "kind": "table",
+      "label": "Table 9",
+      "number": "9",
+      "page": 7,
+      "caption": "Table 9: Detecting out-of-distribution distorted speech. All values are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the results for detecting out-of-distribution distorted speech across various noise types and a different language (Chinese). It shows AUROC, AUPR In, AUPR Out, and Pred. Prob (mean) values for different in-distribution/out-of-distribution pairs, all expressed as percentages.",
+        "data_read": [
+          "The table has columns: In-Distribution / Out-of-Distribution, AUROC /Base, AUPR In/Base, AUPR Out/Base, Pred. Prob (mean).",
+          "All values are percentages.",
+          "TIMIT/TIMIT+Airport: AUROC/Base 99/50, AUPR In/Base 99/50, AUPR Out/Base 99/50, Pred. Prob (mean) 59.",
+          "TIMIT/TIMIT+Babble: AUROC/Base 100/50, AUPR In/Base 100/50, AUPR Out/Base 100/50, Pred. Prob (mean) 55.",
+          "TIMIT/TIMIT+Car: AUROC/Base 98/50, AUPR In/Base 98/50, AUPR Out/Base 98/50, Pred. Prob (mean) 59.",
+          "TIMIT/TIMIT+Exhibition: AUROC/Base 100/50, AUPR In/Base 100/50, AUPR Out/Base 100/50, Pred. Prob (mean) 57.",
+          "TIMIT/TIMIT+Restaurant: AUROC/Base 98/50, AUPR In/Base 98/50, AUPR Out/Base 98/50, Pred. Prob (mean) 60.",
+          "TIMIT/TIMIT+Street: AUROC/Base 100/50, AUPR In/Base 100/50, AUPR Out/Base 100/50, Pred. Prob (mean) 52.",
+          "TIMIT/TIMIT+Subway: AUROC/Base 100/50, AUPR In/Base 100/50, AUPR Out/Base 100/50, Pred. Prob (mean) 56.",
+          "TIMIT/TIMIT+Train: AUROC/Base 100/50, AUPR In/Base 100/50, AUPR Out/Base 100/50, Pred. Prob (mean) 58.",
+          "TIMIT/Chinese: AUROC/Base 85/50, AUPR In/Base 80/34, AUPR Out/Base 90/66, Pred. Prob (mean) 64.",
+          "TIMIT/All: AUROC/Base 97/50, AUPR In/Base 79/10, AUPR Out/Base 100/90, Pred. Prob (mean) 58."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states, \"Table 9 shows the results.\" The table indeed presents results for detecting out-of-distribution distorted speech, with high AUROC and AUPR values (many at 98-100%) indicating effective detection, supporting the general claim of showing results.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base | AUPR In/Base | AUPR Out/Base | Pred. Prob (mean) |\n| :-------------------------------- | :---------- | :----------- | :------------ | :----------------- |\n| TIMIT/TIMIT+Airport              | 99/50       | 99/50        | 99/50         | 59                 |\n| TIMIT/TIMIT+Babble               | 100/50      | 100/50       | 100/50        | 55                 |\n| TIMIT/TIMIT+Car                  | 98/50       | 98/50        | 98/50         | 59                 |\n| TIMIT/TIMIT+Exhibition           | 100/50      | 100/50       | 100/50        | 57                 |\n| TIMIT/TIMIT+Restaurant           | 98/50       | 98/50        | 98/50         | 60                 |\n| TIMIT/TIMIT+Street               | 100/50      | 100/50       | 100/50        | 52                 |\n| TIMIT/TIMIT+Subway               | 100/50      | 100/50       | 100/50        | 56                 |\n| TIMIT/TIMIT+Train                | 100/50      | 100/50       | 100/50        | 58                 |\n| TIMIT/Chinese                    | 85/50       | 80/34        | 90/66         | 64                 |\n| TIMIT/All                        | 97/50       | 79/10        | 100/90        | 58                 |"
+      }
+    },
+    {
+      "id": "fig_10",
+      "kind": "table",
+      "label": "Table 10",
+      "number": "10",
+      "page": 8,
+      "caption": "Table 10: Abnormality modules can generalize to novel distortions and detect out-of-distribution examples even when they do not severely degrade accuracy. All values are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table compares the performance of two methods, Softmax and AbMod (Abnormality Module), in detecting out-of-distribution examples for various TIMIT audio datasets with different types of noise or distortions. The metrics used are AUROC and AUPR for both in-distribution and out-of-distribution examples. All values are percentages.",
+        "data_read": [
+          "The table has columns: 'In-Distribution / Out-of-Distribution', 'AUROC /Base Softmax', 'AUROC /Base AbMod', 'AUPR In/Base Softmax', 'AUPR In/Base AbMod', 'AUPR Out/Base Softmax', 'AUPR Out/Base AbMod'.",
+          "The rows represent different TIMIT datasets with added distortions: 'TIMIT/+Airport', 'TIMIT/+Babble', 'TIMIT/+Car', 'TIMIT/+Exhib.', 'TIMIT/+Rest.', 'TIMIT/+Subway', 'TIMIT/+Street', 'TIMIT/+Train', 'TIMIT/Chinese', and 'Average'.",
+          "For 'TIMIT/+Airport', Softmax AUROC is 75/50, AbMod AUROC is 100/50. Softmax AUPR In is 77/41, AbMod AUPR In is 100/41. Softmax AUPR Out is 73/59, AbMod AUPR Out is 100/59.",
+          "For 'TIMIT/+Babble', Softmax AUROC is 94/50, AbMod AUROC is 100/50. Softmax AUPR In is 95/41, AbMod AUPR In is 100/41. Softmax AUPR Out is 91/59, AbMod AUPR Out is 100/59.",
+          "For 'TIMIT/+Car', Softmax AUROC is 70/50, AbMod AUROC is 98/50. Softmax AUPR In is 69/41, AbMod AUPR In is 98/41. Softmax AUPR Out is 70/59, AbMod AUPR Out is 98/59.",
+          "For 'TIMIT/+Exhib.', Softmax AUROC is 91/50, AbMod AUROC is 98/50. Softmax AUPR In is 92/41, AbMod AUPR In is 98/41. Softmax AUPR Out is 91/59, AbMod AUPR Out is 98/59.",
+          "For 'TIMIT/+Rest.', Softmax AUROC is 68/50, AbMod AUROC is 95/50. Softmax AUPR In is 70/41, AbMod AUPR In is 96/41. Softmax AUPR Out is 67/59, AbMod AUPR Out is 95/59.",
+          "For 'TIMIT/+Subway', Softmax AUROC is 76/50, AbMod AUROC is 96/50. Softmax AUPR In is 77/41, AbMod AUPR In is 96/41. Softmax AUPR Out is 74/59, AbMod AUPR Out is 96/59.",
+          "For 'TIMIT/+Street', Softmax AUROC is 89/50, AbMod AUROC is 98/50. Softmax AUPR In is 91/41, AbMod AUPR In is 99/41. Softmax AUPR Out is 85/59, AbMod AUPR Out is 98/59.",
+          "For 'TIMIT/+Train', Softmax AUROC is 80/50, AbMod AUROC is 100/50. Softmax AUPR In is 82/41, AbMod AUPR In is 100/41. Softmax AUPR Out is 77/59, AbMod AUPR Out is 100/59.",
+          "For 'TIMIT/Chinese', Softmax AUROC is 79/50, AbMod AUROC is 90/50. Softmax AUPR In is 41/12, AbMod AUPR In is 66/12. Softmax AUPR Out is 96/88, AbMod AUPR Out is 98/88.",
+          "The 'Average' row shows that AbMod consistently outperforms Softmax across all metrics: AUROC (97 vs 80), AUPR In (95 vs 77), and AUPR Out (98 vs 80)."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The table supports the claim that 'simple noised examples translate to effective detection of realistically distorted audio' by showing that the Abnormality Module (AbMod) consistently achieves significantly higher AUROC and AUPR scores compared to the Softmax baseline across all TIMIT datasets with various distortions. For instance, the average AUROC for AbMod is 97% compared to 80% for Softmax, and the average AUPR Out is 98% for AbMod versus 80% for Softmax. This indicates that the abnormality module is effective at detecting out-of-distribution examples even when trained on simple noised examples and applied to realistically distorted audio.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base Softmax | AUROC /Base AbMod | AUPR In/Base Softmax | AUPR In/Base AbMod | AUPR Out/Base Softmax | AUPR Out/Base AbMod |\n| :-------------------------------- | :------------------ | :---------------- | :------------------- | :----------------- | :-------------------- | :------------------ |\n| TIMIT/+Airport                    | 75/50               | 100/50            | 77/41                | 100/41             | 73/59                 | 100/59              |\n| TIMIT/+Babble                     | 94/50               | 100/50            | 95/41                | 100/41             | 91/59                 | 100/59              |\n| TIMIT/+Car                        | 70/50               | 98/50             | 69/41                | 98/41              | 70/59                 | 98/59               |\n| TIMIT/+Exhib.                     | 91/50               | 98/50             | 92/41                | 98/41              | 91/59                 | 98/59               |\n| TIMIT/+Rest.                      | 68/50               | 95/50             | 70/41                | 96/41              | 67/59                 | 95/59               |\n| TIMIT/+Subway                     | 76/50               | 96/50             | 77/41                | 96/41              | 74/59                 | 96/59               |\n| TIMIT/+Street                     | 89/50               | 98/50             | 91/41                | 99/41              | 85/59                 | 98/59               |\n| TIMIT/+Train                      | 80/50               | 100/50            | 82/41                | 100/41             | 77/59                 | 100/59              |\n| TIMIT/Chinese                     | 79/50               | 90/50             | 41/12                | 66/12              | 96/88                 | 98/88               |\n| Average                           | 80                  | 97                | 77                   | 95                 | 80                    | 98                  |"
+      }
+    },
+    {
+      "id": "fig_11",
+      "kind": "table",
+      "label": "Table 11",
+      "number": "11",
+      "page": 8,
+      "caption": "Table 11: Improved detection using the abnormality module. All values are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the detection performance of an abnormality module compared to a softmax baseline for various MNIST out-of-distribution tasks. It shows AUROC and AUPR values for both in-distribution and out-of-distribution examples, using both Softmax and AbMod (Abnormality Module) methods.",
+        "data_read": [
+          "The table has columns: 'In-Distribution / Out-of-Distribution', 'AUROC /Base Softmax', 'AUROC /Base AbMod', 'AUPR In/Base Softmax', 'AUPR In/Base AbMod', 'AUPR Out/Base Softmax', 'AUPR Out/Base AbMod'.",
+          "All values are percentages.",
+          "For MNIST/Omniglot, AUROC Softmax is 95/50, AbMod is 100/50. AUPR In Softmax is 95/52, AbMod is 100/52. AUPR Out Softmax is 95/48, AbMod is 100/48.",
+          "For MNIST/notMNIST, AUROC Softmax is 87/50, AbMod is 100/50. AUPR In Softmax is 88/50, AbMod is 100/50. AUPR Out Softmax is 90/50, AbMod is 100/50.",
+          "For MNIST/CIFAR-10bw, AUROC Softmax is 98/50, AbMod is 100/50. AUPR In Softmax is 98/50, AbMod is 100/50. AUPR Out Softmax is 98/50, AbMod is 100/50.",
+          "For MNIST/Gaussian, AUROC Softmax is 88/50, AbMod is 100/50. AUPR In Softmax is 88/50, AbMod is 100/50. AUPR Out Softmax is 90/50, AbMod is 100/50.",
+          "For MNIST/Uniform, AUROC Softmax is 99/50, AbMod is 100/50. AUPR In Softmax is 99/50, AbMod is 100/50. AUPR Out Softmax is 99/50, AbMod is 100/50.",
+          "The 'Average' row shows: AUROC Softmax 93, AbMod 100. AUPR In Softmax 94, AbMod 100. AUPR Out Softmax 94, AbMod 100.",
+          "The abnormality module consistently achieves 100% for AUROC and AUPR (In/Base and Out/Base) across all MNIST tasks, significantly outperforming the Softmax baseline."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The table clearly shows that the 'AbMod' (abnormality module) consistently achieves 100% for AUROC and AUPR across all listed MNIST out-of-distribution tasks, while the 'Softmax' baseline has lower percentages. This demonstrates a 'consistent out-of-sample detection improvement compared to softmax prediction probabilities' as stated in the article.",
+        "issues": [],
+        "table_markdown": "| In-Distribution / Out-of-Distribution | AUROC /Base Softmax | AUROC /Base AbMod | AUPR In/Base Softmax | AUPR In/Base AbMod | AUPR Out/Base Softmax | AUPR Out/Base AbMod |\n|---|---|---|---|---|---|---|\n| MNIST/Omniglot | 95/50 | 100/50 | 95/52 | 100/52 | 95/48 | 100/48 |\n| MNIST/notMNIST | 87/50 | 100/50 | 88/50 | 100/50 | 90/50 | 100/50 |\n| MNIST/CIFAR-10bw | 98/50 | 100/50 | 98/50 | 100/50 | 98/50 | 100/50 |\n| MNIST/Gaussian | 88/50 | 100/50 | 88/50 | 100/50 | 90/50 | 100/50 |\n| MNIST/Uniform | 99/50 | 100/50 | 99/50 | 100/50 | 99/50 | 100/50 |\n| Average | 93 | 100 | 94 | 100 | 94 | 100 |"
+      }
+    },
+    {
+      "id": "fig_12",
+      "kind": "figure",
+      "label": "Figure 1",
+      "number": "1",
+      "page": 12,
+      "caption": "Figure 1: A neural network classifying a diamond image with an auxiliary decoder and an abnormality module. Circles are neurons, either having a GELU or sigmoid activation. The blurred diamond reconstruction precedes subtraction and elementwise squaring. The probability vector is the softmax probability vector. Blue layers train on in-distribution data, and red layers train on both in- and out-of-distribution examples.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "diagram",
+        "description": "This figure illustrates a neural network architecture designed for classifying diamond images, incorporating an auxiliary decoder and an abnormality module. The network processes an input image through several layers, reconstructs a blurred version of the input, and outputs a probability vector for classification, along with an abnormality score.",
+        "data_read": [
+          "Input: A diamond image (represented by a black diamond shape).",
+          "Blue layers: These layers are trained on in-distribution data. They include an initial processing layer, followed by two sets of three neurons each, and then a single neuron layer.",
+          "Red layers: These layers are trained on both in- and out-of-distribution examples. They consist of two sets of three neurons each, followed by a single neuron layer.",
+          "Auxiliary Decoder: A path from the blue layers leads to a blurred diamond reconstruction, which is then subtracted from the original input and element-wise squared.",
+          "Abnormality Module: The output of the subtraction and squaring feeds into a sigmoid activation function, producing an abnormality score.",
+          "Classifier Output: The red layers lead to a softmax probability vector, shown as [0.5, 0.2, 0.3].",
+          "Activation functions: Circles represent neurons with either GELU or sigmoid activation."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The figure clearly shows a neural network with an auxiliary decoder that reconstructs the input and an abnormality module, as stated in the text. The blue layers are distinct from the red layers, supporting the claim that blue layers train on in-distribution data and red layers train on both in- and out-of-distribution examples.",
+        "issues": [],
+        "table_markdown": null
+      }
+    },
+    {
+      "id": "fig_13",
+      "kind": "table",
+      "label": "Table 12",
+      "number": "12",
+      "page": 13,
+      "caption": "Table 12: Confidence Model Baseline Results. All values are percentages.",
+      "fidelity": 1.0,
+      "description": {
+        "figure_class": "table",
+        "description": "This table presents the baseline results for a confidence model across four different datasets: MNIST, CIFAR-10, Twitter, and IMDB. It shows the Probability Alignment Score, Soft F1 Score, and Test Set Error for each dataset.",
+        "data_read": [
+          "Dataset: MNIST, CIFAR-10, Twitter, IMDB",
+          "Probability Alignment Score: 97 (MNIST), 88 (CIFAR-10), 74 (Twitter), 67 (IMDB)",
+          "Soft F1 Score: 24 (MNIST), 28 (CIFAR-10), 29 (Twitter), 26 (IMDB)",
+          "Test Set Error: 1.56 (MNIST), 5.42 (CIFAR-10), 13.6 (Twitter), 13.4 (IMDB)",
+          "All values are percentages."
+        ],
+        "supports_claims": true,
+        "support_rationale": "The article states that the results in Table 12 indicate that \"the probabilities are positively aligned and have a nonzero soft F1 score.\" The 'Probability Alignment Score' values are all high (97, 88, 74, 67), suggesting positive alignment. The 'Soft F1 Score' values are 24, 28, 29, and 26, which are all non-zero, supporting the claim.",
+        "issues": [],
+        "table_markdown": "| Dataset | Probability Alignment Score | Soft F1 Score | Test Set Error |\n|---|---|---|---|\n| MNIST | 97 | 24 | 1.56 |\n| CIFAR-10 | 88 | 28 | 5.42 |\n| Twitter | 74 | 29 | 13.6 |\n| IMDB | 67 | 26 | 13.4 |"
+      }
+    }
+  ],
+  "figure_mentions": [
+    {
+      "figure_id": "fig_1",
+      "marker": "Table 1",
+      "sentence": "In Table 1, we see that correctly classified and incorrectly classified examples are sufficiently distinct and thus allow reliable discrimination.",
+      "section_id": "sec_5",
+      "start": 448,
+      "end": 455
+    },
+    {
+      "figure_id": "fig_2",
+      "marker": "Table 2",
+      "sentence": "The results are shown in Table 2.",
+      "section_id": "sec_5",
+      "start": 1576,
+      "end": 1583
+    },
+    {
+      "figure_id": "fig_3",
+      "marker": "Table 3",
+      "sentence": "Again, Table 3 shows that the softmax distributions differ between correctly and incorrectly classified examples, so prediction probabilities allow us to detect reliably which examples are right and wrong.",
+      "section_id": "sec_7",
+      "start": 594,
+      "end": 601
+    },
+    {
+      "figure_id": "fig_4",
+      "marker": "Table 4",
+      "sentence": "Table 4 displays detection results, showing a similar story to Table 2.",
+      "section_id": "sec_7",
+      "start": 1313,
+      "end": 1320
+    },
+    {
+      "figure_id": "fig_2",
+      "marker": "Table 2",
+      "sentence": "Table 4 displays detection results, showing a similar story to Table 2.",
+      "section_id": "sec_7",
+      "start": 1376,
+      "end": 1383
+    },
+    {
+      "figure_id": "fig_5",
+      "marker": "Table 5",
+      "sentence": "Table 5 shows that with these datasets and architectures, we can detect errors dependably, and Table 6 informs us that the softmax prediction probabilities allow for detecting out-of-distribution subjects.",
+      "section_id": "sec_8",
+      "start": 1140,
+      "end": 1147
+    },
+    {
+      "figure_id": "fig_6",
+      "marker": "Table 6",
+      "sentence": "Table 5 shows that with these datasets and architectures, we can detect errors dependably, and Table 6 informs us that the softmax prediction probabilities allow for detecting out-of-distribution subjects.",
+      "section_id": "sec_8",
+      "start": 1235,
+      "end": 1242
+    },
+    {
+      "figure_id": "fig_7",
+      "marker": "Table 7",
+      "sentence": "Error detection results are in Table 7.",
+      "section_id": "sec_9",
+      "start": 1051,
+      "end": 1058
+    },
+    {
+      "figure_id": "fig_8",
+      "marker": "Table 8",
+      "sentence": "The results are shown in Table 8.",
+      "section_id": "sec_9",
+      "start": 1230,
+      "end": 1237
+    },
+    {
+      "figure_id": "fig_9",
+      "marker": "Table 9",
+      "sentence": "Table 9 shows the results.",
+      "section_id": "sec_10",
+      "start": 1483,
+      "end": 1490
+    },
+    {
+      "figure_id": "fig_12",
+      "marker": "Figure 1",
+      "sentence": "We start by training a normal classifier and append an auxiliary decoder which reconstructs the input, shown in Figure 1.",
+      "section_id": "sec_11",
+      "start": 357,
+      "end": 365
+    },
+    {
+      "figure_id": "fig_12",
+      "marker": "Figure 1",
+      "sentence": "Thereafter, the blue layers in Figure 1 are frozen.",
+      "section_id": "sec_11",
+      "start": 570,
+      "end": 578
+    },
+    {
+      "figure_id": "fig_10",
+      "marker": "Table 10",
+      "sentence": "Nonetheless, Table 10 shows that simple noised examples translate to effective detection of realistically distorted audio.",
+      "section_id": "sec_12",
+      "start": 916,
+      "end": 924
+    },
+    {
+      "figure_id": "fig_11",
+      "marker": "Table 11",
+      "sentence": "Gains from the abnormality module are shown in Table 11, and there is a consistent out-of-sample detection improvement compared to softmax prediction probabilities.",
+      "section_id": "sec_13",
+      "start": 349,
+      "end": 357
+    },
+    {
+      "figure_id": "fig_12",
+      "marker": "Figure 1",
+      "sentence": "Figure 1: A neural network classifying a diamond image with an auxiliary decoder and an abnormal-ity module.",
+      "section_id": "sec_18",
+      "start": 0,
+      "end": 8
+    },
+    {
+      "figure_id": "fig_13",
+      "marker": "Table 12",
+      "sentence": "The results are in Table 12, and they indicate that the probabilities are positively aligned and have a nonzero soft F1 score.",
+      "section_id": "sec_19",
+      "start": 2582,
+      "end": 2590
+    },
+    {
+      "figure_id": "fig_13",
+      "marker": "Table 12",
+      "sentence": "Table 12: Confidence Model Baseline Results.",
+      "section_id": "sec_19",
+      "start": 2893,
+      "end": 2901
+    }
+  ],
+  "hidden_text_findings": []
+}

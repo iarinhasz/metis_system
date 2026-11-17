@@ -1,0 +1,118 @@
+{
+    "run_id": "01a1e74d-e2cc-708f-83af-0cd143f7b823",
+    "risk": "low",
+    "rules_version": "v1",
+    "coverage": {
+        "hidden_text": true
+    },
+    "findings": [
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "0.33",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "-0.42-0.33",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "0.83",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "-0.90",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "0.87-0.36",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "-0.730.41",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "0.42",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "0.39",
+                "reasons": [
+                    "color"
+                ]
+            }
+        },
+        {
+            "kind": "hidden_text",
+            "severity": "low",
+            "message": "Texto escondido na página 5: da cor do fundo.",
+            "evidence": {
+                "page": 5,
+                "text": "0.47",
+                "reasons": [
+                    "color"
+                ]
+            }
+        }
+    ]
+}

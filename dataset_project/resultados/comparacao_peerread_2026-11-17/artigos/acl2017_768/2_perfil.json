@@ -1,0 +1,585 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T10181",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "Detecting Lexical Entailment in Context",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "table",
+        "page": 2,
+        "label": "Table 1",
+        "caption": "Table 1: Examples of the context-aware lexical entailment task"
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "page": 2,
+        "label": "Figure 1",
+        "caption": "Figure 1: Constructing word-in-context represen-tations for \"bank\", in the context \"the river bank\". indicates element-wise multiplication."
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "page": 3,
+        "label": "Table 2",
+        "caption": "Table 2: Semantic relations in CONTEXT-PPDB. Negation and alternation are conflated into a single relation while creating the dataset."
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "page": 4,
+        "label": "Figure 2",
+        "caption": "Figure 2: Sample dataset creation process based on two synsets of the word study. The green/solid lines indicate positive examples, while the red/dashed lines indicate negative examples"
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "page": 6,
+        "label": "Table 3",
+        "caption": "Table 3: Experimental results on CONTEXT-PPDB. The evaluation metric is weighted F score."
+      },
+      {
+        "id": "fig_6",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 4",
+        "caption": "Table 4: Results on CONTEXT-WN. Macro-F1 and Pairwise accuracy, are intended to capture context-awareness and directionality-discrimination abilities of our features, repsectively."
+      },
+      {
+        "id": "fig_7",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 5",
+        "caption": "Table 5: Results on cross-lingual dataset with training on CONTEXT-PPDB using bilingual embeddings."
+      },
+      {
+        "id": "fig_8",
+        "kind": "table",
+        "page": 8,
+        "label": "Table 6",
+        "caption": "Table 6: Impact of masks on CONTEXT-PPDB and CONTEXT-WN."
+      }
+    ],
+    "abstract": "Detecting entailment between words is a key task for several NLP applications. Pre- vious work has largely focused on en- tailment between words out of context. We propose, instead, to address lexical entailment in context, providing exem- plar sentences to ground the meaning of words considered in the entailment rela- tion. We show that contextualized word representations constructed from existing word embeddings, and word-context simi- larity features lead to significant improve- ments over context-agnostic models on two novel entailment test sets, and also improve the state-of-the-art on the related task of detecting semantic relations in con- text (Shwartz and Dagan, 2015).",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 Introduction",
+        "first_sentence": "Many NLP applications require detecting relations between word meanings beyond synonymy and paraphrasing."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "method"
+        ],
+        "title": "2 Defining Lexical Entailment in Context",
+        "first_sentence": "We frame the task of lexical entailment in context as a binary classification task on examples consist- ing of a 4-tuple (wl, wr, Cl, Cr), where wι and wr are two words, and ci and cr are sentences which illustrate each word usage."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "3 Representing Words and their Contexts for Entailment",
+        "first_sentence": "How can we construct vector representations of the meaning of target words wι and wr in their respective exemplar contexts Cι and Cr?"
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "method"
+        ],
+        "title": "3.1 Contextualized Word Representations",
+        "first_sentence": "Following Thater et al."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "related_work"
+        ],
+        "title": "3.2 A Shared Vector Space for Words and Contexts: Context2vec",
+        "first_sentence": "An alternative approach to contextualizing word representations is to directly compare the repre- sentations of words with representations of con- texts."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "method"
+        ],
+        "title": "4 Comparing Words and Contexts for Entailment",
+        "first_sentence": "Given words and context representations de- scribed above, how can we predict entailment?"
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "method"
+        ],
+        "title": "4.1 Supervised Logistic Regression model",
+        "first_sentence": "Prior work on lexical entailment out of context suggests that the entailment relationship between words is a learnable function of the concatenation of their individual representations (Baroni et al., 2012; Turney and Mohammad, 2013)."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method"
+        ],
+        "title": "4.2 Similarity Features",
+        "first_sentence": "We hypothesize that entailment relations hold be- tween related words and introduce similarity fea- tures to capture this non-directional relation be- tween words and contexts."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "method"
+        ],
+        "title": "5 Evaluation Framework",
+        "first_sentence": "We evaluate our models of lexical entailment in context on three complementary datasets."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "method"
+        ],
+        "title": "5.1 CONTEXT-PPDB",
+        "first_sentence": "The first dataset, CONTEXT-PPDB, is a fine-grained lexical inference dataset created using 375 word pairs from a subset of the English Paraphrase Database (Ganitkevitch et al., 2013; Pavlick et al., 2015b)."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "method"
+        ],
+        "title": "5.2 CONTEXT-WN",
+        "first_sentence": "In addition to CONTEXT-PPDB, we would like a test set for controlled analysis of lexical entailment in context."
+      },
+      {
+        "id": "sec_13",
+        "roles": [
+          "method"
+        ],
+        "title": "5.3 Crosslingual dataset",
+        "first_sentence": "Our final dataset takes a cross-lingual view of lexical entailment in context."
+      },
+      {
+        "id": "sec_14",
+        "roles": [
+          "method"
+        ],
+        "title": "6 Experimental Set-up",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_15",
+        "roles": [
+          "method"
+        ],
+        "title": "6.1 Monolingual",
+        "first_sentence": "All experiments on CONTEXT-PPDB and CONTEXT-WN are with the default train/dev/test splits."
+      },
+      {
+        "id": "sec_16",
+        "roles": [
+          "method"
+        ],
+        "title": "6.2 Crosslingual",
+        "first_sentence": "We evaluate our models on cross-lingual test set in a transfer setting by training on the training set of CONTEXT-PPDB."
+      },
+      {
+        "id": "sec_17",
+        "roles": [
+          "results"
+        ],
+        "title": "7 Results",
+        "first_sentence": ""
+      },
+      {
+        "id": "sec_18",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "7.1 CONTEXT-PPDB",
+        "first_sentence": "Representation-based features only A context-agnostic baseline (Baroni et al., 2012) based on the concatenation of the word type features for (ωι, wr) reaches F1 scores of 53.5 using Glove and 54 with Context2Vec (Table 4)."
+      },
+      {
+        "id": "sec_19",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "7.2 CONTEXT-WN",
+        "first_sentence": "We repeat all experiments on CONTEXT-WN (Table 4), except for those that require PPDB-specific features."
+      },
+      {
+        "id": "sec_20",
+        "roles": [
+          "results"
+        ],
+        "title": "7.3 Cross-lingual dataset",
+        "first_sentence": "Results on the cross-lingual dataset are similar to monolingual results (Table 5)."
+      },
+      {
+        "id": "sec_21",
+        "roles": [
+          "discussion"
+        ],
+        "title": "8 Analysis",
+        "first_sentence": "The experiments in Section 7 attest to the overall strength of our features."
+      },
+      {
+        "id": "sec_22",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "8.1 Sensitivity to context",
+        "first_sentence": "How sensitive are our models to changes in contexts?"
+      },
+      {
+        "id": "sec_23",
+        "roles": [
+          "results"
+        ],
+        "title": "8.2 Sensitivity to Entailment Direction",
+        "first_sentence": "To quantitatively evaluate our claim of our features learning to discriminate directionality, we report results on the subset of CONTEXT-WN that consists of all positive examples, and the equivalent number of flipped negative examples generated in Step 4."
+      },
+      {
+        "id": "sec_24",
+        "roles": [
+          "results"
+        ],
+        "title": "8.3 Contextualized Masks",
+        "first_sentence": "We also hypothesized that masked contextual-ized representations based on the full volume of the context using min and max operations (Sec-tion 3.1) better capture salient context dimensions than the more usual vector averaging approach."
+      },
+      {
+        "id": "sec_25",
+        "roles": [
+          "related_work"
+        ],
+        "title": "9 Related Work",
+        "first_sentence": "WordNet and lexical entailment The is-a hier-archy of WordNet (Fellbaum, 1998b) is a promi-nent source of information for unsupervised de-tection of hypernymy and entailment (Harabagiu\nand Moldovan, 1998; Shwartz et al., 2015), as well\nas a source of various datasets (Baroni and Lenci,\n2011; Baroni et al., 2012)."
+      },
+      {
+        "id": "sec_26",
+        "roles": [
+          "conclusion"
+        ],
+        "title": "10 Conclusion",
+        "first_sentence": "We proposed to address lexical entailment in con-text, providing exemplar sentences to ground the meaning of words being considered for entail-ment."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "lexical entailment",
+      "NLP",
+      "word embeddings",
+      "semantic relations"
+    ],
+    "language": "en",
+    "confidence": 0.95,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_13"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_14"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_15"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_16"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_17"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_18"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_19"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_20"
+    },
+    {
+      "roles": [
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_21"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_22"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_23"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_24"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_25"
+    },
+    {
+      "roles": [
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_26"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "lexical entailment",
+      "NLP",
+      "word embeddings",
+      "semantic relations"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T10181",
+        "name": "Natural Language Processing Techniques",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.95,
+    "paper_type": "empirical",
+    "secondary_areas": [],
+    "field_confidence": 0.95,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.95
+  }
+}

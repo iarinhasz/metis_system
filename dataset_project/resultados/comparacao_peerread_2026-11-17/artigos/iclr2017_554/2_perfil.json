@@ -1,0 +1,394 @@
+{
+  "complete": true,
+  "resolution": {
+    "question": {
+      "id": "01a1e04c-7380-7196-b4f6-2f647ca65d56",
+      "name": "Genérica — avaliação científica",
+      "method": "standard",
+      "version": 2,
+      "is_generic": true,
+      "rubric_fields": [
+        {
+          "id": "01a1e04c-7391-7662-bd0e-61c8520db447",
+          "key": "originality",
+          "label": "Originalidade",
+          "order": 0,
+          "rubric_text": "Identifique a contribuição e diferencie-a de conhecimento já estabelecido. Exija evidência no artigo para a alegação de novidade, sem presumir que novidade implique qualidade."
+        },
+        {
+          "id": "01a1e04c-739d-72df-bf3e-645a3b97532d",
+          "key": "soundness",
+          "label": "Solidez",
+          "order": 1,
+          "rubric_text": "Confronte conclusões com métodos, dados ou demonstrações apresentados. Verifique hipóteses, limitações e se o desenho permite a inferência alegada; adapte a exigência ao tipo de artigo."
+        },
+        {
+          "id": "01a1e04c-73a5-77f4-9588-1b56ae5ff7e2",
+          "key": "substance",
+          "label": "Substância",
+          "order": 2,
+          "rubric_text": "Verifique se experimentos, provas, síntese ou análise sustentam a contribuição declarada. Considere a profundidade e a cobertura da evidência, sem confundir extensão do texto com substância."
+        },
+        {
+          "id": "01a1e04c-73ad-772f-bac2-5835918de0c4",
+          "key": "clarity",
+          "label": "Clareza",
+          "order": 3,
+          "rubric_text": "Verifique definições, organização e correspondência entre texto, tabelas e figuras. Aponte ambiguidades localizáveis e distinga problemas de redação de problemas científicos."
+        },
+        {
+          "id": "01a1e04c-73b5-7340-9f24-4c87f0372d68",
+          "key": "meaningful_comparison",
+          "label": "Comparação",
+          "order": 4,
+          "rubric_text": "Confira se os trabalhos e alternativas relevantes são discutidos de forma justa. Compare métodos, condições e limitações equivalentes; não exija experimentos de um artigo estritamente teórico."
+        },
+        {
+          "id": "01a1e04c-73bc-717c-bf59-b4661c295915",
+          "key": "impact",
+          "label": "Impacto",
+          "order": 5,
+          "rubric_text": "Relacione a contribuição a uma necessidade da área e ao alcance sustentado pelos resultados. Distinga relevância demonstrada de aplicações futuras ainda especulativas."
+        },
+        {
+          "id": "01a1e04c-73c4-74d4-833e-4a7c05c52cd3",
+          "key": "replicability",
+          "label": "Reprodutibilidade",
+          "order": 6,
+          "rubric_text": "Verifique disponibilidade ou descrição suficiente de materiais, dados, procedimentos e parâmetros. Restrições éticas ou legais podem justificar acesso controlado; não exija divulgação de dados pessoais."
+        }
+      ],
+      "taxonomy_version": null,
+      "taxonomy_node_code": null
+    },
+    "uncertain": false,
+    "resolution_path": [
+      {
+        "code": "https://openalex.org/T10320",
+        "scope": "topic",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "scope": "subfield",
+        "matched": false
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "scope": "field",
+        "matched": false
+      },
+      {
+        "code": null,
+        "scope": "generic",
+        "matched": true
+      }
+    ],
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c"
+  },
+  "document_map": {
+    "title": "INVESTIGATING RECURRENCE AND ELIGIBILITY TRACES IN DEEP Q-NETWORKS",
+    "figures": [
+      {
+        "id": "fig_1",
+        "kind": "figure",
+        "page": 4,
+        "label": "Figure 1",
+        "caption": "Figure 1: This graph illustrates how a sample from experience replay is used in training. We use a number of frames to fill the hidden state of the RNN. Then, for the states used for training, we have the RNN output the Q-values. Finally, we calculate each n-step return and weight them according to \\, where the arrows represent the forward view of each trace. All states are passed though the CNN before entering the RNN."
+      },
+      {
+        "id": "fig_2",
+        "kind": "figure",
+        "page": 6,
+        "label": "Figure 2",
+        "caption": "Figure 2: Test scores on Pong by training models with RMSprop vs Adam."
+      },
+      {
+        "id": "fig_3",
+        "kind": "table",
+        "page": 6,
+        "label": "Table 1",
+        "caption": "Table 1: Number of epochs before getting to 18 points in Pong. We chose 18 points as the thresh- old because it represents a near-optimal strategy. Testing is performed with a 5% e-greedy policy, stopping the agent from having a perfect score."
+      },
+      {
+        "id": "fig_4",
+        "kind": "figure",
+        "page": 7,
+        "label": "Figure 3",
+        "caption": "Figure 3: Test scores on Tennis comparing RMSprop and Adam."
+      },
+      {
+        "id": "fig_5",
+        "kind": "table",
+        "page": 7,
+        "label": "Table 2",
+        "caption": "Table 2: Number of epochs before getting to 20 points in Tennis. N/A represents the inability to reach such a level."
+      }
+    ],
+    "abstract": "Eligibility traces in reinforcement learning are used as a bias-variance trade-off and can often speed up training time by propagating knowledge back over time- steps in a single update. We investigate the use of eligibility traces in combination with recurrent networks in the Atari domain. We illustrate the benefits of both recurrent nets and eligibility traces in some Atari games, and highlight also the importance of the optimization used in the training.",
+    "sections": [
+      {
+        "id": "sec_2",
+        "roles": [
+          "introduction"
+        ],
+        "title": "1 INTRODUCTION",
+        "first_sentence": "Deep reinforcement learning has had many practical successes in game playing (Mnih et al."
+      },
+      {
+        "id": "sec_3",
+        "roles": [
+          "related_work"
+        ],
+        "title": "2 BACKGROUND",
+        "first_sentence": "A Markov Decision Process (MDP) consists of a tuple (S, A, r, P, γ), where S is the set of states, A is the set of actions, r : S × A → R is the reward function, P(s'|s, a) is the transition function (giving the next state distribution, conditioned on the current state and action), and γ ∈ [0, 1) is the discount factor."
+      },
+      {
+        "id": "sec_4",
+        "roles": [
+          "method"
+        ],
+        "title": "2.1 ELIGIBILITY TRACES",
+        "first_sentence": "Eligibility traces are a fundamental reinforcement learning mechanism which allows a trade-off between TD and MC."
+      },
+      {
+        "id": "sec_5",
+        "roles": [
+          "method"
+        ],
+        "title": "2.1.1 Q(x)",
+        "first_sentence": "A few versions of Q(x) exist, but the most used one is Watkins's Q(X)."
+      },
+      {
+        "id": "sec_6",
+        "roles": [
+          "related_work"
+        ],
+        "title": "2.2 DEEP Q-NETWORKS",
+        "first_sentence": "Mnih et al."
+      },
+      {
+        "id": "sec_7",
+        "roles": [
+          "related_work"
+        ],
+        "title": "2.2.1 DEEP RECURRENT Q-NETWORKS",
+        "first_sentence": "As introduced in Hausknecht & Stone (2015), deep recurrent Q-networks (DRQN) are a modifica- tion on DQN, where single frames are passed through a CNN, which generates a feature vector that is then fed to an RNN which finally outputs Q-values."
+      },
+      {
+        "id": "sec_8",
+        "roles": [
+          "related_work"
+        ],
+        "title": "2.3 OPTIMIZERS",
+        "first_sentence": "Stochastic gradient descent (SGD) is generally the algorithm used to optimize neural networks."
+      },
+      {
+        "id": "sec_9",
+        "roles": [
+          "method"
+        ],
+        "title": "3 EXPERIMENTAL SETUP",
+        "first_sentence": "As explained, the forward view of eligibility traces can be useful, but is computationally demanding in terms of memory and time."
+      },
+      {
+        "id": "sec_10",
+        "roles": [
+          "method"
+        ],
+        "title": "3.1 ARCHITECTURE",
+        "first_sentence": "We tested the algorithms on two Atari 2600 games, part of the Arcade Learning Environment (Bellemare et al."
+      },
+      {
+        "id": "sec_11",
+        "roles": [
+          "results"
+        ],
+        "title": "4 EXPERIMENTAL RESULTS",
+        "first_sentence": "We describe experiments in two Atari games: Pong and Tennis."
+      },
+      {
+        "id": "sec_12",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "4.1 PONG",
+        "first_sentence": "First, we tested an RNN model both with X = 0 and x = 0.8, trained with RMSprop."
+      },
+      {
+        "id": "sec_13",
+        "roles": [
+          "results",
+          "discussion"
+        ],
+        "title": "4.2 TENNIS",
+        "first_sentence": "The second Atari 2600 game we tested was Tennis."
+      },
+      {
+        "id": "sec_14",
+        "roles": [
+          "discussion",
+          "conclusion"
+        ],
+        "title": "5 DISCUSSION AND CONCLUSION",
+        "first_sentence": "In this paper, we analyzed the effects of using eligibility traces and different optimization functions."
+      }
+    ]
+  },
+  "field_choice": {
+    "field": "https://openalex.org/fields/17",
+    "keywords": [
+      "deep q-networks",
+      "reinforcement learning",
+      "eligibility traces",
+      "recurrent networks",
+      "atari",
+      "optimization"
+    ],
+    "language": "en",
+    "confidence": 0.95,
+    "paper_type": "empirical"
+  },
+  "section_roles": [
+    {
+      "roles": [
+        "introduction"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_2"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_3"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_4"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_5"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_6"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_7"
+    },
+    {
+      "roles": [
+        "related_work"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_8"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_9"
+    },
+    {
+      "roles": [
+        "method"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_10"
+    },
+    {
+      "roles": [
+        "results"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_11"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_12"
+    },
+    {
+      "roles": [
+        "results",
+        "discussion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_13"
+    },
+    {
+      "roles": [
+        "discussion",
+        "conclusion"
+      ],
+      "ambiguous": false,
+      "section_id": "sec_14"
+    }
+  ],
+  "classification": {
+    "keywords": [
+      "deep q-networks",
+      "reinforcement learning",
+      "eligibility traces",
+      "recurrent networks",
+      "atari",
+      "optimization"
+    ],
+    "language": "en",
+    "area_path": [
+      {
+        "code": "https://openalex.org/domains/3",
+        "name": "Physical Sciences",
+        "level": "domain"
+      },
+      {
+        "code": "https://openalex.org/fields/17",
+        "name": "Computer Science",
+        "level": "field"
+      },
+      {
+        "code": "https://openalex.org/subfields/1702",
+        "name": "Artificial Intelligence",
+        "level": "subfield"
+      },
+      {
+        "code": "https://openalex.org/T10320",
+        "name": "Neural Networks and Applications",
+        "level": "topic"
+      }
+    ],
+    "confidence": 0.95,
+    "paper_type": "empirical",
+    "secondary_areas": [
+      {
+        "code": "https://openalex.org/fields/26",
+        "name": "Mathematics",
+        "level": "field"
+      }
+    ],
+    "field_confidence": 0.95,
+    "taxonomy_version": "01b47358aa0e61d48a06d876baa73c6212d6e4fa8bff2cf62680391cbc6bf20c",
+    "topic_confidence": 0.95
+  }
+}
