@@ -232,6 +232,10 @@ A política inicial `median-v1` usa:
 - Total como média ponderada pelas definições do método. Um critério sem votos
   fica com nota `null` e seu peso sai do denominador. Critério de peso zero não
   afeta o total; critério inativo nem participa da agregação.
+- A recomendação só é emitida quando cada critério ativo tem pelo menos dois
+  votos válidos. Se algum critério não atingir essa cobertura, a nota ponderada
+  disponível permanece como resultado parcial, mas `recommendation` fica `null`
+  e o Run requer revisão humana.
 - Concordância geral como média ponderada de `1 − dispersão/amplitude_da_escala`,
   apenas nos critérios com dois ou mais votos. É um indicador descritivo, não
   kappa nem uma estimativa de independência dos modelos. Sem pares, fica `null`.

@@ -110,8 +110,12 @@ def aggregate(
         assert score.dispersion is not None
         agreement_sum += score.weight * (1 - score.dispersion / span if span else Decimal(1))
     agreement = agreement_sum / agreement_weight if agreement_weight else None
+    # Uma recomendação exige cobertura mínima de dois votos válidos em cada
+    # critério ativo. A nota parcial ainda é útil para inspeção, mas não deve
+    # produzir um veredito quando algum critério ficou sem cobertura suficiente.
+    complete_coverage = all(len(score.votes) >= 2 for score in scores)
     recommendation = None
-    if total is not None:
+    if total is not None and complete_coverage:
         recommendation = (
             Recommendation.ACCEPT
             if total >= policy.accept_min
