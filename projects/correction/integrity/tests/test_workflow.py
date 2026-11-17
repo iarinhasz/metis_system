@@ -143,6 +143,72 @@ def test_hidden_ai_instruction_pauses_with_high_risk(monkeypatch: pytest.MonkeyP
     assert result.finding_count == 1
 
 
+def test_missing_extraction_returns_skipped_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def get_run(cls: type[Run], run_id: str) -> SimpleNamespace:
+        del cls
+        return SimpleNamespace(pk=run_id, extraction=None)
+
+    monkeypatch.setattr(Run, "get_by_id", classmethod(get_run))
+    reports: list[dict[str, object]] = []
+
+    def write_report(**values: object) -> SimpleNamespace:
+        reports.append(values)
+        return SimpleNamespace(pk="report-id")
+
+    result = run_integrity(
+        "run-id",
+        factory=_Factory(),  # type: ignore[arg-type]
+        report_writer=write_report,
+    )
+
+    assert result.risk_level == "low"
+    assert result.finding_count == 0
+    assert result.reasons == ("extraction_missing",)
+    assert result.coverage["skipped"] is True
+    assert reports[0]["findings"] == ()
+
+
+@pytest.mark.parametrize("failure", ["adapter_error", "empty_sections"])
+def test_unavailable_content_returns_skipped_report(
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    class Extraction:
+        sha256 = "a" * 64
+
+        @property
+        def document(self) -> object:
+            if failure == "adapter_error":
+                raise ValueError("A extração não tem seções de conteúdo.")
+            return SimpleNamespace(sections=())
+
+    def get_run(cls: type[Run], run_id: str) -> SimpleNamespace:
+        del cls
+        return SimpleNamespace(pk=run_id, extraction=Extraction())
+
+    monkeypatch.setattr(Run, "get_by_id", classmethod(get_run))
+    reports: list[dict[str, object]] = []
+
+    def write_report(**values: object) -> SimpleNamespace:
+        reports.append(values)
+        return SimpleNamespace(pk="report-id")
+
+    result = run_integrity(
+        "run-id",
+        factory=_Factory(),  # type: ignore[arg-type]
+        report_writer=write_report,
+    )
+
+    assert result.risk_level == "low"
+    assert result.finding_count == 0
+    assert result.reasons == ("content_sections_unavailable",)
+    assert result.coverage["checked"] is False
+    assert result.coverage["skipped"] is True
+    assert reports[0]["findings"] == ()
+
+
 def test_parallel_retry_reuses_completed_phase_checkpoint() -> None:
     store = _MemoryCheckpointStore()
     calls = {"similarity": 0, "citations": 0}

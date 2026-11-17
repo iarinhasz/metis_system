@@ -47,6 +47,7 @@ from projects.correction.integrity.retraction import (
     find_retracted_references,
 )
 from projects.correction.integrity.rules import (
+    RULES_VERSION,
     FindingRecord,
     FindingSeverity,
     RiskDecision,
@@ -121,8 +122,17 @@ def run_integrity(
 ) -> IntegrityResult:
     run = Run.get_by_id(run_id)
     if run.extraction is None:
-        raise ValueError(f"O run {run_id} não tem uma extração para verificar.")
-    document = run.extraction.document
+        return _skipped_result(run, report_writer=report_writer, reason="extraction_missing")
+    try:
+        document = run.extraction.document
+    except ValueError:
+        return _skipped_result(
+            run, report_writer=report_writer, reason="content_sections_unavailable"
+        )
+    if not document.sections:
+        return _skipped_result(
+            run, report_writer=report_writer, reason="content_sections_unavailable"
+        )
     store = checkpoint_store or _default_checkpoint_store()
     resolutions = _load_or_resolve(run_id, document.references, reference_resolver, store)
 
@@ -202,6 +212,48 @@ def run_integrity(
         finding_count=len(findings),
         coverage=coverage,
         reasons=decision.reasons,
+    )
+
+
+def _skipped_result(
+    run: Run,
+    *,
+    report_writer: ReportWriter | None,
+    reason: str,
+) -> IntegrityResult:
+    coverage: dict[str, object] = {
+        "checked": False,
+        "skipped": True,
+        "skip_reason": reason,
+        "content_sections": 0,
+    }
+    narrative = "Verificação de integridade ignorada: não há conteúdo extraído para analisar."
+    report: ReportLike
+    if report_writer is None:
+        report = IntegrityReport.create_with_findings(
+            run_id=run.pk,
+            risk_level="low",
+            rules_version=RULES_VERSION,
+            coverage=coverage,
+            narrative=narrative,
+            findings=(),
+        )
+    else:
+        report = report_writer(
+            run_id=run.pk,
+            risk_level="low",
+            rules_version=RULES_VERSION,
+            coverage=coverage,
+            narrative=narrative,
+            findings=(),
+        )
+    return IntegrityResult(
+        report_id=str(report.pk),
+        risk_level="low",
+        rules_version=RULES_VERSION,
+        finding_count=0,
+        coverage=coverage,
+        reasons=(reason,),
     )
 
 
