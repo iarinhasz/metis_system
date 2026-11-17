@@ -40,7 +40,8 @@ Entrada: o PDF. Saída: a `Extraction`, o artigo dividido em seções que os est
 - Uma chamada separa as referências em campos, e o código liga cada citação no texto à sua referência.
 - Uma chamada lista as figuras e tabelas, conferidas pela legenda; outra por figura, em paralelo, descreve cada uma (o que mostra, os dados legíveis, se sustenta o que o texto diz dela e, para tabela, o markdown).
 - Um run novo do mesmo PDF reaproveita a extração guardada, e um retry do estágio retoma das respostas já guardadas.
-- Em aberto: texto oculto (1.7, Integridade) e o `ExtractedDocument` montado a partir da extração (1.11).
+- O código procura texto escondido no PDF (em branco, minúsculo ou fora da página) e marca o que parece instrução a um revisor de IA.
+- Em aberto: o contrato para os avaliadores (1.1 e 1.11).
 
 Detalhe: [Extração](extraction.md).
 
@@ -126,7 +127,7 @@ slot A/B/C. Ausência ou incompletude gera `waiting_setup` antes da meta-revisã
 | GET | `/api/runs/{run_id}` | token de serviço | Status, estágio atual e eventos | Implementado |
 | POST | `/api/runs/{run_id}/decision` | token de serviço | JSON: `decision` (`continue` ou `close`), `note` opcional. **200** com o run, **409** fora do gate | Implementado |
 | GET | `/api/runs/{run_id}/report` | token de serviço | JSON ou `?format=markdown`, somente em `done`; **409** enquanto indisponível | Implementado |
-| GET | `/api/runs/{run_id}/integrity` | token de serviço | Relatório de integridade | Planejado, rota ausente |
+| GET | `/api/runs/{run_id}/integrity` | token de serviço | Risco, versão das regras, `coverage` e achados com a evidência; **409** antes do E3 | Implementado |
 | GET | `/health/` | — | Healthcheck do container web (testa o banco) | Implementado |
 | — | `/admin/` | usuário Django | Curadoria, rubric check, custo, gate e auditoria | Implementado |
 

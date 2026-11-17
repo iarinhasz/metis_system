@@ -1,0 +1,1070 @@
+{
+  "contract_version": "1.0",
+  "title": "Sequential Matching Network: A New Architecture for Multi-turn Response Selection in Retrieval-based Chatbots",
+  "authors": [],
+  "language": "en",
+  "abstract": "We study response selection for multi-turn conversation in retrieval based chatbots. Existing work either concatenates utterances in context or matches a response with a highly abstract context vector finally, which may lose relationships among the utterances or important information in the context. We propose a sequential matching network (SMN) to address both problems. SMN first matches a response with each utterance in the context on multiple levels of granularity, and distills important matching information from each pair as a vector with convolution and pooling operations. The vectors are then accumulated in a chronological order through a recurrent neural network (RNN) which models relationships among the utterances. The final matching score is calculated with the hidden states of the RNN. Empirical study on two public data sets shows that SMN can significantly outperform state-of-the-art methods for response selection in multi-turn conversation.",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "Seção 1",
+      "level": 1,
+      "parent_id": null,
+      "key": "secao_1",
+      "text": "1 000 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096 097 098 099",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_2",
+      "title": "1 Introduction",
+      "level": 1,
+      "parent_id": null,
+      "key": "1_introduction",
+      "text": "Conversational agents include task-oriented dialog systems and non-task-oriented chatbots. Dialog systems focus on helping people complete specific tasks in vertical domains (Young et al., 2010), while chatbots aim to naturally and meaningfully converse with humans on open domain topics (Ritter et al., 2011). Existing work on building chatbots includes generation based methods and retrieval based methods. Retrieval based chatbots enjoy the advantage of informative and fluent responses, because they select a proper response for the current conversation from a repository with re- sponse selection algorithms. While most existing work on retrieval based chatbots studies response selection for single-turn conversation (Wang et al., 2013) which only considers the last input message, we consider the problem in a multi-turn scenario. In a chatbot, multi-turn response selection takes a message and utterances in its previous turns as input and selects a response that is natural and relevant to the whole context. The key to response selection lies in inputresponse matching. Different from single-turn conversation, multi-turn conversation requires matching between a response and a conversation context in which one needs to consider not only the matching between the response and the input message but also the matching between the response and the utterances in previous turns. The challenges of the task include (1) how to identify important information (words, phrases, and sentences) in the context that is crucial to selecting a proper response and how to leverage the information in matching; and (2) how to model relationships among the utterances in the context. Table 1 illustrates the challenges with an example. First, “hold a drum class” and “drum” in the context are very important. Without them, one may find responses relevant to the message (i.e., the last turn of the context) but nonsense in the context (e.g., “what lessons do you want?”). Second, 2 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 the message highly depends on the second turn in the context, and the order of the utterances matters in response selection: exchanging the third turn and the last turn may lead to different responses. Existing work, however, either ignores relationships among utterances when concatenating them together (Lowe et al., 2015), or loses important information in context in the process of converting the whole context to a vector without enough supervision from responses (e.g., by a hierarchical RNN (Zhou et al., 2016)). We propose a sequential matching network (SMN), a new context based matching model that can tackle both challenges in an end-to-end way. The reason that existing models lose important information in the context is that they first represent the whole context as a vector and then match the context vector with a response vector. Thus responses in these models cannot meet the context until the final step in matching. To avoid information loss, SMN matches a response with each utterance in the context at the beginning and encodes important information in each pair into a matching vector. The matching vectors are then accumulated in the temporal order of the utterances to model their relationships. The final matching degree is computed with the accumulation of the matching vectors. Specifically, for each utteranceresponse pair, the model constructs a word-word similarity matrix and a sequence-sequence similarity matrix by the embedding of words and the hidden states of a recurrent neural network with gated recurrent unites (GRU) (Chung et al., 2014) respectively. The two matrices capture important matching information in the pair on a word level and a segment level respectively, and the information is distilled and fused as a matching vector through an alternation of convolution and pooling operations on the matrices. By this means, important information from multiple levels of granularity in the context is recognized under sufficient supervision from the response and carried into matching with minimal loss. The matching vectors are then uploaded to another GRU to form a matching score for the context and the response. The GRU accumulates the pair matching in its hidden states in the chronological order of the utterances in the context. It models relationships and dependencies among the utterances in a matching fashion and has the utterance order supervise the accumulation of pair matching. The match- ing degree of the context and the response is computed by a logit model with the hidden states of the GRU. SMN extends the powerful “2D” matching paradigm in text pair matching for single-turn conversation to context based matching for multi-turn conversation, and enjoys the advantage that both important information in utterance-response pairs and relationships among utterances are sufficiently preserved and leveraged in matching. We test our model on the Ubuntu dialogue corpus (Lowe et al., 2015) which is a large scale public English data set for research in multi-turn conversation. The results show that our model can significantly outperform state-of-the-art methods, and improvement to the best baseline model on R10@1 is over 6%. In addition to the Ubuntu corpus, we create a human labeled Chinese data set, namely Douban Conversation Corpus, and test our model on it. Different from the Ubuntu corpus in which data is collected from a specific domain and negative candidates are randomly sampled, conversations in this data come from open domain, and response candidates in this data set are collected from a retrieval engine and labeled by three human judges. On this data, our model improves the best baseline model over 3% on R10@1 and 4% on P@1. As far as we know, Douban Conversation Corpus is the first human labeled data set for multi-turn response selection and could be a good complement to the Ubuntu corpus. We release Douban Conversation Corups and our source code at an anonymous url for blind review. We have uploaded code and data with this paper. Our contributions in this paper are three-folds: (1) proposal of a new context based matching model for multi-turn response selection in retrieval based chatbots; (2) publication of a large human labeled data set to research communities. (3) empirical verification of the effectiveness of the model on public data sets;",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_3",
+      "title": "2 Related Work",
+      "level": 1,
+      "parent_id": null,
+      "key": "2_related_work",
+      "text": "Recently, building a chatbot with data driven approaches (Ritter et al., 2011; Higashinaka et al., 2014) has drawn a lot of attention. Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al., 2015; Serban et al., 2015; Vinyals and Le, 2015; Li et al., 2015, 2016; Xing 3 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 .... .... .... Score 1 2,M M Convolution Pooling ( )L .... .... .... 1u 1nu nu r Word Embedding GRU1 GRU2 .... 1v 1nv nv 1'nh Utterance-Response Matching Matching Accumulation Segment PairsWord Pairs Matching Prediction 1'h 'nh Figure 1: Architecture of SMN et al., 2016; Serban et al., 2016a). Our work belongs to retrieval based methods, and we study context based response selection. Early studies of retrieval based chatbots focus on response selection for single-turn conversation (Wang et al., 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b). Recently, researchers begin to pay attention to multi-turn conversation. For example, Lowe et al. (2015) match a response with the literal concatenation of context utterances. Yan et al. (2016) concatenate context utterances with the input message as reformulated queries and perform matching with a deep neural network architecture. Zhou et al. (2016) improve multi-turn response selection with a multi-view model including an utterance view and a word view. Our model is different in that it matches a response with each utterance at first and accumulates matching information instead of sentences by a GRU, thus useful information for matching can be sufficiently retained.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_4",
+      "title": "3 Sequential Matching Network",
+      "level": 1,
+      "parent_id": null,
+      "key": "3_sequential_matching_network",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_5",
+      "title": "3.1 Problem Formalization",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_1_problem_formalization",
+      "text": "Suppose that we have a data set D = {(yi, si, ri)}Ni=1, where si = {ui,1, . . . , ui,ni} represents a conversation context with {ui,k}nik=1 as utterances. ri is a response candidate and yi ∈ {0, 1} denotes a label. yi = 1 means ri is a proper response for si, otherwise yi = 0. Our goal is to learn a matching model g(·, ·) with D. For any context-response pair (s, r), g(s, r) measures the matching degree between s and r.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_6",
+      "title": "3.2 Model Overview",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_2_model_overview",
+      "text": "We propose a sequential matching network (SMN) to model g(·, ·). Figure 1 gives the architecture. SMN first decomposes context-response matching into several utterance-response pair matching and then all pair matching is accumulated as a context based matching through a recurrent neural network. SMN consists of three layers. The first layer matches a response candidate with each utterance in the context on a word level and a segment level, and important matching information from the two levels is distilled by convolution and pooling and encoded in a matching vector. The matching vectors are then fed into the second layer where they are accumulated in the hidden states of a recurrent neural network with GRU following the chronological order of the utterances in the context. The third layer calculates the final matching score with the hidden states of the second layer. SMN enjoys several advantages over the existing models. First, a response candidate can meet each utterance in the context at the very beginning, thus matching information in every utteranceresponse pair can be sufficiently extracted and carried to the final matching score with minimal loss. Second, information extraction from each utterance is conducted on different levels of granularity and under sufficient supervision from the response, thus semantic structures that are useful to response selection in each utterance can be well identified and extracted. Third, matching and utterance relationships are coupled rather than separately modeled, thus utterance relationships (e.g., order), as a kind of knowledge, can supervise the formation of the matching score. By taking utterance relationships into account, SMN extends the “2D” matching that has proven effective in text pair matching for single-turn response selection to sequential “2D” matching for context based matching in response selection for multi-turn conversation. In the following sections, 4 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 we will describe details of the three layers.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_7",
+      "title": "3.3 Utterance-Response Matching",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_3_utterance_response_matching",
+      "text": "Given an utterance u in a context s and a response candidate r, the model looks up an embedding table and represents u and r as U = [eu,1, . . . , eu,nu ] and R = [er,1, . . . , er,nr ] respectively, where eu,i, er,i ∈ Rd are the embeddings of the i-th word of u and r respectively. U ∈ Rd×nu and R ∈ Rd×nr are then used to construct a word-word similarity matrix M1 ∈ Rnu×nr and a sequence-sequence similarity matrix M2 ∈ Rnu×nr which are two input channels of a convolutional neural network (CNN). The CNN distills important matching information from the matrices and encodes the information into a matching vector v. Specifically, ∀i, j, the (i, j)-th element of M1 is defined by e1,i,j = e > u,i · er,j . (1) M1 models the matching between u and r on a word level. To construct M2, we first employ a GRU to transform U and R to hidden vectors. Suppose that Hu = [hu,1, . . . , hu,nu ] are the hidden vectors of U, then ∀i, hu,i ∈ Rm is defined by zi = σ(Wzeu,i +Uzhu,i−1) ri = σ(Wreu,i +Urhu,i−1) h̃u,i = tanh(Wheu,i +Uh(ri hu,i−1)) hu,i = zi h̃u,i + (1− zi) hu,i−1, (2) where hu,0 = 0, zi and ri are an update gate and a reset gate respectively, σ(·) is a sigmoid function, and Wz, Wh, Wr, Uz, Ur,Uh are parameters. Similarly, we have Hr = [hr,1, . . . , hr,nr ] as the hidden vectors of R. Then, ∀i, j, the (i, j)-th element of M2 is defined by e2,i,j = h > u,iAhr,j , (3) where A ∈ Rm×m is a linear transformation. ∀i, GRU models the sequential relationship and the dependency among words up to position i and encodes the text segment until the i-th word to a hidden vector. Therefore, M2 models the matching between u and r on a segment level. M1 and M2 are then processed by a CNN to form v. ∀f = 1, 2, CNN regards Mf as an input channel, and alternates convolution and max-pooling operations. Suppose that z(l,f) = [ z (l,f) i,j ] I(l,f)×J(l,f) denotes the output of feature maps of type-f on layer-l, where z(0,f) = Mf , ∀f = 1, 2. On the convolution layer, we employ a 2D convolution operation with a window size r (l,f) w × r(l,f)h , and define z (l,f) i,j as z (l,f) i,j = σ( Fl−1∑ f ′=0 r (l,f) w∑ s=0 r (l,f) h∑ t=0 W (l,f) s,t · z (l−1,f ′) i+s,j+t + b l,k), (4) where σ(·) is a ReLU, W(l,f) ∈ Rr (l,f) w ×r (l,f) h and bl,k are parameters, and Fl−1 is the number of feature maps on the (l − 1)-th layer. A max pooling operation follows a convolution operation and can be formulated as z (l,f) i,j = max p (l,f) w >s≥0 max p (l,f) h >t≥0 zi+s,j+t, (5) where p(l,f)w and p (l,f) h are the width and the height of the 2D pooling respectively. The output of the final feature maps are concatenated and mapped to a low dimensional space with a linear transformation as the matching vector v ∈ Rq. From Equation (1), (3), (4), and (5), we can see that by learning word embedding and parameters of GRU from training data, words or segments in an utterance that are useful to recognize the appropriateness of a response may have high similarity with some words or segments in the response and result in high value areas in the similarity matrices. These areas will be transformed and selected by convolution and pooling operations and carry the important information in the utterance to the matching vector. This is how our model identifies important information in context and leverage it in matching under the supervision of the response. We consider multiple channels because we want to capture important matching information on multiple levels of granularity of text.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_8",
+      "title": "3.4 Matching Accumulation",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_4_matching_accumulation",
+      "text": "Suppose that [v1, . . . , vn] is the output of the first layer (corresponding to n pairs), at the second layer, a GRU takes [v1, . . . , vn] as an input and encodes the matching sequence into its hidden states Hm = [h ′ 1, . . . , h ′ n] ∈ Rq×n with a detailed parameterization similar to Equation (2). This layer has two functions: (1) it models the dependency and the temporal relationship of utterances in the context; (2) it leverages the temporal relationship to supervise the accumulation of the pair matching as a context based matching. Moreover, from 5 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 Equation (2), we can see that the reset gate (i.e., ri) and the update gate (i.e., zi) control how much information from the previous hidden state and the current input flows to the current hidden state, thus important matching vectors (corresponding to important utterances) can be accumulated while noise in the vectors can be filtered out.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_9",
+      "title": "3.5 Matching Prediction and Learning",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_5_matching_prediction_and_learning",
+      "text": "With [h′1, . . . , h ′ n], we define g(s, r) as g(s, r) = softmax(W2L[h ′ 1, . . . , h ′ n] + b2), (6) where W2 and b2 are parameters. We consider three parameterizations for L[h′1, . . . , h ′ n]: (1) only the last hidden state is used. Then L[h′1, . . . , h ′ n] = h ′ n. (2) the hidden states are linearly combined. Then, L[h′1, . . . , h ′ n] =∑n i=1wih ′ i, where wi ∈ R. (3) we follow (Yang et al., 2016) and employ an attention mechanism to combine the hidden states. Then, L[h′1, . . . , h ′ n] is defined as ti = tanh(W1,1hui,nu +W1,2h ′ i + b1), αi = exp(t>i ts)∑ i(exp(t > i ts)) , L[h′1, . . . , h ′ n] = n∑ i=1 αih ′ i, (7) where W1,1 ∈ Rq×m,W1,2 ∈ Rq×q and b1 ∈ Rq are parameters. h′i and hui,nu are the i-th matching vector and the final hidden state of the i-th utterance respectively. ts ∈ Rq is a virtual context vector which is randomly initialized and jointly learned in training. Both (2) and (3) aim to learn weights for {h′1, . . . , h′n} from training data and highlight the effect of important matching vectors in the final matching. The difference is that weights in (2) are static, because the weights are totally determined by the positions of utterances, while weights in (3) are dynamically computed by the matching vectors and utterance vectors. We denote our model with the three parameterizations of L[h′1, . . . , h ′ n] as SMNlast, SMNstatic, and SMNdynamic, and empirically compare them in experiments. We learn g(·, ·) by minimizing cross entropy withD. Let Θ denote the parameters of SMN, then the objective function L(D,Θ) of learning can be formulated as − N∑ i=1 [yilog(g(si, ri)) + (1− yi)log(1− g(si, ri))] . (8)",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_10",
+      "title": "4 Response Candidate Retrieval",
+      "level": 1,
+      "parent_id": null,
+      "key": "4_response_candidate_retrieval",
+      "text": "In practice of a retrieval based chatbot, to apply the matching approach to response selection, one needs to retrieve a bunch of response candidates from an index beforehand. While candidate retrieval is not the focus of the paper, it is an important step in a real system. In this work, we exploit a heuristic method to obtain response candidates from the index. Given a message un with {u1, . . . , un−1} utterances in its previous turns, we extract top 5 keywords from {u1, . . . , un−1} based on their tf-idf scores1 and expand un with the keywords. Then we send the expanded message to the index and retrieve response candidates using the inline retrieval algorithm of the index. Finally, we use g(s, r) to re-rank the candidates and return the top one as a response to the context.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_11",
+      "title": "5 Experiments",
+      "level": 1,
+      "parent_id": null,
+      "key": "5_experiments",
+      "text": "We tested our model on a public English data set and a Chinese data set we publish with this paper.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_12",
+      "title": "5.1 Ubuntu Corpus",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": "5_1_ubuntu_corpus",
+      "text": "The English data set is the Ubuntu Corpus (Lowe et al., 2015) which contains multi-turn dialogues collected from chat logs of Ubuntu Forum. The data set consists of 1 million context-response pairs for training, 0.5 million pairs for validation, and 0.5 million pairs for test. Positive responses are true responses from human, and negative ones are randomly sampled. The ratio of the positive and the negative is 1:1 in training, and 1:9 in validation and test. We used the copy shared by Xu et al. (2016) 2 in which numbers, urls, and paths are replaced by special placeholders. We followed (Lowe et al., 2015) and employed recall at position k in n candidates (Rn@k) as evaluation metrics.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_13",
+      "title": "5.2 Douban Conversation Corpus",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": "5_2_douban_conversation_corpus",
+      "text": "Ubuntu Corpus is a domain specific data set, and response candidates are obtained from negative sampling without human judgment. To further verify the efficacy of our model, we created a new data set with open domain conversations, namely Douban Conversation Corpus. Response candidates in the test set of Douban Conversation Corpus are collected following the procedure of a re- 1Tf is word frequency in the context, while idf is calculated using the entire index. 2https://www.dropbox.com/s/ 2fdn26rj6h9bpvl/ubuntudata.zip?dl=0 6 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599 trieval based chatbot and are labeled by human judges. Douban Conversation Corpus simulates the real scenario of a retrieval based chatbot, and we publish it to research communities to facilitate the research of multi-turn response selection. Specifically, we crawled 1.1 million dyadic dialogues (conversation between two persons) longer than 2 turns from Douban group3 which is a popular social networking service in China. From the data, we randomly sampled 0.5 million dialogues for creating a training set, 25 thousand dialouges for creating a validation set, and 1, 000 dialogues for creating a test set, and made sure that there is no overlap among the three sets. For each dialogue in training and validation, we took the last turn as a positive response for the previous turns as a context and randomly sampled another response from the 1.1 million data as a negative response. There are 1 million context-response pairs in the training set and 50 thousand pairs in the validation set. To create the test set, we first crawled 15 million post-reply pairs from Sina Weibo4 which is the largest microblogging service in China and indexed the pairs with Lucene5. We took the last turn of each Douban dyadic dialogue in the test set as a message, retrieved 10 response candidates from the index following the method in Section 4, and finally formed a test set with 10, 000 context-response pairs. We recruited three labelers to judge if a candidate is a proper response to the context. A proper response means the response can naturally reply to the message given the whole context. Each pair received three labels and the majority of the labels were taken as the final decision. Table 2 gives the statistics of the three sets. Note that the Fleiss’ kappa (Fleiss, 1971) of the labeling is 0.41, which indicates that the three labelers reached a relatively high agreement. Besides Rn@ks, we also followed the convention of information retrieval and employed mean average precision (MAP) (Baeza-Yates et al., 1999), mean reciprocal rank (MRR) (Voorhees et al., 1999), and precision at position 1 (P@1) as evaluation metrics. We did not calculate R2@1 because in Douban corpus one context could have more than one correct responses, and we have to randomly sample one for R2@1, which may bring bias to evaluation. When using the labeled set, 3https://www.douban.com/group 4http://weibo.com/ 5https://lucenenet.apache.org/ we removed conversations with all negative responses or all positive responses, as models make no difference on them. There are 6, 670 contextresponse pairs left in the test set.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_14",
+      "title": "5.3 Baseline",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": "5_3_baseline",
+      "text": "We considered the following baselines: Basic models: models in (Lowe et al., 2015) and (Kadlec et al., 2015) including TF-IDF, RNN, CNN, LSTM and BiLSTM. Multi-view: the model proposed by Zhou et al. (2016) that utilizes a hierarchical recurrent neural network to model utterance relationships. Deep learning to respond (DL2R): the model proposed by Yan et al. (2016) that reformulates the message with other utterances in the context. Advanced single-turn matching models: since BiLSTM does not represent the state-ofthe-art matching model, we concatenated the utterances in a context and matched the long text with a response candidate using more powerful models including MV-LSTM (Wan et al., 2016) (2D matching), Match-LSTM (Wang and Jiang, 2015), Attentive-LSTM (Tan et al., 2015) (two attention based models), and Multi-Channel which is described in Section 3.3. Multi-Channel is a simple version of our model without considering utterance relationships. We also appended the top 5 tf-idf words in context to the input message, and computed the score between the expanded message and a response with Multi-Channel, denoted as Multi-Channelexp.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_15",
+      "title": "5.4 Parameter Tuning",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": "5_4_parameter_tuning",
+      "text": "For baseline models, if their results are available in the existing literatures (e.g., those on the Ubuntu corpus), we just copied the numbers, otherwise we implemented the models following the settings in the literatures. All models were implemented using Theano (Theano Development Team, 2016). Word embeddings were initialized by the results of word2vec (Mikolov et al., 2013) which ran on the training data, and the dimensionality of word vectors is 200. For Multi-Channel and layer one of 7 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 650 651 652 653 654 655 656 657 658 659 660 661 662 663 664 665 666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 686 687 688 689 690 691 692 693 694 695 696 697 698 699 Ubuntu Corpus Douban Conversation Corpus R2@1 R10@1 R10@2 R10@5 MAP MRR P@1 R10@1 R10@2 R10@5 TF-IDF 0.659 0.410 0.545 0.708 0.331 0.359 0.179 0.095 0.172 0.405 RNN 0.768 0.403 0.547 0.819 0.390 0.422 0.208 0.011 0.223 0.589 CNN 0.848 0.549 0.684 0.896 0.417 0.440 0.226 0.012 0.252 0.647 LSTM 0.901 0.638 0.784 0.949 0.485 0.527 0.320 0.187 0.343 0.720 BiLSTM 0.895 0.630 0.780 0.944 0.479 0.514 0.313 0.184 0.330 0.716 Multi-View 0.908 0.662 0.801 0.951 0.505 0.543 0.342 0.202 0.350 0.729 DL2R 0.899 0.626 0.783 0.944 0.488 0.527 0.330 0.193 0.342 0.705 MV-LSTM 0.906 0.653 0.804 0.946 0.498 0.538 0.348 0.202 0.351 0.710 Match-LSTM 0.904 0.653 0.799 0.944 0.500 0.537 0.345 0.202 0.348 0.720 Attentive-LSTM 0.903 0.633 0.789 0.943 0.495 0.523 0.331 0.192 0.328 0.718 Multi-Channel 0.904 0.656 0.809 0.942 0.506 0.543 0.349 0.203 0.351 0.709 Multi-Channelexp 0.714 0.368 0.497 0.745 0.476 0.515 0.317 0.179 0.335 0.691 SMNlast 0.923 0.723 0.842 0.956 0.526 0.571 0.392 0.236 0.387 0.729 SMNstatic 0.927 0.725 0.838 0.962 0.523 0.572 0.387 0.228 0.387 0.734 SMNdynamic 0.926 0.726 0.847 0.961 0.529 0.569 0.395 0.233 0.396 0.724 Table 3: Evaluation results on the two data sets. Numbers in bold mean that the improvement is statistically significant compared with the best baseline. our model, we set the dimensionality of the hidden states of GRU as 200. We tuned the window size of convolution and pooling in {(2, 2), (3, 3)(4, 4)} and chose (3, 3) finally. The number of feature maps is 8. In layer two, we set the dimensionality of matching vectors and the hidden states of GRU as 50. The parameters were updated by stochastic gradient descent with Adam algorithm (Kingma and Ba, 2014) on a single Tesla K80 GPU. The initial learning rate is 0.001, and the parameters of Adam, β1 and β2 are 0.9 and 0.999 respectively. We employed early-stopping as a regularization strategy. Models were trained in minibatches with a batch size 200, and maximum utterance length is 50. We set the maximum context length (i.e., number of utterances) as 10, because performance of models does not get improved on contexts longer than 10 (details are shown in the supplementary material). We padded zeros if the number of utterances in a context is less than 10, otherwise we kept the last 10 utterances.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_16",
+      "title": "5.5 Evaluation Results",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": "5_5_evaluation_results",
+      "text": "Table 3 shows the evaluation results on the two data sets. Our models outperform baselines greatly in terms of all metrics on both data sets, and the improvements are statistically significant (t-test with p-value ≤ 0.01, except R10@5 on Douban Corpus). Even the state-of-the-art singleturn matching models perform much worse than our models. The results demonstrate that one cannot neglects utterance relationships and simply perform multi-turn response selection by concatenating utterances together. Our models achieve significant improvements over Multi-View, which justified our “matching first” strategy. DL2R is worse than our models, indicating that utterance reformulation with heuristic rules is not a good method to utilize context information. Rn@ks are low on Douban corpus as there are multiple correct candidates for a context (e.g., if there are 3 correct responses, then the maximumR10@1 is 0.33). SMNdynamic is only slightly better than SMNstatic and SMNlast. The reason might be that GRU can select useful signals from the matching sequence and accumulate them in the final state with its gate mechanism, thus the efficacy of attention mechanism is not obvious for the task.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_17",
+      "title": "5.6 Further Analysis",
+      "level": 2,
+      "parent_id": "sec_11",
+      "key": "5_6_further_analysis",
+      "text": "Visualization: we visualize the similarity matrices and the gates of GRU in layer two using an example from the Ubuntu corpus to further clarify how our model identifies important information in the context and how it selects important matching vectors with the gate mechanism of GRU as described in Section 3.3 and Section 3.4. The example is {u1: how can unzip many rar ( number for example ) files at once; u2: sure you can do that in bash; u3: okay how? u4: are the files all in the same directory? u5: yes they all are; r: then the command glebihan should extract them all from/to that directory}. It is from the test set and our model successfully ranked the correct response to the top position. Due to space limitation, we only visualized M1, M2 and the update gate (i.e. z) in Figure 2. Other pieces of our model are shown in the supplementary material. We can see that in u1 important words including “unzip”, “rar”, “files” are recognized and carried to matching by “command”, “extract”, and “directory” in r, while u3 is almost useless and thus little infor- 8 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799 Ubuntu Corpus Douban Conversation Corpus R2@1 R10@1 R10@2 R10@5 MAP MRR P@1 R10@1 R10@2 R10@5 ReplaceM 0.905 0.661 0.799 0.950 0.503 0.541 0.343 0.201 0.364 0.729 ReplaceA 0.918 0.716 0.832 0.954 0.522 0.565 0.376 0.220 0.385 0.727 Only M1 0.919 0.704 0.832 0.955 0.518 0.562 0.370 0.228 0.371 0.737 Only M2 0.921 0.715 0.836 0.956 0.521 0.565 0.382 0.232 0.380 0.734 SMNlast 0.923 0.723 0.842 0.956 0.526 0.571 0.392 0.236 0.387 0.729 Table 4: Evaluation results of model ablation. th en th e co m m an d gl eb ih an sh ou ld ex tra ct th em a ll fro m /toth at di re ct or y how can unzip many rar ( _number_ for example ) files at once 0.00 0.15 0.30 0.45 0.60 0.75 0.90 1.05 1.20 1.35 1.50 v a lu e (a) M1 of u1 and r th en th e co m m an d gl eb ih an sh ou ld ex tr ac t th em a ll fro m /toth at di re ct or y okay how 0.00 0.15 0.30 0.45 0.60 0.75 0.90 1.05 1.20 1.35 1.50 v a lu e (b) M1 of u3 and r 0 10 20 30 40 u_1 u_2 u_3 u_4 u_5 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 v a lu e (c) Update gate Figure 2: Model visualization. Darker areas mean larger value. mation is extracted from it. u1 is crucial to response selection and nearly all information from u1 and r flows to the hidden state of GRU, while other utterances are less informative and the corresponding gates are almost “closed” to keep the information from u1 and r until the final state. Model ablation: we investigate the effect of different parts of SMN by removing them one by one from SMNlast, shown in Table 4. First, replacing the multi-channel “2D” matching with a neural tensor network (NTN) (Socher et al., 2013) (denoted as ReplaceM ) makes the performance drop dramatically. This is because NTN only matches a pair by an utterance vector and a response vector and loses important information in the pair. Together with the visualization, we can conclude that “2D” matching plays a key role in the “matching first” strategy as it captures the important matching information in each pair with minimal loss. Second, the performance slightly drops when replacing the GRU for matching accumulation with a multi-layer perceptron (denoted as ReplaceA). This indicates that utterance relationships are useful. Finally, we left only one channel in matching and found that M2 is a little more powerful than M1 and we achieve the best results with both of them (except on R10@5 on Douban Corpus). Context length: we study how our model (SMNlast) performs across the length of contexts. Figure 3 shows the comparison on MAP in different length intervals on the Douban corpus. Our model consistently performs better than the baselines, and when contexts become longer, the gap becomes larger. The results demonstrate that our model can well capture the dependencies, espe- cially long dependencies, among utterances in contexts. We give the comparisons on other metrics in our supplementary material. (2,5] (5,10] (10,) context length 40 45 50 55 60 M A P LSTM MV-LSTM Multi-View SMN Figure 3: Comparison across context length Retrieval v.s. Generation: we compared SMN with a state-of-the-art response generation model VHERD (Serban et al., 2016b) which was trained using D on the Douban corpus. We conducted a side-by-side human comparison on the top one responses of the two models for each context in the test set. The result is that SMN wins on 238 examples, loses on 207 examples, and is comparable with VHRED on the remaining 555 examples. This indicates that a retrieval based chatbot with SMN can provide a better experience than the state-of-the-art generation model in practice.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_18",
+      "title": "6 Conclusion and Future Work",
+      "level": 1,
+      "parent_id": null,
+      "key": "6_conclusion_and_future_work",
+      "text": "We present a new context based model for multiturn response selection in retrieval-based chatbots. Experiment results on public data sets show that the model can significantly outperform the stateof-the-art methods. Besides, we publish the first human labeled multi-turn response selection data set to research communities. In the future, we are going to study how to model logical consistency of responses and improve candidate retrieval (see supplementary material). 9 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Ricardo Baeza-Yates. Berthier Ribeiro-Neto. Modern information retrieval, volume 463. 1999",
+      "marker": null,
+      "authors": [
+        "Ricardo Baeza-Yates",
+        "Berthier Ribeiro-Neto"
+      ],
+      "title": "Modern information retrieval, volume 463",
+      "year": "1999",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Junyoung Chung. Caglar Gulcehre. KyungHyun Cho. Yoshua Bengio.. Empirical evaluation of gated recurrent neural networks on sequence modeling. arXiv preprint arXiv:1412.3555 .. 2014",
+      "marker": null,
+      "authors": [
+        "Junyoung Chung",
+        "Caglar Gulcehre",
+        "KyungHyun Cho",
+        "Yoshua Bengio."
+      ],
+      "title": "Empirical evaluation of gated recurrent neural networks on sequence modeling",
+      "year": "2014",
+      "venue": "arXiv preprint arXiv:1412.3555 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Joseph L Fleiss.. Measuring nominal scale agreement among many raters. Psychological bulletin 76(5):378.. 1971",
+      "marker": null,
+      "authors": [
+        "Joseph L Fleiss."
+      ],
+      "title": "Measuring nominal scale agreement among many raters",
+      "year": "1971",
+      "venue": "Psychological bulletin 76(5):378.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "Ryuichiro Higashinaka. Kenji Imamura. Toyomi Meguro. Chiaki Miyazaki. Nozomi Kobayashi. Hiroaki Sugiyama. Toru Hirano. Toshiro Makino. Yoshihiro Matsuo. Towards an open-domain conversational system fully based on natural language. 2014",
+      "marker": null,
+      "authors": [
+        "Ryuichiro Higashinaka",
+        "Kenji Imamura",
+        "Toyomi Meguro",
+        "Chiaki Miyazaki",
+        "Nozomi Kobayashi",
+        "Hiroaki Sugiyama",
+        "Toru Hirano",
+        "Toshiro Makino",
+        "Yoshihiro Matsuo"
+      ],
+      "title": "Towards an open-domain conversational system fully based on natural language",
+      "year": "2014",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Baotian Hu. Zhengdong Lu. Hang Li. Qingcai Chen.. Convolutional neural network architectures for matching natural language sentences. Advances in Neural Information Processing Systems. pages 2042–2050.. 2014",
+      "marker": null,
+      "authors": [
+        "Baotian Hu",
+        "Zhengdong Lu",
+        "Hang Li",
+        "Qingcai Chen."
+      ],
+      "title": "Convolutional neural network architectures for matching natural language sentences",
+      "year": "2014",
+      "venue": "Advances in Neural Information Processing Systems. pages 2042–2050.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "Zongcheng Ji. Zhengdong Lu. Hang Li.. An information retrieval approach to short text conversation. arXiv preprint arXiv:1408.6988 .. 2014",
+      "marker": null,
+      "authors": [
+        "Zongcheng Ji",
+        "Zhengdong Lu",
+        "Hang Li."
+      ],
+      "title": "An information retrieval approach to short text conversation",
+      "year": "2014",
+      "venue": "arXiv preprint arXiv:1408.6988 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Rudolf Kadlec. Martin Schmid. Jan Kleindienst.. Improved deep learning baselines for ubuntu corpus dialogs. arXiv preprint arXiv:1510.03753 .. 2015",
+      "marker": null,
+      "authors": [
+        "Rudolf Kadlec",
+        "Martin Schmid",
+        "Jan Kleindienst."
+      ],
+      "title": "Improved deep learning baselines for ubuntu corpus dialogs",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1510.03753 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Diederik Kingma. Jimmy Ba.. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980 .. 2014",
+      "marker": null,
+      "authors": [
+        "Diederik Kingma",
+        "Jimmy Ba."
+      ],
+      "title": "Adam: A method for stochastic optimization",
+      "year": "2014",
+      "venue": "arXiv preprint arXiv:1412.6980 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Jiwei Li. Michel Galley. Chris Brockett. Jianfeng Gao. Bill Dolan.. A diversity-promoting objective function for neural conversation models. arXiv preprint arXiv:1510.03055 .. 2015",
+      "marker": null,
+      "authors": [
+        "Jiwei Li",
+        "Michel Galley",
+        "Chris Brockett",
+        "Jianfeng Gao",
+        "Bill Dolan."
+      ],
+      "title": "A diversity-promoting objective function for neural conversation models",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1510.03055 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Jiwei Li. Michel Galley. Chris Brockett. Jianfeng Gao. Bill Dolan.. A persona-based neural conversation model. arXiv preprint arXiv:1603.06155 .. 2016",
+      "marker": null,
+      "authors": [
+        "Jiwei Li",
+        "Michel Galley",
+        "Chris Brockett",
+        "Jianfeng Gao",
+        "Bill Dolan."
+      ],
+      "title": "A persona-based neural conversation model",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1603.06155 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Ryan Lowe. Nissan Pow. Iulian Serban. Joelle Pineau.. The ubuntu dialogue corpus: A large dataset for research in unstructured multi-turn dialogue systems. arXiv preprint arXiv:1506.08909 .. 2015",
+      "marker": null,
+      "authors": [
+        "Ryan Lowe",
+        "Nissan Pow",
+        "Iulian Serban",
+        "Joelle Pineau."
+      ],
+      "title": "The ubuntu dialogue corpus: A large dataset for research in unstructured multi-turn dialogue systems",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1506.08909 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Tomas Mikolov. Ilya Sutskever. Kai Chen. Greg S Corrado. Jeff Dean.. Distributed representations of words and phrases and their compositionality. Advances in neural information processing systems. pages 3111–3119.. 2013",
+      "marker": null,
+      "authors": [
+        "Tomas Mikolov",
+        "Ilya Sutskever",
+        "Kai Chen",
+        "Greg S Corrado",
+        "Jeff Dean."
+      ],
+      "title": "Distributed representations of words and phrases and their compositionality",
+      "year": "2013",
+      "venue": "Advances in neural information processing systems. pages 3111–3119.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Alan Ritter. Colin Cherry. William B Dolan.. Data-driven response generation in social media. Proceedings of the Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, pages 583–593.. 2011",
+      "marker": null,
+      "authors": [
+        "Alan Ritter",
+        "Colin Cherry",
+        "William B Dolan."
+      ],
+      "title": "Data-driven response generation in social media",
+      "year": "2011",
+      "venue": "Proceedings of the Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, pages 583–593.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Iulian V Serban. Alessandro Sordoni. Yoshua Bengio. Aaron Courville. Joelle Pineau.. Building end-to-end dialogue systems using generative hierarchical neural network models. arXiv preprint arXiv:1507.04808 .. 2015",
+      "marker": null,
+      "authors": [
+        "Iulian V Serban",
+        "Alessandro Sordoni",
+        "Yoshua Bengio",
+        "Aaron Courville",
+        "Joelle Pineau."
+      ],
+      "title": "Building end-to-end dialogue systems using generative hierarchical neural network models",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1507.04808 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Iulian Vlad Serban. Tim Klinger. Gerald Tesauro. Kartik Talamadupula. Bowen Zhou. Yoshua Bengio. Aaron Courville.. Multiresolution recurrent neural networks: An application to dialogue response generation. arXiv preprint. 2016",
+      "marker": null,
+      "authors": [
+        "Iulian Vlad Serban",
+        "Tim Klinger",
+        "Gerald Tesauro",
+        "Kartik Talamadupula",
+        "Bowen Zhou",
+        "Yoshua Bengio",
+        "Aaron Courville."
+      ],
+      "title": "Multiresolution recurrent neural networks: An application to dialogue response generation",
+      "year": "2016",
+      "venue": "arXiv preprint",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Iulian Vlad Serban. Alessandro Sordoni. Ryan Lowe. Laurent Charlin. Joelle Pineau. Aaron Courville. Yoshua Bengio.. A hierarchical latent variable encoder-decoder model for generating dialogues. arXiv preprint arXiv:1605.06069 .. 2016",
+      "marker": null,
+      "authors": [
+        "Iulian Vlad Serban",
+        "Alessandro Sordoni",
+        "Ryan Lowe",
+        "Laurent Charlin",
+        "Joelle Pineau",
+        "Aaron Courville",
+        "Yoshua Bengio."
+      ],
+      "title": "A hierarchical latent variable encoder-decoder model for generating dialogues",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1605.06069 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "Lifeng Shang. Zhengdong Lu. Hang Li.. Neural responding machine for short-text conversation. ACL 2015, July 26-31, 2015, Beijing, China, Volume 1: Long Papers. pages 1577–1586.. 2015",
+      "marker": null,
+      "authors": [
+        "Lifeng Shang",
+        "Zhengdong Lu",
+        "Hang Li."
+      ],
+      "title": "Neural responding machine for short-text conversation",
+      "year": "2015",
+      "venue": "ACL 2015, July 26-31, 2015, Beijing, China, Volume 1: Long Papers. pages 1577–1586.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Richard Socher. Danqi Chen. Christopher D Manning. Andrew Ng.. Reasoning with neural tensor networks for knowledge base completion. Advances in Neural Information Processing Systems. pages 926–934.. 2013",
+      "marker": null,
+      "authors": [
+        "Richard Socher",
+        "Danqi Chen",
+        "Christopher D Manning",
+        "Andrew Ng."
+      ],
+      "title": "Reasoning with neural tensor networks for knowledge base completion",
+      "year": "2013",
+      "venue": "Advances in Neural Information Processing Systems. pages 926–934.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Ming Tan. Bing Xiang. Bowen Zhou.. Lstmbased deep learning models for non-factoid answer selection. arXiv preprint arXiv:1511.04108 .. 2015",
+      "marker": null,
+      "authors": [
+        "Ming Tan",
+        "Bing Xiang",
+        "Bowen Zhou."
+      ],
+      "title": "Lstmbased deep learning models for non-factoid answer selection",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1511.04108 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_20",
+      "raw": "Theano Development Team.. Theano: A Python framework for fast computation of mathematical expressions. arXiv e-prints abs/1605.02688. http://arxiv.org/abs/1605.02688.. 2016",
+      "marker": null,
+      "authors": [
+        "Theano Development Team."
+      ],
+      "title": "Theano: A Python framework for fast computation of mathematical expressions",
+      "year": "2016",
+      "venue": "arXiv e-prints abs/1605.02688. http://arxiv.org/abs/1605.02688.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_21",
+      "raw": "Oriol Vinyals. Quoc Le.. A neural conversational model. arXiv preprint arXiv:1506.05869 .. 2015",
+      "marker": null,
+      "authors": [
+        "Oriol Vinyals",
+        "Quoc Le."
+      ],
+      "title": "A neural conversational model",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1506.05869 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_22",
+      "raw": "Ellen M Voorhees. The trec-8 question answering track report. Trec. volume 99, pages 77–. 1999",
+      "marker": null,
+      "authors": [
+        "Ellen M Voorhees"
+      ],
+      "title": "The trec-8 question answering track report",
+      "year": "1999",
+      "venue": "Trec. volume 99, pages 77–",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_23",
+      "raw": "Shengxian Wan. Yanyan Lan. Jun Xu. Jiafeng Guo. Liang Pang. Xueqi Cheng.. Match-srnn: Modeling the recursive matching structure with spatial rnn. arXiv preprint arXiv:1604.04378 .. 2016",
+      "marker": null,
+      "authors": [
+        "Shengxian Wan",
+        "Yanyan Lan",
+        "Jun Xu",
+        "Jiafeng Guo",
+        "Liang Pang",
+        "Xueqi Cheng."
+      ],
+      "title": "Match-srnn: Modeling the recursive matching structure with spatial rnn",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1604.04378 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_24",
+      "raw": "Hao Wang. Zhengdong Lu. Hang Li. Enhong Chen.. A dataset for research on short-text conversations. EMNLP. pages 935–945.. 2013",
+      "marker": null,
+      "authors": [
+        "Hao Wang",
+        "Zhengdong Lu",
+        "Hang Li",
+        "Enhong Chen."
+      ],
+      "title": "A dataset for research on short-text conversations",
+      "year": "2013",
+      "venue": "EMNLP. pages 935–945.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_25",
+      "raw": "Mingxuan Wang. Zhengdong Lu. Hang Li. Qun Liu.. Syntax-based deep matching of short texts. arXiv preprint arXiv:1503.02427 .. 2015",
+      "marker": null,
+      "authors": [
+        "Mingxuan Wang",
+        "Zhengdong Lu",
+        "Hang Li",
+        "Qun Liu."
+      ],
+      "title": "Syntax-based deep matching of short texts",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1503.02427 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_26",
+      "raw": "Shuohang Wang. Jing Jiang.. Learning natural language inference with lstm. arXiv preprint arXiv:1512.08849 .. 2015",
+      "marker": null,
+      "authors": [
+        "Shuohang Wang",
+        "Jing Jiang."
+      ],
+      "title": "Learning natural language inference with lstm",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1512.08849 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_27",
+      "raw": "Bowen Wu. Baoxun Wang. Hui Xue.. Ranking responses oriented to conversational relevance in chat-bots. COLING16 .. 2016",
+      "marker": null,
+      "authors": [
+        "Bowen Wu",
+        "Baoxun Wang",
+        "Hui Xue."
+      ],
+      "title": "Ranking responses oriented to conversational relevance in chat-bots",
+      "year": "2016",
+      "venue": "COLING16 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_28",
+      "raw": "Yu Wu. Wei Wu. Zhoujun Li. Ming Zhou.. Topic augmented neural network for short text conversation. CoRR abs/1605.00090. http://arxiv.org/abs/1605.00090.. 2016",
+      "marker": null,
+      "authors": [
+        "Yu Wu",
+        "Wei Wu",
+        "Zhoujun Li",
+        "Ming Zhou."
+      ],
+      "title": "Topic augmented neural network for short text conversation",
+      "year": "2016",
+      "venue": "CoRR abs/1605.00090. http://arxiv.org/abs/1605.00090.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_29",
+      "raw": "Chen Xing. Wei Wu. Yu Wu. Jie Liu. Yalou Huang. Ming Zhou. Wei-Ying Ma.. Topic augmented neural response generation with a joint attention mechanism. arXiv preprint arXiv:1606.08340 .. 2016",
+      "marker": null,
+      "authors": [
+        "Chen Xing",
+        "Wei Wu",
+        "Yu Wu",
+        "Jie Liu",
+        "Yalou Huang",
+        "Ming Zhou",
+        "Wei-Ying Ma."
+      ],
+      "title": "Topic augmented neural response generation with a joint attention mechanism",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1606.08340 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_30",
+      "raw": "Zhen Xu. Bingquan Liu. Baoxun Wang. Chengjie Sun. Xiaolong Wang.. Incorporating loose-structured knowledge into lstm with recall gate for conversation modeling. arXiv preprint arXiv:1605.05110 .. 2016",
+      "marker": null,
+      "authors": [
+        "Zhen Xu",
+        "Bingquan Liu",
+        "Baoxun Wang",
+        "Chengjie Sun",
+        "Xiaolong Wang."
+      ],
+      "title": "Incorporating loose-structured knowledge into lstm with recall gate for conversation modeling",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1605.05110 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_31",
+      "raw": "Rui Yan. Yiping Song. Hua Wu.. Learning to respond with deep neural networks for retrieval-based human-computer conversation system. Proceedings of the 39th International ACM SIGIR conference on Research and De-. 2016",
+      "marker": null,
+      "authors": [
+        "Rui Yan",
+        "Yiping Song",
+        "Hua Wu."
+      ],
+      "title": "Learning to respond with deep neural networks for retrieval-based human-computer conversation system",
+      "year": "2016",
+      "venue": "Proceedings of the 39th International ACM SIGIR conference on Research and De-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_32",
+      "raw": "Zichao Yang. Diyi Yang. Chris Dyer. Xiaodong He. Alex Smola. Eduard Hovy.. Hierarchical attention networks for document classification. Proceedings of the 2016 Conference of the North American Chapter of the Association for Computa-. 2016",
+      "marker": null,
+      "authors": [
+        "Zichao Yang",
+        "Diyi Yang",
+        "Chris Dyer",
+        "Xiaodong He",
+        "Alex Smola",
+        "Eduard Hovy."
+      ],
+      "title": "Hierarchical attention networks for document classification",
+      "year": "2016",
+      "venue": "Proceedings of the 2016 Conference of the North American Chapter of the Association for Computa-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_33",
+      "raw": "Steve Young. Milica Gašić. Simon Keizer. François Mairesse. Jost Schatzmann. Blaise Thomson. Kai Yu.. The hidden information state model: A practical framework for pomdp-based spoken dialogue management. Computer Speech & Language. 2010",
+      "marker": null,
+      "authors": [
+        "Steve Young",
+        "Milica Gašić",
+        "Simon Keizer",
+        "François Mairesse",
+        "Jost Schatzmann",
+        "Blaise Thomson",
+        "Kai Yu."
+      ],
+      "title": "The hidden information state model: A practical framework for pomdp-based spoken dialogue management",
+      "year": "2010",
+      "venue": "Computer Speech & Language",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_34",
+      "raw": "Xiangyang Zhou. Daxiang Dong. Hua Wu. Shiqi Zhao. R Yan. D Yu. Xuan Liu. H Tian.. Multiview response selection for human-computer conversation. EMNLP16 .. 2016",
+      "marker": null,
+      "authors": [
+        "Xiangyang Zhou",
+        "Daxiang Dong",
+        "Hua Wu",
+        "Shiqi Zhao",
+        "R Yan",
+        "D Yu",
+        "Xuan Liu",
+        "H Tian."
+      ],
+      "title": "Multiview response selection for human-computer conversation",
+      "year": "2016",
+      "venue": "EMNLP16 .",
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citation_mentions": [
+    {
+      "reference_id": "ref_33",
+      "marker": null,
+      "sentence": "Dialog systems focus on helping people complete specific tasks in vertical domains (Young et al., 2010), while chatbots aim to naturally and meaningfully converse with humans on open domain topics (Ritter et al.",
+      "section_id": "sec_2",
+      "start_offset": 91,
+      "end_offset": 302
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": null,
+      "sentence": ", 2010), while chatbots aim to naturally and meaningfully converse with humans on open domain topics (Ritter et al., 2011).",
+      "section_id": "sec_2",
+      "start_offset": 187,
+      "end_offset": 310
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": null,
+      "sentence": "While most existing work on retrieval based chatbots studies response selection for single-turn conversation (Wang et al., 2013) which only considers the last input message, we consider the problem in a multi-turn scenario.",
+      "section_id": "sec_2",
+      "start_offset": 614,
+      "end_offset": 837
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Existing work, however, either ignores relationships among utterances when concatenating them together (Lowe et al., 2015), or loses important information in context in the process of converting the whole context to a vector without enough supervision from responses (e.",
+      "section_id": "sec_2",
+      "start_offset": 2574,
+      "end_offset": 2844
+    },
+    {
+      "reference_id": "ref_34",
+      "marker": null,
+      "sentence": ", by a hierarchical RNN (Zhou et al., 2016)).",
+      "section_id": "sec_2",
+      "start_offset": 2846,
+      "end_offset": 2891
+    },
+    {
+      "reference_id": "ref_2",
+      "marker": null,
+      "sentence": "Specifically, for each utteranceresponse pair, the model constructs a word-word similarity matrix and a sequence-sequence similarity matrix by the embedding of words and the hidden states of a recurrent neural network with gated recurrent unites (GRU) (Chung et al., 2014) respectively.",
+      "section_id": "sec_2",
+      "start_offset": 3679,
+      "end_offset": 3965
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "We test our model on the Ubuntu dialogue corpus (Lowe et al., 2015) which is a large scale public English data set for research in multi-turn conversation.",
+      "section_id": "sec_2",
+      "start_offset": 5256,
+      "end_offset": 5411
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": null,
+      "sentence": "Recently, building a chatbot with data driven approaches (Ritter et al., 2011; Higashinaka et al., 2014) has drawn a lot of attention.",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 134
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": "Recently, building a chatbot with data driven approaches (Ritter et al., 2011; Higashinaka et al., 2014) has drawn a lot of attention.",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 134
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_25",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_31",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_28",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_34",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_27",
+      "marker": null,
+      "sentence": "Existing work along this line includes retrieval based methods (Hu et al., 2014; Ji et al., 2014; Wang et al., 2015; Yan et al., 2016; Wu et al., 2016b; Zhou et al., 2016; Wu et al., 2016a) and generation based methods (Shang et al.",
+      "section_id": "sec_3",
+      "start_offset": 135,
+      "end_offset": 367
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": null,
+      "sentence": "Early studies of retrieval based chatbots focus on response selection for single-turn conversation (Wang et al., 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b).",
+      "section_id": "sec_3",
+      "start_offset": 1231,
+      "end_offset": 1404
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": "Early studies of retrieval based chatbots focus on response selection for single-turn conversation (Wang et al., 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b).",
+      "section_id": "sec_3",
+      "start_offset": 1231,
+      "end_offset": 1404
+    },
+    {
+      "reference_id": "ref_25",
+      "marker": null,
+      "sentence": "Early studies of retrieval based chatbots focus on response selection for single-turn conversation (Wang et al., 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b).",
+      "section_id": "sec_3",
+      "start_offset": 1231,
+      "end_offset": 1404
+    },
+    {
+      "reference_id": "ref_28",
+      "marker": null,
+      "sentence": "Early studies of retrieval based chatbots focus on response selection for single-turn conversation (Wang et al., 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b).",
+      "section_id": "sec_3",
+      "start_offset": 1231,
+      "end_offset": 1404
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": ", 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b). Recently, researchers begin to pay attention to multi-turn conversation. For example, Lowe et al. (2015) match a response with the literal concatenation of context utterances.",
+      "section_id": "sec_3",
+      "start_offset": 1342,
+      "end_offset": 1580
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": ", 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b). Recently, researchers begin to pay attention to multi-turn conversation. For example, Lowe et al. (2015) match a response with the literal concatenation of context utterances. Yan et al. (2016) concatenate context utterances with the input message as reformulated queries and perform matching with a deep neural network architecture.",
+      "section_id": "sec_3",
+      "start_offset": 1342,
+      "end_offset": 1738
+    },
+    {
+      "reference_id": "ref_6",
+      "marker": null,
+      "sentence": ", 2013; Ji et al., 2014; Wang et al., 2015; Wu et al., 2016b). Recently, researchers begin to pay attention to multi-turn conversation. For example, Lowe et al. (2015) match a response with the literal concatenation of context utterances. Yan et al. (2016) concatenate context utterances with the input message as reformulated queries and perform matching with a deep neural network architecture. Zhou et al. (2016) improve multi-turn response selection with a multi-view model including an utterance view and a word view.",
+      "section_id": "sec_3",
+      "start_offset": 1342,
+      "end_offset": 1864
+    },
+    {
+      "reference_id": "ref_32",
+      "marker": null,
+      "sentence": "(3) we follow (Yang et al., 2016) and employ an attention mechanism to combine the hidden states.",
+      "section_id": "sec_9",
+      "start_offset": 377,
+      "end_offset": 474
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "We followed (Lowe et al., 2015) and employed recall at position k in n candidates (Rn@k) as evaluation metrics.",
+      "section_id": "sec_12",
+      "start_offset": 581,
+      "end_offset": 692
+    },
+    {
+      "reference_id": "ref_3",
+      "marker": null,
+      "sentence": "Note that the Fleiss’ kappa (Fleiss, 1971) of the labeling is 0.",
+      "section_id": "sec_13",
+      "start_offset": 2633,
+      "end_offset": 2697
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": ", 2015) and (Kadlec et al., 2015) including TF-IDF, RNN, CNN, LSTM and BiLSTM.",
+      "section_id": "sec_14",
+      "start_offset": 75,
+      "end_offset": 153
+    },
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "Advanced single-turn matching models: since BiLSTM does not represent the state-ofthe-art matching model, we concatenated the utterances in a context and matched the long text with a response candidate using more powerful models including MV-LSTM (Wan et al., 2016) (2D matching), Match-LSTM (Wang and Jiang, 2015), Attentive-LSTM (Tan et al.",
+      "section_id": "sec_14",
+      "start_offset": 436,
+      "end_offset": 778
+    },
+    {
+      "reference_id": "ref_26",
+      "marker": null,
+      "sentence": ", 2016) (2D matching), Match-LSTM (Wang and Jiang, 2015), Attentive-LSTM (Tan et al.",
+      "section_id": "sec_14",
+      "start_offset": 694,
+      "end_offset": 778
+    },
+    {
+      "reference_id": "ref_19",
+      "marker": null,
+      "sentence": ", 2016) (2D matching), Match-LSTM (Wang and Jiang, 2015), Attentive-LSTM (Tan et al., 2015) (two attention based models), and Multi-Channel which is described in Section 3.",
+      "section_id": "sec_14",
+      "start_offset": 694,
+      "end_offset": 866
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": ", 2015) and (Kadlec et al., 2015) including TF-IDF, RNN, CNN, LSTM and BiLSTM. Multi-view: the model proposed by Zhou et al. (2016) that utilizes a hierarchical recurrent neural network to model utterance relationships.",
+      "section_id": "sec_14",
+      "start_offset": 75,
+      "end_offset": 294
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": ", 2015) and (Kadlec et al., 2015) including TF-IDF, RNN, CNN, LSTM and BiLSTM. Multi-view: the model proposed by Zhou et al. (2016) that utilizes a hierarchical recurrent neural network to model utterance relationships. Deep learning to respond (DL2R): the model proposed by Yan et al. (2016) that reformulates the message with other utterances in the context.",
+      "section_id": "sec_14",
+      "start_offset": 75,
+      "end_offset": 435
+    },
+    {
+      "reference_id": "ref_12",
+      "marker": null,
+      "sentence": "Word embeddings were initialized by the results of word2vec (Mikolov et al., 2013) which ran on the training data, and the dimensionality of word vectors is 200.",
+      "section_id": "sec_15",
+      "start_offset": 297,
+      "end_offset": 458
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "The parameters were updated by stochastic gradient descent with Adam algorithm (Kingma and Ba, 2014) on a single Tesla K80 GPU.",
+      "section_id": "sec_15",
+      "start_offset": 2483,
+      "end_offset": 2610
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": "First, replacing the multi-channel “2D” matching with a neural tensor network (NTN) (Socher et al., 2013) (denoted as ReplaceM ) makes the performance drop dramatically.",
+      "section_id": "sec_17",
+      "start_offset": 2965,
+      "end_offset": 3134
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "Generation: we compared SMN with a state-of-the-art response generation model VHERD (Serban et al., 2016b) which was trained using D on the Douban corpus.",
+      "section_id": "sec_17",
+      "start_offset": 4489,
+      "end_offset": 4643
+    }
+  ],
+  "figures": [],
+  "hidden_text_findings": [],
+  "hidden_text_checked": false
+}

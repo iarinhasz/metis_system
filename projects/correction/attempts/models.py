@@ -119,6 +119,8 @@ class Run(RunManagement, TimeStampModel):
                 name="run_purpose_valid",
             )
         ]
+        # O grupo "revisores" decide no gate sem poder mexer no resto do run (Q8).
+        permissions = [("decide_run", "Pode decidir no gate de integridade")]
 
     def __str__(self) -> str:
         return f"Run {self.pk} ({self.status})"

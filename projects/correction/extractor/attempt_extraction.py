@@ -69,4 +69,7 @@ def extraction_payload(
         "unlinked_citations": sum(c.reference_id is None for c in article.citations),
         "figures": len(article.figures),
         "figures_described": sum(f.description is not None for f in article.figures),
+        "hidden_scanned": article.hidden_text_checked,
+        "hidden_passages": len(article.hidden_text),
+        "hidden_instructions": sum("instruction" in h.reasons for h in article.hidden_text),
     }

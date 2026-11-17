@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExtractedSection(BaseModel):
@@ -99,6 +99,20 @@ class FigureMention(BaseModel):
     end: int
 
 
+type HiddenReason = Literal["color", "size", "off_page", "instruction"]
+
+
+class HiddenText(BaseModel):
+    """Um trecho que o leitor não vê no PDF (em branco, minúsculo ou fora da página), com os
+    motivos; `instruction` quando ele parece uma instrução para um revisor de IA."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    page: int = Field(ge=1)
+    text: str
+    reasons: tuple[HiddenReason, ...]
+
+
 class ExtractedArticle(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -114,6 +128,9 @@ class ExtractedArticle(BaseModel):
     # Vazias nas extrações feitas antes da 1.6.
     figures: tuple[Figure, ...] = ()
     figure_mentions: tuple[FigureMention, ...] = ()
+    # Vazio nas extrações feitas antes da 1.7; `hidden_text_checked` diz se a busca rodou.
+    hidden_text: tuple[HiddenText, ...] = ()
+    hidden_text_checked: bool = False
 
     @property
     def has_footnotes(self) -> bool:

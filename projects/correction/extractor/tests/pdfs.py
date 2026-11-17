@@ -1,15 +1,17 @@
 """PDFs mínimos gerados no teste, para não versionar PDFs de terceiros nem mandar dados reais."""
 
 
-def make_pdf(lines: list[str], *, padding_bytes: int = 0) -> bytes:
+def make_pdf(lines: list[str], *, padding_bytes: int = 0, extra: tuple[str, ...] = ()) -> bytes:
     """PDF de uma página com uma linha de texto (Helvetica) por item; sem linhas, a página fica
-    só com um retângulo e nenhum texto. `padding_bytes` engorda o arquivo com um comentário."""
+    só com um retângulo e nenhum texto. `padding_bytes` engorda o arquivo com um comentário, e
+    `extra` acrescenta trechos desenhados à parte (ver `hidden`)."""
     if lines:
         commands = ["BT", "/F1 10 Tf", "13 TL", "60 750 Td"]
         commands += [f"({_escape(line)}) Tj T*" for line in lines]
         commands.append("ET")
     else:
         commands = ["0 0 1 rg 100 100 200 200 re f"]
+    commands += extra
     stream = "\n".join(commands).encode("latin-1")
 
     objects = [
@@ -35,6 +37,14 @@ def make_pdf(lines: list[str], *, padding_bytes: int = 0) -> bytes:
         xref,
     )
     return bytes(pdf)
+
+
+def hidden(
+    text: str, *, color: str = "0 g", size: float = 10, x: float = 60, y: float = 300
+) -> str:
+    """Um trecho desenhado com a cor (operador PDF, ex. "1 1 1 rg"), o tamanho e a posição
+    dados, isolado do resto da página por q/Q."""
+    return f"q BT /F1 {size} Tf {color} {x} {y} Td ({_escape(text)}) Tj ET Q"
 
 
 def _escape(text: str) -> str:

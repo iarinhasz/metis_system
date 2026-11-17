@@ -1,7 +1,7 @@
 """Revisões parciais, réplica e marcação de itens ainda não resolvidos."""
 
 import json
-from collections.abc import Mapping
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -37,6 +37,8 @@ from projects.correction.pipeline.errors import InvalidEvaluationOutput
 from projects.correction.queries.attempts.run import RunConflict
 
 MAX_REVISION_ROUNDS = 2
+
+logger = logging.getLogger(__name__)
 
 
 class RevisionCheckpoints(Protocol):
@@ -180,10 +182,15 @@ class RevisionStep:
                 spec=self.context.evaluator(self.slot).model,
             ).run(payload)
             if not response.valid or not isinstance(response.content, RevisionResponse):
-                raise InvalidEvaluationOutput(
-                    "O avaliador retornou uma resposta de revisão inválida."
-                )
-            state = self._apply_response(state, target, response.content)
+                logger.warning("Revisão inválida de %s/%s: item segue recusado.", *key)
+                continue
+            try:
+                state = self._apply_response(state, target, response.content)
+            except InvalidEvaluationOutput as exc:
+                # Uma revisão fora das regras deixa o item como estava, ainda recusado: depois do
+                # limite de revisões ele vira unresolved, em vez de derrubar o E4 inteiro.
+                logger.warning("Revisão recusada de %s/%s: %s", *key, exc)
+                continue
             self.checkpoints.store_current_state(state)
 
         affected = _dependent_criteria(previous, state)
@@ -481,8 +488,10 @@ def _find_item(
 
 def _parse_replacement(
     target: ItemRef,
-    data: Mapping[str, object],
+    replacement: Observation | CrossCheckResult | CriterionSynthesis,
 ) -> Observation | CrossCheckResult | CriterionSynthesis:
+    """Valida de novo contra o tipo do alvo: na união, o modelo pode ter casado outro tipo."""
+    data = replacement.model_dump(mode="python")
     try:
         if target.item_type is ItemType.OBSERVATION:
             return Observation.model_validate(data)

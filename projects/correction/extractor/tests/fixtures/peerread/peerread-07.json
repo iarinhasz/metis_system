@@ -1,0 +1,556 @@
+{
+  "contract_version": "1.0",
+  "title": "A Full Non-Monotonic Transition System for Unrestricted Non-Projective Parsing",
+  "authors": [],
+  "language": "en",
+  "abstract": "Restricted non-monotonicity has been shown beneficial for the projective arceager dependency parser in previous research, as posterior decisions can repair mistakes made in previous states due to the lack of information. In this paper, we propose a novel, fully non-monotonic transition system based on the non-projective Covington algorithm. As a non-monotonic system requires exploration of erroneous actions during the training process, we develop several non-monotonic variants of the recently defined dynamic oracle for the Covington parser, based on tight approximations of the loss. Experiments on datasets from the CoNLL-X and CoNLL-XI shared tasks show that a non-monotonic dynamic oracle outperforms the monotonic version in the majority of languages.",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "Seção 1",
+      "level": 1,
+      "parent_id": null,
+      "key": "secao_1",
+      "text": "1 000 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 061 062 063 064 065 066 067 068 069 070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096 097 098 099",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_2",
+      "title": "1 Introduction",
+      "level": 1,
+      "parent_id": null,
+      "key": "1_introduction",
+      "text": "Greedy transition-based dependency parsers are widely used in different NLP tasks due to their speed and efficiency. They parse a sentence from left to right by greedily choosing the highestscoring transition to go from the current parser configuration or state to the next. The resulting sequence of transitions incrementally builds a parse for the input sentence. The scoring of the transitions is provided by a statistical model, previously trained to approximate an oracle, a function that selects the needed transitions to parse a gold tree. Unfortunately, the greedy nature that grants these parsers their efficiency also represents their main limitation. McDonald and Nivre (2007) show that greedy transition-based parsers lose accuracy to error propagation: a transition erroneously chosen by the greedy parser can place it in an incorrect and unknown configuration, causing more mistakes in the rest of the transition sequence. Training with a dynamic oracle (Goldberg and Nivre, 2012) improves robustness in these situations, but in a monotonic transition system, erroneous decisions made in the past are permanent, even when the availability of further information in later states might be useful to correct them. Honnibal et al. (2013) show that allowing some degree of non-monotonicity, by using a limited set of non-monotonic actions that can repair past mistakes and replace previously-built arcs, can increase the accuracy of a transition-based parser. In particular, they present a modified arc-eager transition system where the Left-Arc and Reduce transitions are non-monotonic: the former is used to repair invalid attachments made in previous states by replacing them with a leftward arc, and the latter allows the parser to link two words with a rightward arc that were previously left unattached due to an erroneous decision. Since the Right-Arc transition is still monotonic and leftward arcs can never be repaired because their dependent is removed from the stack by the arc-eager parser and rendered inaccessible, this approach can only repair certain kinds of mistakes: namely, it can fix erroneous rightward arcs by replacing them with a leftward arc, and connect a limited set of unattached words with rightward arcs. In addition, they argue that non-monotonicity in the training oracle can be harmful for the final accuracy and, therefore, they suggest to apply it only as a fallback component for a monotonic oracle, which is given priority over the non-monotonic one. Thus, this strategy will follow the path dictated by the monotonic oracle the majority of the time. Honnibal and Johnson (2015) present an extension of this transition system with an Unshift transition allowing it some extra flexibility to correct past errors. However, the restriction that only rightward 2 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 arcs can be deleted, and only by replacing them with leftward arcs, is still in place. Furthermore, both versions of the algorithm are limited to projective trees. In this paper, we propose a non-monotonic transition system based on the non-projective Covington parser, together with a dynamic oracle to train it with erroneous examples that will need to be repaired. Unlike the system developed in (Honnibal et al., 2013; Honnibal and Johnson, 2015), we work with full non-monotonicity. This has a twofold meaning: (1) our approach can repair previous erroneous attachments regardless of their original direction, and it can replace them either with a rightward or leftward arc as both arc transitions are non-monotonic;1 and (2) we use exclusively a non-monotonic oracle, without the interferences of monotonic decisions. These modifications are feasible because the non-projective Covington transition system is less rigid than the arc-eager algorithm, as words are never deleted from the parser’s data structures and can always be revisited, making it a better option to exploit the full potencial of non-monotonicity. To our knowledge, the presented system is the first nonmonotonic parser that can produce non-projective dependency analyses. Another novel aspect is that our dynamic oracle is approximate, i.e., based on efficiently-computable approximations of the loss due to the complexity of calculating its actual value in a non-monotonic and non-projective scenario. However, this is not a problem in practice: experimental results show how our parser and oracle can use non-monotonic actions to repair erroneous attachments, outperforming the monotonic version developed by Gómez-Rodrı́guez and Fernández-González (2015) in a large majority of the datasets tested.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_3",
+      "title": "2 Preliminaries",
+      "level": 1,
+      "parent_id": null,
+      "key": "2_preliminaries",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_4",
+      "title": "2.1 Non-Projective Covington Transition System",
+      "level": 2,
+      "parent_id": "sec_3",
+      "key": "2_1_non_projective_covington_transition_system",
+      "text": "The non-projective Covington parser was originally defined by Covington (2001), and then recast by Nivre (2008) under the transition-based parsing framework. 1The only restriction is that parsing must still proceed in left-to-right order. For this reason, a leftward arc cannot be repaired with a rightward arc, because this would imply going back in the sentence. The other three combinations (replacing leftward with leftward, rightward with leftward or rightward with rightward arcs) are possible. The transition system that defines this parser is as follows: each parser configuration is of the form c = 〈λ1, λ2, B,A〉, such that λ1 and λ2 are lists of partially processed words, B is another list (called the buffer) containing currently unprocessed words, and A is the set of dependencies that have been built so far. Suppose that our input is a string w1 · · ·wn, whose word occurrences will be identified with their indices 1 · · ·n for simplicity. Then, the parser will start at an initial configuration cs(w1 . . . wn) = 〈[], [], [1 . . . n], ∅〉, and execute transitions chosen from those in Figure 1 until a terminal configuration of the form {〈λ1, λ2, [], A〉 ∈ C} is reached. At that point, the sentence’s parse tree is obtained from A.2 These transitions implement the same logic as the double nested loop traversing word pairs in the original formulation by Covington (2001). When the parser’s configuration is 〈λ1|i, λ2, j|B,A〉, we say that it is considering the focus words i and j, located at the end of the first list and at the beginning of the buffer. At that point, the parser must decide whether these two words should be linked with a leftward arc i ← j (Left-Arc transition), a rightward arc i → j (Right-Arc transition), or not linked at all (No-Arc transition). However, the two transitions that create arcs will be disallowed in configurations where this would cause a violation of the single-head constraint (a node can have at most one incoming arc) or the acyclicity constraint (the dependency graph cannot have cycles). After applying any of these three transitions, i is moved to the second list to make i − 1 and j the focus words for the next step. As an alternative, we can instead choose to execute a Shift transition which lets the parser read a new input word, placing the focus on j and j + 1. The resulting parser can generate any possible dependency tree for the input, including arbitrary non-projective trees. While it runs in quadratic worst-case time, in theory worse than lineartime transition-based parsers (e.g. (Nivre, 2003; Gómez-Rodrı́guez and Nivre, 2013)), it has been shown to outspeed linear algorithms in practice, thanks to feature extraction optimizations that cannot be implemented in other parsers (Volokh and Neumann, 2012). In fact, one of the fastest dependency parsers ever reported uses this algorithm 2In general A is a forest, but it can be converted to a tree by linking headless nodes as dependents of an artificial root node at position 0. When we refer to parser outputs as trees, we assume that this transformation is being implicitly made. 3 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 Shift: 〈λ1, λ2, j|B,A〉 ⇒ 〈λ1 · λ2|j, [], B,A〉 No-Arc: 〈λ1|i, λ2, B,A〉 ⇒ 〈λ1, i|λ2, B,A〉 Left-Arc: 〈λ1|i, λ2, j|B,A〉 ⇒ 〈λ1, i|λ2, j|B,A ∪ {j → i}〉 only if @k | k → i ∈ A (single-head) and i→∗ j 6∈ A (acyclicity). Right-Arc: 〈λ1|i, λ2, j|B,A〉 ⇒ 〈λ1, i|λ2, j|B,A ∪ {i→ j}〉 only if @k | k → j ∈ A (single-head) and j →∗ i 6∈ A (acyclicity). Figure 1: Transitions of the monotonic Covington non-projective dependency parser. The notation i→∗ j ∈ A means that there is a (possibly empty) directed path from i to j in A. (Volokh, 2013).",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_5",
+      "title": "2.2 Monotonic Dynamic Oracle",
+      "level": 2,
+      "parent_id": "sec_3",
+      "key": "2_2_monotonic_dynamic_oracle",
+      "text": "A dynamic oracle is a function that maps a configuration c and a gold tree tG to the set of transitions that can be applied in c and lead to some parse tree t minimizing the Hamming loss with respect to tG (the amount of nodes whose head is different in t and tG). Following Goldberg and Nivre (2013), we say that an arc set A is reachable from configuration c, and we write c A, if there is some (possibly empty) path of transitions from c to some configuration c′ = 〈λ1, λ2, B,A′〉, with A ⊆ A′. Then, we can define the loss of configuration c as `(c) = min t|c t L(t, tG), and therefore, a correct dynamic oracle will return the set of transitions od(c, tG) = {τ | `(c)− `(τ(c)) = 0}, i.e., the set of transitions that do not increase configuration loss, and thus lead to the best parse (in terms of loss) reachable from c. Hence, implementing a dynamic oracle reduces to computing the loss `(c) for each configuration c. Goldberg and Nivre (2013) show a straightforward method to calculate loss for parsers that are arc-decomposable, i.e., those where every arc set A that can be part of a well-formed parse verifies that if c (i → j) for every i → j ∈ A (i.e., each of the individual arcs of A is reachable from a given configuration c), then c A (i.e., the set A as a whole is reachable from c). If this holds, then the loss of a configuration c equals the number of gold arcs that are not individually reachable from c, which is easy to compute in most parsers. Gómez-Rodrı́guez and Fernández-González (2015) show that the non-projective Covington parser is not arc-decomposable because sets of individually reachable arcs may form cycles together with already-built arcs, preventing them from being jointly reachable due to the acyclicity constraint. In spite of this, they prove that a dynamic oracle for the Covington parser can be efficiently built by counting individually unreachable arcs, and correcting for the presence of such cycles. Concretely, the loss is computed as: `(c) = |U(c, tG)|+ nc(A ∪ I(c, tG)) where I(c, tG) = {x → y ∈ tG | c (x → y)} is the set of individually reachable arcs of tG from configuration c; U(c, tG) is the set of individually unreachable arcs of tG from c, computed as tG\\I(c, tG); and nc(G) denotes the number of cycles in a graph G. Therefore, to calculate the loss of a configuration c, we only need to compute the two terms |U(c, tG)| and nc(A ∪ I(c, tG)). To calculate the first term, given a configuration cwith focus words i and j (i.e., c = 〈λ1|i, λ2, j|B,A〉), an arc x→ y will be in U(c, tG) if it is not in A, and at least one of the following holds: • j > max(x, y), (i.e., we have read too far in the string and can no longer get max(x, y) as right focus word), • j = max(x, y) ∧ i < min(x, y), (i.e., we have max(x, y) as the right focus word but the left focus word has already moved left past min(x, y), and we cannot go back), • there is some z 6= 0, z 6= x such that z → y ∈ A, (i.e., we cannot create x→ y because it would violate the single-head constraint), • x and y are on the same weakly connected component of A (i.e., we cannot create x → y due to the acyclicity constraint). The second term of the loss, nc(A ∪ I(c, tG)), can be computed by first obtaining I(c, tG) as tG \\ U(c, tG). Since the graph I(c, tG) has indegree 1, the algorithm by Tarjan (1972) can then be used to find and count the cycles in O(n) time. 4 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 Algorithm 1 Computation of the loss of a configuration in the monotonic oracle. 1: function LOSS(c = 〈λ1|i, λ2, j|B,A〉, tG) 2: U ← ∅ . Variable U is for U(c, tG) 3: for each x→ y ∈ (tG \\A) do 4: left ← min(x, y) 5: right ← max(x, y) 6: if j > right ∨ 7: (j = right ∧ i < left)∨ 8: (∃z > 0, z 6= x : z → y ∈ A)∨ 9: WEAKLYCONNECTED(A, x, y) then 10: U ← u ∪ {x→ y} 11: I ← tG \\U . Variable I is for I(c, tG) 12: return |U |+ COUNTCYCLES(A ∪ I ) Algorithm 1 shows the resulting loss calculation algorithm, where COUNTCYCLES is a function that counts the number of cycles in the given graph and WEAKLYCONNECTED returns whether two given nodes are weakly connected in A.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_6",
+      "title": "3 Non-Monotonic Transition System for the Covington Non-Projective Parser",
+      "level": 1,
+      "parent_id": null,
+      "key": "3_non_monotonic_transition_system_for_the_covington_non_projective_parser",
+      "text": "We now define a non-monotonic variant of the Covington non-projective parser. To do so, we allow the Right-Arc and Left-Arc transitions to create arcs between any pair of nodes without restriction. If the node attached as dependent already had a previous head, the existing attachment is discarded in favor of the new one. This allows the parser to correct erroneous attachments made in the past by assigning new heads, while still enforcing the single-head constraint, as only the most recent head assigned to each node is kept. To enforce acyclicity, one possibility would be to keep the logic of the monotonic algorithm, forbidding the creation of arcs that would create cycles. However, this greatly complicates the definition of the set of individually unreachable arcs, which is needed to compute the loss bounds that will be used by the dynamic oracle. This is because a gold arc x → y may superficially seem unreachable due to forming a cycle together with arcs in A, but it might in fact be reachable if there is some transition sequence that first breaks the cycle using non-monotonic transitions to remove arcs from A, to then create x → y. We do not know of a way to characterize the conditions under which such a transition sequence exists, and thus cannot estimate the loss efficiently. Instead, we enforce the acyclicity constraint in a similar way to the single-head constraint: Right-Arc and Left-Arc transitions are always allowed, even if the prospective arc would create a cycle in A. However, if the creation of a new arc x→ y generates a cycle in A, we immediately remove the arc of the form z → x from A (which trivially exists, and is unique due to the singlehead constraint). This not only enforces the acyclicity constraint while keeping the computation of U(c, tG) simple and efficient, but also produces a straightforward, coherent algorithm (arc transitions are always allowed, and both constraints are enforced by deleting a previous arc) and allows us to exploit non-monotonicity to the maximum (we can not only recover from assigning a node the wrong head, but also from situations where previous errors together with the acyclicity constraint prevent us from building a gold arc, keeping with the principle that later decisions override earlier ones). In Figure 2, we can see the resulting nonmonotonic transition system for the non-projective Covington algorithm, where, unlike the monotonic version, all transitions are allowed at each configuration, and the single-head and acyclicity constraints are kept in A by removing offending arcs.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_7",
+      "title": "4 Non-Monotonic Approximate Dynamic Oracle",
+      "level": 1,
+      "parent_id": null,
+      "key": "4_non_monotonic_approximate_dynamic_oracle",
+      "text": "To successfully train a non-monotonic system, we need a dynamic oracle with error exploration, so that the parser will be put in erroneous states and need to apply non-monotonic transitions in order to repair them. To achieve that, we modify the dynamic oracle defined by Gómez-Rodrı́guez and Fernández-González (2015) so that it can deal with non-monotonicity. Our modification is an approximate dynamic oracle: due to the extra flexibility added to the algorithm by non-monotonicity, we do not know of an efficient way of obtaining an exact calculation of the loss of a given configuration. Instead, we use upper or lower bounds on the loss, which we empirically show to be very tight (less that 1% relative error with respect to the real loss) and are sufficient for the algorithm to provide better accuracy than the exact monotonic oracle. First of all, we adapt the computation of the set of individually unreachable arcs U(c, tG) to the new algorithm. In particular, if c has focus words i and j (i.e., c = 〈λ1|i, λ2, j|B,A〉), then an arc x → y is in U(c, tG) if it is not in A, and at least one of the following holds: • j > max(x, y), (i.e., we have read too far in the string and can no longer get max(x, y) as 5 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 Shift: 〈λ1, λ2, j|B,A〉 ⇒ 〈λ1 · λ2|j, [], B,A〉 No-Arc: 〈λ1|i, λ2, B,A〉 ⇒ 〈λ1, i|λ2, B,A〉 Left-Arc: 〈λ1|i, λ2, j|B,A〉 ⇒ 〈λ1, i|λ2, j|B, (A ∪ {j → i}) \\{x→ i ∈ A} \\ {k → j ∈ A | i→∗ k ∈ A}〉 Right-Arc: 〈λ1|i, λ2, j|B,A〉 ⇒ 〈λ1, i|λ2, j|B,A ∪ {i→ j} \\{x→ j ∈ A} \\ {k → i ∈ A | j →∗ k ∈ A}〉 Figure 2: Transitions of the non-monotonic Covington non-projective dependency parser. The notation i→∗ j ∈ A means that there is a (possibly empty) directed path from i to j in A. right focus word), • j = max(x, y) ∧ i < min(x, y) (i.e., we have max(x, y) as the right focus word but the left focus word has already moved left past min(x, y), and we cannot move it back). Note that, since the head of a node can change during the parsing process and arcs that produce cycles in A can be built, the two last conditions present in the monotonic scenario for computing U(c, tG) are not needed when we use nonmonotonicity and, as a consequence, the set of individually reachable arcs I(c, tG) is larger: due to the greater flexibility provided by nonmonotonicity, we can reach arcs that would be unreachable for the monotonic version. Since arcs that are in this new U(c, tG) are unreachable even by the non-monotonic parser, |U(c, tG)| is trivially a lower bound of the loss `(c). It is worth noting that there always exists at least one transition sequence that builds every arc in I(c, tG) at some point (although not all of them necessarily appear in the final tree, due to non-monotonicity). This can be easily shown based on the fact that the non-monotonic parser does not forbid transitions at any configuration. Thanks to this, we can can generate one such sequence by just applying the original Covington (2001) criteria (choose an arc transition whenever the focus words are linked in I(c, tG), and otherwise Shift or No-Arc depending on whether the left focus word is the first word in the sentence or not), although this sequence is not necessarily optimal in terms of loss. In such a transition sequence, the gold arcs that are missed are (1) those in U(c, tG), and (2) those that are removed by the cycle-breaking in Left-Arc and Right-Arc transitions. In practice configurations where (2) is needed are uncommon, so this lower bound is a very close approximation of the real loss, as will be seen empirically below. This reasoning also helps us calculate an up- per bound of the loss: in a transition sequence as described, if we only build the arcs in I(c, tG) and none else, the amount of arcs removed by breaking cycles (2) cannot be larger than the number of cycles in A ∪ I(c, tG). This means that |U(c, tG)|+nc(A∪I(c, tG)) is an upper bound of the loss `(c). Note that, contrary to the monotonic case, this expression does not always give us the exact loss, for several reasons: firstly, A∪I(c, tG) can have non-disjoint cycles (a node may have different heads in A and I since attachments are not permanent, contrary to the monotonic version) and thus removing a single arc may break more than one cycle; secondly, the removed arc can be a non-gold arc of A and therefore not incur loss; and thirdly, there may exist alternative transition sequences where a cycle in A∪I(c, tG) is broken early by non-monotonic configurations that change the head of a wrongly-attached node in A to a different (and also wrong) head,3 removing the cycle before the cycle-breaking mechanism needs to come into play without incurring in extra errors. Characterizing the situations where such an alternative exists is the main difficulty for an exact calculation of the loss. However, it is possible to obtain a closer upper bound to the real loss if we consider the following: for each cycle in A ∪ I(c, tG) that will be broken by the transition sequence described above, we can determine exactly which is the arc removed by cycle-breaking (if x → y is the arc that will close the cycle according to the Covington arc-building order, then the affected arc is the one of the form z → x). The cycle can only cause the loss of a gold arc if that arc z → x is gold, which can be trivially checked. Hence, if we call cycles where that holds problematic cycles, then the expression 3Note that, in this scenario, the new head must also be wrong because otherwise the newly created arc would be an arc of I(c, tG) (and therefore, would not be breaking a cycle in A ∪ I(c, tG)). However, replacing a wrong attachment with another wrong attachment need not increase loss. 6 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 550 551 552 553 554 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599 average value relative difference to loss Language lower loss pc upper upper lower pc upper upper Arabic 0.66925 0.67257 0.67312 0.68143 0.00182 0.00029 0.00587 Basque 0.58260 0.58318 0.58389 0.62543 0.00035 0.00038 0.02732 Catalan 0.58009 0.58793 0.58931 0.60644 0.00424 0.00069 0.00961 Chinese 0.56515 0.56711 0.57156 0.62921 0.00121 0.00302 0.03984 Czech 0.57521 0.58357 0.59401 0.62883 0.00476 0.00685 0.02662 English 0.55267 0.56383 0.56884 0.59494 0.00633 0.00294 0.01767 Greek 0.56123 0.57443 0.57983 0.61256 0.00731 0.00296 0.02256 Hungarian 0.46495 0.46672 0.46873 0.48797 0.00097 0.00114 0.01165 Italian 0.62033 0.62612 0.62767 0.64356 0.00307 0.00082 0.00883 Turkish 0.60143 0.60215 0.60660 0.63560 0.00060 0.00329 0.02139 Bulgarian 0.61415 0.62257 0.62433 0.64497 0.00456 0.00086 0.01233 Danish 0.67350 0.67904 0.68119 0.69436 0.00291 0.00108 0.00916 Dutch 0.69201 0.70600 0.71105 0.74008 0.00709 0.00251 0.01862 German 0.54581 0.54755 0.55080 0.58182 0.00104 0.00208 0.02033 Japanese 0.60515 0.60515 0.60515 0.60654 0.00000 0.00000 0.00115 Portuguese 0.58880 0.60063 0.60185 0.61780 0.00651 0.00067 0.00867 Slovene 0.56155 0.56860 0.57135 0.60373 0.00396 0.00153 0.01979 Spanish 0.58247 0.59119 0.59277 0.61273 0.00487 0.00089 0.01197 Swedish 0.57543 0.58636 0.58933 0.61104 0.00585 0.00153 0.01383 Average 0.59009 0.59656 0.59954 0.62416 0.00355 0.00176 0.01513 Table 1: Average value of the different bounds and the loss, and of the relative differences from each bound to the loss, on CoNLL-XI (first block) and CoNLL-X (second block) datasets during 100,000 transitions. For each language, we show in boldface the average value and relative difference of the bound that is closer to the loss. |U(c, tG)|+npc(A∪I(c, tG)), where “pc” stands for problematic cycles, is a closer upper bound to the loss `(c) and the following holds: |U(c, tG)| ≤ `(c) ≤ |U(c, tG)|+npc(A∪I(c, tG)) ≤ |U(c, tG)|+ nc(A ∪ I(c, tG)) As mentioned before, unlike the monotonic approach, a node can have a different head in A than in I(c, tG) and, as a consequence, the resulting graph A ∪ I(c, tG) has maximum in-degree 2 rather than 1, and there can be overlapping cycles. Therefore, the computation of the non-monotonic terms nc(A ∪ I(c, tG)) and npc(A ∪ I(c, tG)) requires an algorithm such as the one by Johnson (1975) to find all elementary cycles in a directed graph. This runs in O((n + e)(c + 1)), where n is the number of vertices, e is the number of edges and c is the number of elementary cycles in the graph. This implies that the calculation of the two non-monotonic upper bounds is less efficient than the linear loss computation in the monotonic scenario. However, a non-monotonic algorithm that uses the lower bound as loss expression is the fastest option (even faster than the monotonic approach) as the oracle does not need to compute cycles at all, speeding up the training process. Algorithm 2 shows the non-monotonic variant of Algorithm 1, where COUNTRELEVANTCYCLES is a function that counts the number of cycles or problematic cycles in the given graph, Algorithm 2 Computation of the approximate loss of a non-monotonic configuration. 1: function LOSS(c = 〈λ1|i, λ2, j|B,A〉, tG) 2: U ← ∅ . Variable U is for U(c, tG) 3: for each x→ y ∈ (tG \\A) do 4: left ← min(x, y) 5: right ← max(x, y) 6: if j > right ∨ 7: (j = right ∧ i < left) then 8: U ← u ∪ {x→ y} 9: I ← tG \\U . Variable I is for I(c, tG) 10: return |U |+ COUNTRELEVANTCYCLES(A ∪ I ) depending on the upper bound implemented, and will return 0 in case we use the lower bound.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_8",
+      "title": "5 Evaluation of the loss bounds",
+      "level": 1,
+      "parent_id": null,
+      "key": "5_evaluation_of_the_loss_bounds",
+      "text": "To determine how close the lower bound |U(c, tG)| and the upper bounds |U(c, tG)| + npc(A∪I(c, tG)) and |U(c, tG)|+nc(A∪I(c, tG)) are to the actual loss in practical scenarios, we use exhaustive search to calculate the real loss of a given configuration, to then compare it with the bounds. This is feasible because the lower and upper bounds allow us to prune the search space: if an upper and a lower bound coincide for a configuration we already know the loss and need not keep searching, and if we can branch to two configurations such that the lower bound of one is greater or equal than an upper bound of the other, we can discard the former as it will never lead to smaller loss than the latter. Therefore, this ex- 7 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 650 651 652 653 654 655 656 657 658 659 660 661 662 663 664 665 666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 686 687 688 689 690 691 692 693 694 695 696 697 698 699 Unigrams L0w; L0p; L0wp; L0l; L0hw; L0hp; L0hl; L0l′w; L0l′p; L0l′ l; L0r′w; L0r′p; L0r′ l; L0h2w; L0h2p; L0h2l; L0lw; L0lp; L0ll; L0rw; L0rp; L0rl; L0wd; L0pd; L0wvr ; L0pvr ; L0wvl; L0pvl; L0wsl; L0psl; L0wsr ; L0psr ; L1w; L1p; L1wp; R0w; R0p; R0wp; R0hw; R0hp;R0hl; R0h2w; R0h2p; R0l′w; R0l′p; R0l′ l; R0lw; R0lp; R0ll; R0wd; R0pd; R0wvl; R0pvl; R0wsl; R0psl; R1w; R1p; R1wp; R2w; R2p; R2wp; CLw; CLp; CLwp; CRw; CRp; CRwp; Pairs L0wp+R0wp; L0wp+R0w; L0w+R0wp; L0wp+R0p; L0p+R0wp; L0w+R0w; L0p+R0p; R0p+R1p; L0w+R0wd; L0p+R0pd; Triples R0p+R1p+R2p; L0p+R0p+R1p; L0hp+L0p+R0p; L0p+L0l′p+R0p; L0p+L0r′p+R0p; L0p+R0p+R0l′p; L0p+L0l′p+L0lp; L0p+L0r′p+L0rp; L0p+L0hp+L0h2p; R0p+R0l′p+R0lp; Table 2: Feature templates. L0 and R0 denote the left and right focus words; L1, L2, . . . are the words to the left of L0 and R1, R2, . . . those to the right of R0. Xih means the head of Xi, Xih2 the grandparent, Xil and Xil′ the farthest and closest left dependents, and Xir and Xir′ the farthest and closest right dependents, respectively. CL and CR are the first and last words between L0 andR0 whose head is not in the interval [L0, R0]. Finally, w stands for word form; p for PoS tag; l for dependency label; d is the distance between L0 and R0; vl, vr are the left/right valencies (number of left/right dependents); and sl, sr the left/right label sets (dependency labels of left/right dependents). haustive search with pruning guarantees to find the exact loss. Due to the time complexity of this process, we undertake the analysis of only the first 100,000 transitions on each dataset of the nineteen languages available from CoNLL-X and CoNLL-XI shared tasks (Buchholz and Marsi, 2006; Nivre et al., 2007). In Table 1, we present the average values for the lower bound, both upper bounds and the loss, as well as the relative differences from each bound to the real loss. After those experiments, we conclude that the lower and the closer upper bounds are a tight approximation of the loss, with both bounds incurring relative errors below 0.8% in all datasets. If we compare them, the real loss is closer to the upper bound |U(c, tG)| + npc(A ∪ I(c, tG)) in the majority of datasets (12 out of 18 languages, excluding Japanese where both bounds were exactly equal to the real loss in the whole sample of configurations). This means that the term npc(A∪I(c, tG)) provides a close approximation of the gold arcs missed by the presence of cycles in A. Regarding the upper bound |U(c, tG)|+nc(A∪I(c, tG)), it presents a more variable relative error, ranging from 0.1% to 4.0%. Thus, although we do not know an algorithm to obtain the exact loss which is fast enough to be practical, any of the three studied loss bounds can be used to obtain a feasible approximate dynamic oracle with full non-monotonicity.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_9",
+      "title": "6 Experiments",
+      "level": 1,
+      "parent_id": null,
+      "key": "6_experiments",
+      "text": "To prove the usefulness of our approach, we implement the static, dynamic monotonic and nonmonotonic oracles for the non-projective Covington algorithm and compare their accuracies on nine datasets from the CoNLL-X shared task (Buchholz and Marsi, 2006) and all datasets from the CoNLL-XI shared task (Nivre et al., 2007). For the non-monotonic algorithm, we test the three different loss expressions defined in the previous section. We train an averaged perceptron model for 15 iterations and use the same feature templates for all languages, which are listed in detail in Table 2. The accuracies obtained by the non-projective Covington parser with the three available oracles are presented in Table 3. For the non-monotonic dynamic oracle, three variants are shown, one for each loss expression implemented. As we can see, the novel non-monotonic oracle improves over the accuracy of the monotonic version on 14 out of 19 languages (0.32 in UAS on average) with the best loss calculation |U(c, tG)|+nc(A∪I(c, tG)), where 6 of these improvements are statistically significant at the .05 level (Yeh, 2000). The other two loss calculation methods also achieve good results, outperforming the monotonic algorithm on 12 out of 19 datasets tested. The loss expression |U(c, tG)| + nc(A ∪ I(c, tG)) obtains greater accuracy on average than the other two loss expressions, including the more adjusted upper bound that is provably closer to the real loss. This could be explained by the fact that identifying problematic cycles is a difficult task to learn for the parser, and for this reason a more straightforward approach, which tries to avoid all kinds of cycles (regardless of whether they will cost gold arcs or not), can perform better. This also leads us to hypothesize that, even if it were feasible to build an oracle with the exact loss, it would not provide practical improvements over these approximate oracles; as it appears difficult for a statistical model to learn the situations where repla- 8 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799 dynamic dynamic non-monotonic static monotonic lower pc upper upper Language UAS LAS UAS LAS UAS LAS UAS LAS UAS LAS Arabic 80.67 66.51 82.76∗ 68.48∗ 83.29∗ 69.14∗ 83.18∗ 69.05∗ 83.40† 69.29† Basque 76.55 66.05 77.49† 67.31† 74.61 65.31 74.69 65.18 74.27 64.78 Catalan 90.52 85.09 91.37∗ 85.98∗ 90.51 85.35 90.40 85.30 90.44 85.35 Chinese 84.93 80.80 85.82 82.15 86.55∗ 82.53∗ 86.29∗ 82.27∗ 86.60∗ 82.51∗ Czech 78.49 61.77 80.21∗ 63.52∗ 81.32† 64.89† 81.33† 64.81† 81.49† 65.18† English 85.35 84.29 87.47∗ 86.55∗ 88.44† 87.37† 88.23† 87.22† 88.50† 87.55† Greek 79.47 69.35 80.76 70.43 80.90 70.46 80.84 70.34 81.02∗ 70.49∗ Hungarian 77.65 68.32 78.84∗ 70.16∗ 78.67∗ 69.83∗ 78.47∗ 69.66∗ 78.65∗ 69.74∗ Italian 84.06 79.79 84.30 80.17 84.38 80.30 84.64 80.52 84.47 80.32 Turkish 81.28 70.97 81.14 71.38 80.65 71.15 80.80 71.29 80.60 71.07 Bulgarian 89.13 85.30 90.45∗ 86.86∗ 91.36† 87.88† 91.33† 87.89† 91.73† 88.26† Danish 86.00 81.49 86.91∗ 82.75∗ 86.83∗ 82.63∗ 86.89∗ 82.74∗ 86.94∗ 82.68∗ Dutch 81.54 78.46 82.07 79.26 82.78∗ 79.64∗ 82.80∗ 79.68∗ 83.02† 79.92† German 86.97 83.91 87.95∗ 85.17∗ 87.31 84.37 87.18 84.22 87.48 84.54 Japanese 93.63 92.20 93.67 92.33 94.02 92.68 94.02 92.68 93.97 92.66 Portuguese 86.55 82.61 87.45∗ 83.62∗ 87.17∗ 83.47∗ 87.12∗ 83.45∗ 87.40∗ 83.71∗ Slovene 76.76 63.53 77.86 64.43 80.39† 67.04† 80.56† 67.10† 80.47† 67.10† Spanish 79.20 76.00 80.12∗ 77.24∗ 81.36∗ 78.30∗ 81.12∗ 77.99∗ 81.33∗ 78.16∗ Swedish 87.43 81.77 88.05∗ 82.77∗ 88.20∗ 83.02∗ 88.09∗ 82.87∗ 88.36∗ 83.16∗ Average 83.48 76.75 84.46 77.92 84.67 78.18 84.63 78.12 84.74 78.24 Table 3: Parsing accuracy (UAS and LAS, including punctuation) of the Covington non-projective parser with static, and dynamic monotonic and non-monotonic oracles on CoNLL-XI (first block) and CoNLLX (second block) datasets. For the dynamic non-monotonic oracle, we show the performance with the three loss expressions, where lower stands for the lower bound |U(c, tG)|, pc upper for the upper bound |U(c, tG)| + npc(A ∪ I(c, tG)), and upper for the upper bound |U(c, tG)| + nc(A ∪ I(c, tG)). For each language, we run five experiments with the same setup but different seeds and report the averaged accuracy. Best results for each language are shown in boldface. Statistically significant improvements (α = .05) of both dynamic oracles are marked with ∗ if they are only over the static oracle, and with † if they are over the opposite dynamic oracle too. cing a wrong arc with another indirectly helps due to breaking prospective cycles. It is also worth mentioning that the nonmonotonic dynamic oracle with the best loss expression accomplishes an average improvement over the static version (1.26 UAS) greater than that obtained by the monotonic oracle (0.98 UAS), resulting in 13 statistically significant improvements achieved by the non-monotonic variant over the static oracle in comparison to the 12 obtained by the monotonic system. Finally, note that, despite this remarkable performance, the non-monotonic version (regardless of the loss expression implemented) has an inexplicable drop in accuracy in Basque in comparison to the other two oracles.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_10",
+      "title": "7 Conclusion",
+      "level": 1,
+      "parent_id": null,
+      "key": "7_conclusion",
+      "text": "We presented a novel, fully non-monotonic variant of the well-known non-projective Covington parser, trained with a dynamic oracle. Due to the unpredictability of a non-monotonic scenario, the real loss of each configuration cannot be computed. To overcome this, we proposed three different loss expressions that closely bound the loss and enable us to implement a practical non-monotonic dynamic oracle. On average, our non-monotonic algorithm obtains better perfomance than the monotonic version, regardless of the loss calculation used. In particular, one of the loss expressions developed proved very promising by providing the best average accuracy, in spite of being the farthest approximation from the actual loss. On the other hand, the proposed lower bound makes the nonmonotonic system the fastest one among all dynamic oracles developed for the non-projective Covington algorithm. To our knowledge, this is the first implementation of non-monotonicity for a nonprojective parsing algorithm, and the first approximate dynamic oracle that uses close, efficientlycomputable approximations of the loss, showing this to be a feasible alternative when it is not practical to compute the actual loss. While we used a perceptron classifier for our experiments, our oracle could also be used in neuralnetwork implementations of greedy transitionbased parsing (Chen and Manning, 2014; Dyer et al., 2015), providing an interesting avenue for future work. 9 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Sabine Buchholz. Erwin Marsi.. CoNLL-X shared task on multilingual dependency parsing. Proceedings of the 10th Conference on Computational Natural Language Learning (CoNLL). pages 149–164.. 2006",
+      "marker": null,
+      "authors": [
+        "Sabine Buchholz",
+        "Erwin Marsi."
+      ],
+      "title": "CoNLL-X shared task on multilingual dependency parsing",
+      "year": "2006",
+      "venue": "Proceedings of the 10th Conference on Computational Natural Language Learning (CoNLL). pages 149–164.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Danqi Chen. Christopher Manning.. A fast and accurate dependency parser using neural networks. Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for Computa-. 2014",
+      "marker": null,
+      "authors": [
+        "Danqi Chen",
+        "Christopher Manning."
+      ],
+      "title": "A fast and accurate dependency parser using neural networks",
+      "year": "2014",
+      "venue": "Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for Computa-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Michael A. Covington.. A fundamental algorithm for dependency parsing. Proceedings of the 39th Annual ACM Southeast Conference. ACM, New York, NY, USA, pages 95–102.. 2001",
+      "marker": null,
+      "authors": [
+        "Michael A. Covington."
+      ],
+      "title": "A fundamental algorithm for dependency parsing",
+      "year": "2001",
+      "venue": "Proceedings of the 39th Annual ACM Southeast Conference. ACM, New York, NY, USA, pages 95–102.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "Chris Dyer. Miguel Ballesteros. Wang Ling. Austin Matthews. Noah A. Smith.. Transitionbased dependency parsing with stack long shortterm memory. Proceedings of the 53rd Annual Meeting of the Association for Computational. 2015",
+      "marker": null,
+      "authors": [
+        "Chris Dyer",
+        "Miguel Ballesteros",
+        "Wang Ling",
+        "Austin Matthews",
+        "Noah A. Smith."
+      ],
+      "title": "Transitionbased dependency parsing with stack long shortterm memory",
+      "year": "2015",
+      "venue": "Proceedings of the 53rd Annual Meeting of the Association for Computational",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Yoav Goldberg. Joakim Nivre.. A dynamic oracle for arc-eager dependency parsing. Proceedings of COLING 2012. Association for Computational Linguistics, Mumbai, India, pages 959–976. http://www.aclweb.org/anthology/C12-1059.. 2012",
+      "marker": null,
+      "authors": [
+        "Yoav Goldberg",
+        "Joakim Nivre."
+      ],
+      "title": "A dynamic oracle for arc-eager dependency parsing",
+      "year": "2012",
+      "venue": "Proceedings of COLING 2012. Association for Computational Linguistics, Mumbai, India, pages 959–976. http://www.aclweb.org/anthology/C12-1059.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "Yoav Goldberg. Joakim Nivre.. Training deterministic parsers with non-deterministic oracles. Transactions of the Association for Computational Linguistics 1:403–414. http://anthology.aclweb.org/Q/Q13/Q13-1033.pdf.. 2013",
+      "marker": null,
+      "authors": [
+        "Yoav Goldberg",
+        "Joakim Nivre."
+      ],
+      "title": "Training deterministic parsers with non-deterministic oracles",
+      "year": "2013",
+      "venue": "Transactions of the Association for Computational Linguistics 1:403–414. http://anthology.aclweb.org/Q/Q13/Q13-1033.pdf.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Carlos Gómez-Rodrı́guez. Daniel FernándezGonzález. An efficient dynamic oracle for unrestricted non-projective parsing. In Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th Interna-. 2015",
+      "marker": null,
+      "authors": [
+        "Carlos Gómez-Rodrı́guez",
+        "Daniel FernándezGonzález"
+      ],
+      "title": "An efficient dynamic oracle for unrestricted non-projective parsing",
+      "year": "2015",
+      "venue": "In Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th Interna-",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Carlos Gómez-Rodrı́guez. Joakim Nivre. Divisible transition systems and multiplanar dependency parsing. Computational Linguistics. 2013",
+      "marker": null,
+      "authors": [
+        "Carlos Gómez-Rodrı́guez",
+        "Joakim Nivre"
+      ],
+      "title": "Divisible transition systems and multiplanar dependency parsing",
+      "year": "2013",
+      "venue": "Computational Linguistics",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Matthew Honnibal. Yoav Goldberg. Mark Johnson.. A non-monotonic arc-eager transition system for dependency parsing. Proceedings of the Seventeenth Conference on Computational Natural Language Learning, CoNLL 2013,. 2013",
+      "marker": null,
+      "authors": [
+        "Matthew Honnibal",
+        "Yoav Goldberg",
+        "Mark Johnson."
+      ],
+      "title": "A non-monotonic arc-eager transition system for dependency parsing",
+      "year": "2013",
+      "venue": "Proceedings of the Seventeenth Conference on Computational Natural Language Learning, CoNLL 2013,",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Matthew Honnibal. Mark Johnson.. An improved non-monotonic transition system for dependency parsing. Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computational. 2015",
+      "marker": null,
+      "authors": [
+        "Matthew Honnibal",
+        "Mark Johnson."
+      ],
+      "title": "An improved non-monotonic transition system for dependency parsing",
+      "year": "2015",
+      "venue": "Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computational",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Donald B. Johnson.. Finding all the elementary circuits of a directed graph. SIAM Journal on Computing 4(1):77–84. https://doi.org/10.1137/0204007.. 1975",
+      "marker": null,
+      "authors": [
+        "Donald B. Johnson."
+      ],
+      "title": "Finding all the elementary circuits of a directed graph",
+      "year": "1975",
+      "venue": "SIAM Journal on Computing 4(1):77–84. https://doi.org/10.1137/0204007.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Ryan McDonald. Joakim Nivre.. Characterizing the errors of data-driven dependency parsing models. Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language. 2007",
+      "marker": null,
+      "authors": [
+        "Ryan McDonald",
+        "Joakim Nivre."
+      ],
+      "title": "Characterizing the errors of data-driven dependency parsing models",
+      "year": "2007",
+      "venue": "Proceedings of the 2007 Joint Conference on Empirical Methods in Natural Language Processing and Computational Natural Language",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Joakim Nivre.. An efficient algorithm for projective dependency parsing. Proceedings of the 8th International Workshop on Parsing Technologies (IWPT 03). ACL/SIGPARSE, pages 149–160.. 2003",
+      "marker": null,
+      "authors": [
+        "Joakim Nivre."
+      ],
+      "title": "An efficient algorithm for projective dependency parsing",
+      "year": "2003",
+      "venue": "Proceedings of the 8th International Workshop on Parsing Technologies (IWPT 03). ACL/SIGPARSE, pages 149–160.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Joakim Nivre.. Algorithms for Deterministic Incremental Dependency Parsing. Computational Linguistics 34(4):513–553. https://doi.org/10.1162/coli.07-056-R1-07-027.. 2008",
+      "marker": null,
+      "authors": [
+        "Joakim Nivre."
+      ],
+      "title": "Algorithms for Deterministic Incremental Dependency Parsing",
+      "year": "2008",
+      "venue": "Computational Linguistics 34(4):513–553. https://doi.org/10.1162/coli.07-056-R1-07-027.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Joakim Nivre. Johan Hall. Sandra Kübler. Ryan McDonald. Jens Nilsson. Sebastian Riedel. Deniz Yuret.. The CoNLL 2007 shared task on dependency parsing. Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007. pages. 2007",
+      "marker": null,
+      "authors": [
+        "Joakim Nivre",
+        "Johan Hall",
+        "Sandra Kübler",
+        "Ryan McDonald",
+        "Jens Nilsson",
+        "Sebastian Riedel",
+        "Deniz Yuret."
+      ],
+      "title": "The CoNLL 2007 shared task on dependency parsing",
+      "year": "2007",
+      "venue": "Proceedings of the CoNLL Shared Task Session of EMNLP-CoNLL 2007. pages",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Robert Endre Tarjan.. Depth-first search and linear graph algorithms. SIAM J. Comput. 1(2):146–160.. 1972",
+      "marker": null,
+      "authors": [
+        "Robert Endre Tarjan."
+      ],
+      "title": "Depth-first search and linear graph algorithms",
+      "year": "1972",
+      "venue": "SIAM J. Comput. 1(2):146–160.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "Alexander Volokh.. Performance-Oriented Dependency Parsing. Doctoral dissertation, Saarland University, Saarbrücken, Germany.. 2013",
+      "marker": null,
+      "authors": [
+        "Alexander Volokh."
+      ],
+      "title": "Performance-Oriented Dependency Parsing",
+      "year": "2013",
+      "venue": "Doctoral dissertation, Saarland University, Saarbrücken, Germany.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Alexander Volokh. Günter Neumann.. Dependency parsing with efficient feature extraction. Birte Glimm and Antonio Krüger, editors, KI. Springer, volume 7526 of Lecture Notes in Computer Science, pages 253–256.. 2012",
+      "marker": null,
+      "authors": [
+        "Alexander Volokh",
+        "Günter Neumann."
+      ],
+      "title": "Dependency parsing with efficient feature extraction",
+      "year": "2012",
+      "venue": "Birte Glimm and Antonio Krüger, editors, KI. Springer, volume 7526 of Lecture Notes in Computer Science, pages 253–256.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Alexander Yeh.. More accurate tests for the statistical significance of result differences. Proceedings of the 18th International Conference on Computational Linguistics (COLING). pages 947–953.. 2000",
+      "marker": null,
+      "authors": [
+        "Alexander Yeh."
+      ],
+      "title": "More accurate tests for the statistical significance of result differences",
+      "year": "2000",
+      "venue": "Proceedings of the 18th International Conference on Computational Linguistics (COLING). pages 947–953.",
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citation_mentions": [
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Training with a dynamic oracle (Goldberg and Nivre, 2012) improves robustness in these situations, but in a monotonic transition system, erroneous decisions made in the past are permanent, even when the availability of further information in later states might be useful to correct them.",
+      "section_id": "sec_2",
+      "start_offset": 937,
+      "end_offset": 1224
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "McDonald and Nivre (2007) show that greedy transition-based parsers lose accuracy to error propagation: a transition erroneously chosen by the greedy parser can place it in an incorrect and unknown configuration, causing more mistakes in the rest of the transition sequence.",
+      "section_id": "sec_2",
+      "start_offset": 662,
+      "end_offset": 936
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Training with a dynamic oracle (Goldberg and Nivre, 2012) improves robustness in these situations, but in a monotonic transition system, erroneous decisions made in the past are permanent, even when the availability of further information in later states might be useful to correct them. Honnibal et al. (2013) show that allowing some degree of non-monotonicity, by using a limited set of non-monotonic actions that can repair past mistakes and replace previously-built arcs, can increase the accuracy of a transition-based parser.",
+      "section_id": "sec_2",
+      "start_offset": 937,
+      "end_offset": 1468
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Training with a dynamic oracle (Goldberg and Nivre, 2012) improves robustness in these situations, but in a monotonic transition system, erroneous decisions made in the past are permanent, even when the availability of further information in later states might be useful to correct them. Honnibal et al. (2013) show that allowing some degree of non-monotonicity, by using a limited set of non-monotonic actions that can repair past mistakes and replace previously-built arcs, can increase the accuracy of a transition-based parser. In particular, they present a modified arc-eager transition system where the Left-Arc and Reduce transitions are non-monotonic: the former is used to repair invalid attachments made in previous states by replacing them with a leftward arc, and the latter allows the parser to link two words with a rightward arc that were previously left unattached due to an erroneous decision. Since the Right-Arc transition is still monotonic and leftward arcs can never be repaired because their dependent is removed from the stack by the arc-eager parser and rendered inaccessible, this approach can only repair certain kinds of mistakes: namely, it can fix erroneous rightward arcs by replacing them with a leftward arc, and connect a limited set of unattached words with rightward arcs. In addition, they argue that non-monotonicity in the training oracle can be harmful for the final accuracy and, therefore, they suggest to apply it only as a fallback component for a monotonic oracle, which is given priority over the non-monotonic one. Thus, this strategy will follow the path dictated by the monotonic oracle the majority of the time. Honnibal and Johnson (2015) present an extension of this transition system with an Unshift transition allowing it some extra flexibility to correct past errors.",
+      "section_id": "sec_2",
+      "start_offset": 937,
+      "end_offset": 2759
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": "Unlike the system developed in (Honnibal et al., 2013; Honnibal and Johnson, 2015), we work with full non-monotonicity.",
+      "section_id": "sec_2",
+      "start_offset": 3571,
+      "end_offset": 3690
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": "Unlike the system developed in (Honnibal et al., 2013; Honnibal and Johnson, 2015), we work with full non-monotonicity.",
+      "section_id": "sec_2",
+      "start_offset": 3571,
+      "end_offset": 3690
+    },
+    {
+      "reference_id": "ref_17",
+      "marker": null,
+      "sentence": "(Volokh, 2013).",
+      "section_id": "sec_4",
+      "start_offset": 4025,
+      "end_offset": 4040
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Following Goldberg and Nivre (2013), we say that an arc set A is reachable from configuration c, and we write c A, if there is some (possibly empty) path of transitions from c to some configuration c′ = 〈λ1, λ2, B,A′〉, with A ⊆ A′.",
+      "section_id": "sec_5",
+      "start_offset": 265,
+      "end_offset": 496
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": "Goldberg and Nivre (2013) show a straightforward method to calculate loss for parsers that are arc-decomposable, i.",
+      "section_id": "sec_5",
+      "start_offset": 924,
+      "end_offset": 1039
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "Since the graph I(c, tG) has indegree 1, the algorithm by Tarjan (1972) can then be used to find and count the cycles in O(n) time.",
+      "section_id": "sec_5",
+      "start_offset": 3258,
+      "end_offset": 3389
+    },
+    {
+      "reference_id": "ref_3",
+      "marker": null,
+      "sentence": "Thanks to this, we can can generate one such sequence by just applying the original Covington (2001) criteria (choose an arc transition whenever the focus words are linked in I(c, tG), and otherwise Shift or No-Arc depending on whether the left focus word is the first word in the sentence or not), although this sequence is not necessarily optimal in terms of loss.",
+      "section_id": "sec_7",
+      "start_offset": 3222,
+      "end_offset": 3588
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "Therefore, the computation of the non-monotonic terms nc(A ∪ I(c, tG)) and npc(A ∪ I(c, tG)) requires an algorithm such as the one by Johnson (1975) to find all elementary cycles in a directed graph.",
+      "section_id": "sec_7",
+      "start_offset": 8628,
+      "end_offset": 8827
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "Due to the time complexity of this process, we undertake the analysis of only the first 100,000 transitions on each dataset of the nineteen languages available from CoNLL-X and CoNLL-XI shared tasks (Buchholz and Marsi, 2006; Nivre et al., 2007).",
+      "section_id": "sec_8",
+      "start_offset": 2581,
+      "end_offset": 2827
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "Due to the time complexity of this process, we undertake the analysis of only the first 100,000 transitions on each dataset of the nineteen languages available from CoNLL-X and CoNLL-XI shared tasks (Buchholz and Marsi, 2006; Nivre et al., 2007).",
+      "section_id": "sec_8",
+      "start_offset": 2581,
+      "end_offset": 2827
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "To prove the usefulness of our approach, we implement the static, dynamic monotonic and nonmonotonic oracles for the non-projective Covington algorithm and compare their accuracies on nine datasets from the CoNLL-X shared task (Buchholz and Marsi, 2006) and all datasets from the CoNLL-XI shared task (Nivre et al.",
+      "section_id": "sec_9",
+      "start_offset": 0,
+      "end_offset": 314
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "To prove the usefulness of our approach, we implement the static, dynamic monotonic and nonmonotonic oracles for the non-projective Covington algorithm and compare their accuracies on nine datasets from the CoNLL-X shared task (Buchholz and Marsi, 2006) and all datasets from the CoNLL-XI shared task (Nivre et al., 2007).",
+      "section_id": "sec_9",
+      "start_offset": 0,
+      "end_offset": 322
+    },
+    {
+      "reference_id": "ref_19",
+      "marker": null,
+      "sentence": "05 level (Yeh, 2000).",
+      "section_id": "sec_9",
+      "start_offset": 1086,
+      "end_offset": 1107
+    },
+    {
+      "reference_id": "ref_2",
+      "marker": null,
+      "sentence": "While we used a perceptron classifier for our experiments, our oracle could also be used in neuralnetwork implementations of greedy transitionbased parsing (Chen and Manning, 2014; Dyer et al., 2015), providing an interesting avenue for future work.",
+      "section_id": "sec_10",
+      "start_offset": 1205,
+      "end_offset": 1454
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": "While we used a perceptron classifier for our experiments, our oracle could also be used in neuralnetwork implementations of greedy transitionbased parsing (Chen and Manning, 2014; Dyer et al., 2015), providing an interesting avenue for future work.",
+      "section_id": "sec_10",
+      "start_offset": 1205,
+      "end_offset": 1454
+    }
+  ],
+  "figures": [],
+  "hidden_text_findings": [],
+  "hidden_text_checked": false
+}

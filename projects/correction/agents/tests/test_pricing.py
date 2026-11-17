@@ -15,50 +15,55 @@ def test_catalog_covers_all_development_roles_and_extraction() -> None:
     prices = standard_prices(date(2026, 11, 12))
     for spec in MetisSettings(_env_file=None).model_specs.values():
         assert (spec.provider, spec.model_id) in prices
-    assert (Provider.GOOGLE, "gemini-3.6-flash") in prices
-    assert (Provider.GOOGLE, "gemini-2.5-flash") in prices  # registros anteriores
+    assert (Provider.GOOGLE, "gemini-2.5-flash") in prices
+
+
+def test_the_catalog_uses_only_the_three_project_models() -> None:
+    models = {spec.model_id for spec in MetisSettings(_env_file=None).model_specs.values()}
+
+    assert models == {"gemini-2.5-flash", "gpt-5.6-luna", "gpt-5.4-nano"}
 
 
 def test_cache_is_charged_once_at_its_own_rate() -> None:
     assert Pricing().cost(
         Provider.OPENAI,
-        "gpt-5.6-terra",
+        "gpt-5.6-luna",
         input_tokens=100_000,
         output_tokens=1_000,
         cached_tokens=25_000,
-    ) == Decimal("0.167")
+    ) == Decimal("0.0167")
 
 
 def test_cache_writes_use_the_published_multiplier() -> None:
     assert Pricing().cost(
         Provider.OPENAI,
-        "gpt-5.6-terra",
+        "gpt-5.6-luna",
         input_tokens=100,
         output_tokens=10,
         cached_tokens=20,
         cache_write_tokens=40,
-    ) == Decimal("0.000304")
+    ) == Decimal("0.0000304")
 
 
-@pytest.mark.parametrize(("tokens", "expected"), [(272_000, "0.5452"), (272_001, "1.089804")])
+@pytest.mark.parametrize(("tokens", "expected"), [(272_000, "0.05452"), (272_001, "0.1089804")])
 def test_long_context_changes_the_rate_for_the_entire_request(tokens: int, expected: str) -> None:
     assert Pricing().cost(
         Provider.OPENAI,
-        "gpt-5.6-terra",
+        "gpt-5.6-luna",
         input_tokens=tokens,
         output_tokens=100,
         cached_tokens=0,
     ) == Decimal(expected)
 
 
-@pytest.mark.parametrize(("on", "expected"), [(date(2026, 12, 31), "4.5"), (date(2027, 1, 1), "9")])
-def test_google_introductory_price_expires(on: date, expected: str) -> None:
-    assert Pricing(on=on).cost(
-        Provider.GOOGLE,
-        "gemini-3.8-flash",
-        input_tokens=1_000_000,
-        output_tokens=1_000_000,
-        cached_tokens=0,
+@pytest.mark.parametrize(
+    ("model", "expected"), [("gpt-5.4-nano", "1.45"), ("gemini-2.5-flash", "2.8")]
+)
+def test_a_million_tokens_each_way(model: str, expected: str) -> None:
+    provider = Provider.GOOGLE if model.startswith("gemini") else Provider.OPENAI
+
+    assert Pricing().cost(
+        provider, model, input_tokens=1_000_000, output_tokens=1_000_000, cached_tokens=0
     ) == Decimal(expected)
 
 
@@ -90,7 +95,7 @@ def test_an_explicit_empty_table_does_not_fall_back_to_standard_prices() -> None
     assert (
         Pricing({}).cost(
             Provider.GOOGLE,
-            "gemini-3.8-flash",
+            "gemini-2.5-flash",
             input_tokens=0,
             output_tokens=0,
             cached_tokens=0,
@@ -109,7 +114,7 @@ def test_negative_token_counts_are_rejected() -> None:
     with pytest.raises(ValueError, match="negativas"):
         Pricing().cost(
             Provider.GOOGLE,
-            "gemini-3.8-flash",
+            "gemini-2.5-flash",
             input_tokens=-1,
             output_tokens=0,
             cached_tokens=0,

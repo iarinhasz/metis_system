@@ -1,12 +1,14 @@
 # Metis: plano completo do projeto
 
-**Situação revisada em 13/11/2026 (base `32ff4e6`):** plataforma, E1, E2,
-curadoria e Questions iniciais, E5, rubric check, custo no admin e base de evals
-implementados. **E3 e E4 ainda são stubs**. E5 sem rodadas julgadas de A/B/C
-retorna `waiting_setup`. `ExtractedDocument`, texto oculto, recortes, A/B,
-benchmarks de avaliação/integridade e retenção completa continuam pendentes.
+**Situação revisada em 16/11/2026 (base `13bf6d1`):** plataforma, E1, E2,
+curadoria e Questions iniciais, E4 (3.1–3.10), E5, rubric check, custo no admin e base de evals
+implementados. O E3 roda enxuto desde 15/11 (texto oculto, regras de risco e gate humano); a trilha de Integridade entregou o `scholarly/` (4.1), o corpus (4.3) e o MinHash (4.5), ainda fora do E3. **Com modelos reais, o E4 ainda não fecha as rodadas** (ver a 3.10): o ICLR 410 passa pelo E1, E2 e E3 e termina no E4 em `error_llm`. Recortes, A/B,
+benchmarks de avaliação/integridade e as checagens das referências (5.1–5.3) continuam pendentes.
 O código fica em `projects/correction/`. O [estado do módulo e as metas revistas](../../../docs/status_and_metrics.md)
 registram números, condições e evidências sem declarar os marcos completos.
+Conferido em 16/11: a CI inteira (756 testes), os 5 testes com o Gemini e a OpenAI de verdade e, no Docker, um run limpo até o E5 e um PDF com instrução escondida parando no gate e seguindo depois do "continuar".
+
+**Objetivo daqui em diante (15/11):** o pipeline completo, para comparar as nossas avaliações com as reais do PeerRead (notas por critério do ACL 2017, decisão e revisões do ICLR 2017): se a nota acompanha a dos revisores, se a IA é rígida demais e que pontos ela não viu. Para isso, a Plataforma fecha a trilha com as dependências: a 1.7 e o E3 enxuto, sem plágio (feitos em 15/11). A trilha de Avaliação fez o contrato `ExtractedDocument` (1.1 e 1.11) e o E4 (3.1–3.10, em 16/11); falta o E4 fechar as rodadas com modelos reais. A retenção (Q7) saiu do escopo. Os modelos são só `gemini-2.5-flash`, `gpt-5.6-luna` e `gpt-5.4-nano` (Q1).
 
 **Data original:** 05/11/2026
 **Base:** o desenho de 25/10 ([1_desenho_inicial](../../2026-10_october/1_desenho_inicial/00_sumario.md)) e os [docs/](../../../docs/README.md)

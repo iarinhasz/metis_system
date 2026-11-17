@@ -82,6 +82,21 @@ class RunResponse(Schema):
         )
 
 
+class IntegrityFindingResponse(Schema):
+    kind: str
+    severity: str
+    message: str
+    evidence: dict[str, Any]
+
+
+class IntegrityResponse(Schema):
+    run_id: str
+    risk: str
+    rules_version: str
+    coverage: dict[str, bool]
+    findings: list[IntegrityFindingResponse]
+
+
 class DecisionRequest(Schema):
     decision: HumanDecision
     note: str = Field(default="", max_length=2000)

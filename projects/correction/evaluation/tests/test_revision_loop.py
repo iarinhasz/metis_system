@@ -33,7 +33,6 @@ from projects.correction.evaluation.revision import (
     no_pending_items,
 )
 from projects.correction.evaluation.tests.test_context import _context_run
-from projects.correction.pipeline.errors import InvalidEvaluationOutput
 
 
 def _context() -> EvaluationContext:
@@ -271,8 +270,7 @@ def test_rebut_rejects_evidence_not_in_document() -> None:
     }
     step, checkpoints, _, _ = _step(response)
 
-    with pytest.raises(InvalidEvaluationOutput, match="não foi localizada"):
-        step.execute()
+    step.execute()  # a réplica é recusada, e o item segue para unresolved depois do limite
 
     assert checkpoints.current_state is not None
     assert checkpoints.current_state.revisions == ()
@@ -317,16 +315,18 @@ def test_mark_unresolved_leaves_a_clean_first_round_unchanged() -> None:
     assert checkpoints.current_state.unresolved == ()
 
 
-def test_revision_step_rejects_wrong_target_and_missing_replacement() -> None:
-    mismatched = _accepted_observation() | {"item_key": "other"}
-    step, _, _, _ = _step(mismatched)
-    with pytest.raises(InvalidEvaluationOutput, match="cita outro item"):
+def test_revision_step_leaves_the_item_rejected_on_wrong_target_or_missing_replacement() -> None:
+    for response in (
+        _accepted_observation() | {"item_key": "other"},
+        _accepted_observation() | {"replacement": None},
+    ):
+        step, checkpoints, _, _ = _step(response)
         step.execute()
 
-    missing_replacement = _accepted_observation() | {"replacement": None}
-    step, _, _, _ = _step(missing_replacement)
-    with pytest.raises(InvalidEvaluationOutput, match="precisa trazer o item corrigido"):
-        step.execute()
+        assert checkpoints.current_state is not None
+        assert checkpoints.current_state.revisions == ()
+        assert checkpoints.current_state.changed_items == ()
+        assert checkpoints.current_state.observations == _state().observations
 
 
 @pytest.mark.django_db

@@ -7,7 +7,7 @@ abaixo incluem itens **planejados**. Eles não são prova de execução. Na base
 `32ff4e6`, a última validação registrada teve 654 testes passando, 5 `llm`
 excluídos, mypy em 237 arquivos e Ruff em 239, sem migrações pendentes. Essa
 validação pertence à 6.1; a revisão de docs 6.4 não reexecuta a suíte.
-E3/E4 ainda são stubs e I3–I6 não estão comprovados ponta a ponta.
+O E3 roda enxuto e o E4 está ligado (3.10), mas I3–I6 ainda não estão comprovados ponta a ponta.
 Veja [resultados, limites e metas revistas](../../../docs/status_and_metrics.md).
 
 ## Princípios (resumo)
@@ -60,7 +60,11 @@ A [verificação manual do M0](../../2026-10_october/1_desenho_inicial/05_testes
 4. No admin, os `LLMCall` têm tokens e custo.
 5. Reenviar o primeiro como novo run da mesma attempt: a extração é reaproveitada, sem chamada ao modelo (`reused: true` no evento do E1).
 
+**Situação (15/11/2026, `dev` em `42a16ca`):** os passos 1, 4 e 5 passam. O ICLR 410 chega a `extracted` (19 seções, 42 referências, 13 figuras descritas), com as 37 chamadas do E1 em `LLMCall`, com tokens e custo (US$ 0,12), e o mesmo PDF enviado como outro artigo reaproveita a extração sem chamar o modelo. Um PDF sem abstract é rejeitado antes das chamadas por seção (coberto em `extractor/tests/test_service.py`). Ficam abertos o texto oculto (1.7) e o recorte das figuras (adiado na 1.6), e por isso o I2 ainda não fecha.
+
 ### I3 — Avaliação real
+
+**Situação (16/11/2026):** em aberto. Com a 3.10, o ICLR 410 passa pelo E1, E2 e E3 (risco baixo) e termina no E4 em `error_llm`: as respostas dos modelos reais não passam em algumas validações do E4 (síntese, checagem entre seções e retomada; ver a 3.10).
 
 1. Enviar um PDF real com o E3 ainda *pass-through*.
 2. Acompanhar até `done`: o run tem `profile`, `question`, 3 `ReviewRound` na rodada 1, os `JudgeVerdict` e o `FinalReport`.
@@ -69,6 +73,8 @@ A [verificação manual do M0](../../2026-10_october/1_desenho_inicial/05_testes
 5. Conferir o tempo do E4 contra o soft limit e o custo total do run.
 
 ### I4 — Integridade, Fase 1
+
+**Situação (15/11/2026):** como o plágio saiu do escopo, o I4 passa a ser conferido com texto oculto: o ICLR 410 com instruções plantadas parou em `waiting_human_review`, o achado aparece no admin e em `GET /integrity`, e "continuar" pela API levou o run adiante, com a nota no `RunEvent`. Os passos abaixo, de plágio, ficam como desenho.
 
 1. Enviar um PDF com um parágrafo copiado de um artigo do corpus, sem citar.
 2. O run para em `waiting_human_review`; no admin, o achado mostra os dois trechos lado a lado.

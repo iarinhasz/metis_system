@@ -4,7 +4,7 @@
 
 O Metis roda num único projeto Django, com workers Celery separados por tipo de
 trabalho. O desenho abaixo inclui componentes planejados.
-Na revisão de 16/11/2026, E1, E2, E4 e E5 estão implementados; **E3 é stub**.
+Na revisão de 16/11/2026, E1, E2, E4 e E5 estão implementados, e o E3 roda enxuto (texto oculto, regras de risco e gate humano); o corpus e o MinHash do plágio existem, mas ainda não entram no E3.
 E5 retorna `waiting_setup` se não houver rodadas completas. Consulte [estado e métricas](status_and_metrics.md)
 para evidências, limites e critérios de fechamento dos marcos.
 
@@ -107,7 +107,7 @@ As decisões e as alternativas descartadas estão em [planning/…/1_desenho_ini
 | Tema | Decisão |
 |---|---|
 | Stack | Django 6 + Ninja, Celery + Redis, Postgres 18 + pgvector, Agno 3.x |
-| Extração | Gemini pelo Agno, conferido contra pypdf. GROBID descartado em 11/11. Figuras e descrições implementadas; recortes e texto oculto pendentes |
+| Extração | Gemini pelo Agno, conferido contra pypdf. GROBID descartado em 11/11. Figuras, descrições e texto oculto implementados; recortes pendentes |
 | Questions | Curadas por área da taxonomia OpenAlex, com fallback até uma Question genérica |
 | Avaliadores | 3 slots com mesmo contexto e mesmos critérios: A = GPT, B = Gemini, C = outro modelo de uma das duas famílias, trocável por config. Juiz sempre da outra família |
 | Leitura do artigo (planejada) | Passes por seção, checagens e síntese; decisão depende do A/B com artigo inteiro |
@@ -118,7 +118,7 @@ As decisões e as alternativas descartadas estão em [planning/…/1_desenho_ini
 ## Segurança e confidencialidade
 
 - **O PDF é entrada não confiável.** Upload limitado a 50 MiB por padrão, worker de extração separado e limites de task de 25/30 min. Não há limite de páginas nem timeout separado do pypdf; entram na 6.3.
-- **Prompt injection.** Payloads de agentes marcam o artigo como dado. O scan de texto oculto ainda depende da 1.7; não há detector ativo dessa manipulação.
+- **Prompt injection.** Payloads de agentes marcam o artigo como dado. O E1 procura texto oculto no PDF (1.7) e marca o que parece instrução a um revisor de IA; o E3 transforma isso em risco.
 - **Manuscritos inéditos.** O texto/PDF vai para APIs de LLM; a telemetria do Agno fica desligada. A política local de retenção (Q7) e a conferência das condições dos provedores continuam pendentes.
 - **Arquivos.** PDFs ficam no storage do Django, sem rota pública de mídia; recortes ainda não são produzidos. Relatórios exigem token na API ou permissão no admin.
 - **Acesso.** A API exige token de serviço e nega por padrão o que não tiver política explícita. O admin usa os usuários do Django.

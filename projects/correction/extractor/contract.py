@@ -100,6 +100,15 @@ class DocumentFigure(ContractModel):
     description: DocumentFigureDescription | None = None
 
 
+class HiddenTextFinding(ContractModel):
+    """Texto que o leitor não vê no PDF (1.7). Fica fora do `render_for_llm()`: é conteúdo
+    suspeito, que vai para a integridade, nunca para os avaliadores."""
+
+    page: int = Field(ge=1)
+    text: str = Field(min_length=1)
+    reasons: tuple[Literal["color", "size", "off_page", "instruction"], ...] = Field(min_length=1)
+
+
 class ExtractedDocument(ContractModel):
     """Representação validada do artigo, sem dependência de extrator ou provedor de LLM."""
 
@@ -112,6 +121,9 @@ class ExtractedDocument(ContractModel):
     references: tuple[DocumentReference, ...] = ()
     citation_mentions: tuple[CitationMention, ...] = ()
     figures: tuple[DocumentFigure, ...] = ()
+    hidden_text_findings: tuple[HiddenTextFinding, ...] = ()
+    # False quando a busca não rodou (PDF ilegível ou extração anterior à 1.7).
+    hidden_text_checked: bool = False
 
     @model_validator(mode="after")
     def validate_relations(self) -> ExtractedDocument:

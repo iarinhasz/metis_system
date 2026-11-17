@@ -123,23 +123,25 @@ não aparece no painel por run. Benchmarks usam `MemoryUsageSink` no próprio re
 
 ### Implementação da etapa 1.3
 
-`MetisSettings` traz os nove specs com padrões de desenvolvimento, conforme a decisão da equipe. Todos podem ser substituídos pelo ambiente; o catálogo é validado na subida, inclusive famílias dos avaliadores A/B e dos juízes, parâmetros de geração, concorrência e timeout menor que o soft limit. Uma configuração explícita nula ou inválida falha antes de construir clientes. As chaves são exigidas somente quando um cliente real é construído.
+`MetisSettings` traz os nove specs com os padrões do projeto, conforme a decisão da equipe. Todos podem ser substituídos pelo ambiente; o catálogo é validado na subida, inclusive famílias dos avaliadores A/B e dos juízes, parâmetros de geração, concorrência e timeout menor que o soft limit. Uma configuração explícita nula ou inválida falha antes de construir clientes. As chaves são exigidas somente quando um cliente real é construído.
 
-| Papéis | Modelo padrão de desenvolvimento |
+**Decidido em 15/11/2026 (Q1):** o projeto usa só três modelos, `gemini-2.5-flash`, `gpt-5.6-luna` e `gpt-5.4-nano`. Um teste (`test_pricing.py`) falha se o catálogo usar outro.
+
+| Papéis | Modelo |
 |---|---|
-| `evaluator_a`, `judge_openai`, `meta_reviewer` | `gpt-5.6-terra` |
-| `evaluator_c` | `gpt-5.6-luna` |
-| `evaluator_b`, `judge_google`, `adjudicator` | `gemini-3.8-flash` |
-| `vision`, `fast` | `gemini-3.5-flash-lite` |
+| `evaluator_a`, `judge_openai`, `meta_reviewer` | `gpt-5.6-luna` |
+| `evaluator_c` (outro tamanho e geração da OpenAI) | `gpt-5.4-nano` |
+| `evaluator_b`, `judge_google`, `adjudicator`, `vision`, `fast` | `gemini-2.5-flash` |
+| E1 (`DocumentConfig`) | `gemini-2.5-flash` |
 
-Os IDs e o suporte a saídas estruturadas foram conferidos na documentação oficial de [GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna), [Gemini 3.8 Flash](https://aistudio.google.com/docs/models/gemini-3.8-flash) e [Gemini 3.5 Flash-Lite](https://aistudio.google.com/docs/models/gemini-3.5-flash-lite). São padrões configuráveis, sem calibração ou chamada real nesta etapa; o acesso depende da conta. A escolha de produção continua na Q1. O E1 mantém o modelo já configurado na `DocumentConfig`.
+Os IDs e o suporte a saídas estruturadas foram conferidos na documentação oficial de [GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna), [GPT-5.4 nano](https://developers.openai.com/api/docs/models/gpt-5.4-nano) e [Gemini 2.5 Flash](https://ai.google.dev/gemini-api/docs/models), e os três responderam a uma chamada real com saída estruturada em 15/11/2026. O `gpt-5.4-nano` já está marcado como *deprecated* pela OpenAI, com desligamento anunciado para 01/04/2027 ([deprecações](https://developers.openai.com/docs/deprecations)). Os papéis continuam substituíveis pelo ambiente.
 
 Exemplos de substituição no `.env`:
 
 ```dotenv
-METIS_EVALUATOR_A__MODEL_ID=gpt-5.6-terra
+METIS_EVALUATOR_A__MODEL_ID=gpt-5.6-luna
 METIS_FAST__TIMEOUT_SECONDS=60
-METIS_EVALUATOR_C={"provider":"google","family":"gemini","model_id":"gemini-3.5-flash-lite"}
+METIS_EVALUATOR_C={"provider":"openai","family":"gpt","model_id":"gpt-5.4-nano"}
 METIS_LLM_MAX_CONCURRENCY=4
 METIS_EVALUATION_MODE=whole_document
 ```
@@ -432,22 +434,17 @@ E5. Sem as entradas necessárias para montar o contexto, o estágio vai para
 
 ### Tarifas iniciais
 
-Tarifas **Standard pagas**, USD por milhão de tokens, conferidas em **12/11/2026**, para os modelos do catálogo e da extração:
+Tarifas **Standard pagas**, USD por milhão de tokens, conferidas em **15/11/2026**, para os três modelos do projeto:
 
 | Provedor/modelo | Entrada | Saída | Leitura de cache |
 |---|---:|---:|---:|
-| OpenAI `gpt-5.6-terra` | 2,00 | 12,00 | 0,20 |
 | OpenAI `gpt-5.6-luna` | 0,20 | 1,20 | 0,02 |
-| Google `gemini-3.8-flash`, até 31/12/2026 | 0,75 | 3,75 | 0,075 |
-| Google `gemini-3.8-flash`, a partir de 01/01/2027 | 1,50 | 7,50 | 0,15 |
-| Google `gemini-3.6-flash`, até 31/12/2026 | 0,75 | 3,75 | 0,075 |
-| Google `gemini-3.6-flash`, a partir de 01/01/2027 | 1,50 | 7,50 | 0,15 |
-| Google `gemini-3.5-flash-lite` | 0,30 | 2,50 | 0,03 |
-| Google `gemini-2.5-flash` (histórico) | 0,30 | 2,50 | 0,03 |
+| OpenAI `gpt-5.4-nano` | 0,20 | 1,25 | 0,02 |
+| Google `gemini-2.5-flash` | 0,30 | 2,50 | 0,03 |
 
-Fontes: [OpenAI Docs — GPT-5.6 Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra), [OpenAI Docs — GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna) e [preços oficiais da Gemini API](https://ai.google.dev/gemini-api/docs/pricing).
+Fontes: [OpenAI Docs — GPT-5.6 Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna), [OpenAI Docs — GPT-5.4 nano](https://developers.openai.com/api/docs/models/gpt-5.4-nano) e [preços oficiais da Gemini API](https://ai.google.dev/gemini-api/docs/pricing).
 
-Nos dois modelos OpenAI, acima de 272.000 tokens de entrada, aplicam-se 2× à entrada e 1,5× à saída do pedido inteiro; escritas de cache custam 1,25× a entrada comum. As tarifas promocionais dos modelos Gemini 3.8 e 3.6 são escolhidas pela data UTC da chamada e mudam em janeiro, inclusive num processo já em execução. O preço de `gemini-2.5-flash` fica cadastrado para calcular chamadas históricas.
+No `gpt-5.6-luna`, acima de 272.000 tokens de entrada, aplicam-se 2× à entrada e 1,5× à saída do pedido inteiro, e escritas de cache custam 1,25× a entrada comum. O `gpt-5.4-nano` aceita no máximo 272.000 tokens de entrada, então não tem essa faixa.
 
 O cálculo subtrai da entrada comum os tokens lidos e escritos no cache, sem cobrá-los duas vezes. O Agno 3.1.12 separa `thoughts_token_count` da saída do Gemini: o runner soma o raciocínio à saída faturável e o guarda também em `reasoning_tokens`. No OpenAI, o raciocínio já faz parte da saída e não é somado de novo. O valor final usa `Decimal` e 12 casas, com arredondamento `ROUND_HALF_UP`, e fica congelado no registro.
 
@@ -496,7 +493,7 @@ preservam as casas decimais necessárias, até as 12 registradas.
 | O quê | Como |
 |---|---|
 | Executors e workflows | `FakeAgentFactory` com roteiro por papel; banco real; Celery eager |
-| Loop do juiz (planejado) | Fakes já oferecem roteiros; integração do loop depende de E4/3.9–3.10 |
+| Loop do juiz | Fakes com roteiros por papel; o loop de revisão roda no workflow do E4 (3.9–3.10) |
 | Idempotência | Rodar o mesmo workflow duas vezes: a segunda não chama nenhum agente |
 | Concorrência | `bounded_map` com `transaction=True`: nenhuma conexão sobra aberta; o limiter nunca passa do limite |
 | Fronteira | `test_import_boundaries.py` |

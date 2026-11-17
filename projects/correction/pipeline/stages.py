@@ -26,6 +26,8 @@ from projects.correction.evaluation.workflow import run_consolidation, run_evalu
 from projects.correction.extractor.attempt_extraction import extract_attempt, extraction_payload
 from projects.correction.extractor.config import DocumentConfig
 from projects.correction.extractor.session import AgnoSession, DocumentSession
+from projects.correction.integrity.findings import Severity
+from projects.correction.integrity.workflow import run_integrity
 from projects.correction.metis.config import settings
 from projects.correction.pipeline.errors import SetupRequired, StageError, TransientStageError
 from projects.correction.pipeline.publishing import publish_checkpoint_stage
@@ -193,8 +195,9 @@ class IntegrityStage(StageTask):
     stage = Stage.INTEGRITY
 
     def execute(self, ctx: StageContext) -> StageOutcome:
-        # Stub até o M4: o risco é sempre baixo e o run segue sem passar pelo gate.
-        return StageOutcome(payload={"risk": "low"})
+        outcome = run_integrity(ctx.run_id, ctx.task_id)
+        # Risco alto para o run no gate humano (waiting_human_review).
+        return StageOutcome(payload=outcome.payload(), halt=outcome.risk is Severity.HIGH)
 
 
 class EvaluationStage(StageTask):

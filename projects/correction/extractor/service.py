@@ -3,7 +3,8 @@ paralelo, traz o texto de cada uma, conferido contra o texto do PDF (ver section
 Depois, uma chamada separa a lista de referências em campos (references.py), e o código liga
 as chamadas no texto a ela (citations.py). Por fim, uma chamada lista as figuras e as tabelas
 (figures.py), o código acha as frases que as citam (figure_mentions.py), e uma chamada por
-figura, em paralelo, descreve cada uma (figure_descriptions.py)."""
+figura, em paralelo, descreve cada uma (figure_descriptions.py). O código também procura texto
+escondido no PDF (hidden_text.py)."""
 
 from projects.correction.extractor.article import ExtractedArticle, ExtractedSection
 from projects.correction.extractor.citations import find_citations
@@ -18,6 +19,7 @@ from projects.correction.extractor.errors import (
 from projects.correction.extractor.figure_descriptions import describe_figures
 from projects.correction.extractor.figure_mentions import find_figure_mentions
 from projects.correction.extractor.figures import scan_figures
+from projects.correction.extractor.hidden_text import find_hidden_text
 from projects.correction.extractor.pdf_text import read_pdf_pages
 from projects.correction.extractor.prompts import load_prompt, render_prompt
 from projects.correction.extractor.references import parse_references
@@ -76,6 +78,7 @@ def extract_article(
     figures = scan_figures(session, config, reference)
     figure_mentions = find_figure_mentions(sections, figures)
     figures = describe_figures(session, config, figures, figure_mentions)
+    hidden = find_hidden_text(pdf) if config.scan_hidden_text else None
 
     return ExtractedArticle(
         title=scan.title.strip(),
@@ -87,6 +90,8 @@ def extract_article(
         citations=find_citations(sections, references),
         figures=figures,
         figure_mentions=figure_mentions,
+        hidden_text=hidden or (),
+        hidden_text_checked=hidden is not None,
     )
 
 

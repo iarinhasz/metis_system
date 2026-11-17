@@ -9,6 +9,8 @@ from ninja.files import UploadedFile
 
 from projects.correction.attempts.api.schemas import (
     DecisionRequest,
+    IntegrityFindingResponse,
+    IntegrityResponse,
     RunResponse,
     SubmissionResponse,
 )
@@ -16,6 +18,7 @@ from projects.correction.attempts.models import Run
 from projects.correction.attempts.status import RunStatus
 from projects.correction.attempts.uploads import InvalidUpload
 from projects.correction.evaluation.report import ReportContent
+from projects.correction.integrity.models import IntegrityReport
 from projects.correction.metis.authentication import ServiceBearerAuth
 from projects.correction.pipeline.services import decide_run, submit_attempt
 from projects.correction.queries.attempts.run import RunConflict
@@ -53,6 +56,33 @@ def get_report(
             },
         )
     return ReportContent.model_validate(report.content)
+
+
+@router.get(
+    "/runs/{run_id}/integrity",
+    response={200: IntegrityResponse, 404: dict[str, str], 409: dict[str, str]},
+)
+def get_integrity(
+    request: HttpRequest, response: HttpResponse, run_id: UUID
+) -> IntegrityResponse | Status[dict[str, str]]:
+    """Os achados do E3, com a evidência; antes do E3 rodar, 409."""
+    del request
+    response.headers["Cache-Control"] = "private, no-store"
+    if Run.public_report_state(run_id) is None:
+        return RUN_NOT_FOUND
+    report = IntegrityReport.for_run(run_id)
+    if report is None:
+        return Status(409, {"detail": "A checagem de integridade ainda não rodou."})
+    return IntegrityResponse(
+        run_id=str(run_id),
+        risk=report.risk,
+        rules_version=report.rules_version,
+        coverage=report.coverage,
+        findings=[
+            IntegrityFindingResponse(**finding.model_dump(mode="json"))
+            for finding in IntegrityReport.findings_for(run_id)
+        ],
+    )
 
 
 @router.post(

@@ -40,7 +40,7 @@ def model(
 ) -> OpenAIChat | Gemini:
     if provider == "openai":
         return OpenAIChat(
-            id=model_id or "gpt-4o-mini",
+            id=model_id or "gpt-5.4-nano",
             api_key=key,
             base_url=f"{url}/v1" if url else None,
             timeout=timeout,
@@ -56,7 +56,7 @@ def model(
     if url:
         http_options["base_url"] = url
     return Gemini(
-        id=model_id or "gemini-3.6-flash",
+        id=model_id or "gemini-2.5-flash",
         api_key=key,
         timeout=timeout,
         client_params={"http_options": http_options},
@@ -84,7 +84,7 @@ def answer(provider: Provider, text: str | None = None) -> Response:
                 "id": "chatcmpl-spike",
                 "object": "chat.completion",
                 "created": 1,
-                "model": "gpt-4o-mini",
+                "model": "gpt-5.4-nano",
                 "choices": [
                     {
                         "index": 0,

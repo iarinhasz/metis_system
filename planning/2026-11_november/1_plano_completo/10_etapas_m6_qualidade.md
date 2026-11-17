@@ -10,6 +10,8 @@ Caminhos relativos a `projects/correction/`.
 
 ## Etapa 6.1 — Evals offline
 
+**Situação (13/11/2026):** a base, da trilha de Agentes, está implementada. Faltam o `bench_reviews` e o `bench_judge` (Avaliação) e os benchmarks de integridade (4.10 e 5.6).
+
 **O que fazer**
 - Pacote `evals/` com os comandos:
   - `bench_reviews`: correlação (Spearman, QWK) com as notas por aspecto do PeerRead e acerto de accept/reject;
@@ -46,6 +48,8 @@ histórico permaneceu intacto; os artefatos locais gerados estão fora do Git.
 
 ## Etapa 6.2 — Custo no admin
 
+**Situação (13/11/2026):** implementada.
+
 **O que fazer**
 - Agregações de `LLMCall` no admin: por run, por estágio, por papel, por modelo e por período.
 - Alerta para run acima do orçamento.
@@ -80,6 +84,10 @@ não apontou problemas e `makemigrations --check --dry-run` não encontrou alter
 ---
 
 ## Etapa 6.4 — Retenção e docs
+
+**Decidido (15/11):** a retenção (Q7) e o comando de limpeza saem do escopo do projeto. A revisão dos docs segue junto de cada etapa.
+
+**Situação (13/11/2026):** a parte de docs da trilha de Agentes está feita. A retenção (Q7) e a revisão final dos docs continuam com a Plataforma.
 
 **Recorte docs do módulo entregue em 13/11/2026:** revisão contra o código de
 `32ff4e6`, identificação do fluxo alvo e da implementação atual, comandos/API,

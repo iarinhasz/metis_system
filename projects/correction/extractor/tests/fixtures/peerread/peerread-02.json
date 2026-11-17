@@ -1,0 +1,1002 @@
+{
+  "contract_version": "1.0",
+  "title": "352.pdf",
+  "authors": [],
+  "language": "en",
+  "abstract": "Neural network models have shown their promising opportunities for multi-task learning, which focus on learning the shared layers to extract the common and task-invariant features. However, in most existing approaches, the extracted shared features are prone to be contaminated by task-specific features or the noise brought by other tasks. In this paper, we propose an adversarial multi-task learning framework, alleviating the shared and private latent feature spaces from interfering with each other. We conduct extensive experiments on 16 different text classification tasks, which demonstrates the benefits of our approach. Besides, we show that the shared knowledge learned by our proposed model can be regarded as off-the-shelf knowledge and easily transferred to new tasks.",
+  "sections": [
+    {
+      "id": "sec_1",
+      "title": "Seção 1",
+      "level": 1,
+      "parent_id": null,
+      "key": "secao_1",
+      "text": "1 000 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 068 069 070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 088 089 090 091 092 093 094 095 096 097 098 099",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_2",
+      "title": "1 Introduction",
+      "level": 1,
+      "parent_id": null,
+      "key": "1_introduction",
+      "text": "Multi-task learning is an effective approach to improve the performance of a single task with the help of other related tasks. Recently, neuralbased models for multi-task learning have become very popular, ranging from computer vision (Misra et al., 2016; Zhang et al., 2014) to natural language processing (Collobert and Weston, 2008; Luong et al., 2015), since they provide a convenient way of combining information frommultiple tasks. However, most existing work on multi-task learning attempts to divide the features of different tasks into private and shared spaces, merely based on whether parameters of some components should be shared. As shown in Figure 1- (a), the general shared-private model introduces two feature spaces for any task: one is used to store task-dependent features, the other is used to capture shared features. The major limitation of this framework is that the shared feature space could contain some unnecessary task-specific features, while some sharable features could also be mixed in private space, suffering from feature redundancy. Taking the following two sentences as examples, which are extracted from two different sentiment classification tasks: Movie reviews and Baby products reviews. The infantile cart is simple and easy to use. This kind of humour is infantile and boring. The word “infantile” indicates negative sentiment in Movie task while it is neutral in Baby task. However, the general shared-private model could place the task-specific word “infantile” in a shared space, leaving potential hazards for other tasks. Additionally, the capacity of shared space could also be wasted by some unnecessary features. To address this problem, in this paper we propose an adversarial multi-task framework, in which the shared and private feature spaces are inherently disjoint by introducing orthogonality constraints. Specifically, we design a generic sharedprivate learning framework to model the text se- 2 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 quence. To prevent the shared and private latent feature spaces from interfering with each other, we introduce two strategies: adversarial training and orthogonality constraints. The adversarial training is used to ensure that the shared feature space simply contains common and task-invariant information, while the orthogonality constraint is used to eliminate redundant features from the private and shared spaces. The contributions of this paper can be summarized as follows. 1. Proposed model divides the task-specific and shared space in a more precise way, rather than roughly sharing parameters. 2. We extend the original binary adversarial training to multi-class, which not only enables multiple tasks to be jointly trained, but allows us to utilize unlabeled data. 3. We can condense the shared knowledge among multiple tasks into an off-the-shelf neural layer, which can be easily transferred to new tasks.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_3",
+      "title": "2 Recurrent Models for Text Classification",
+      "level": 1,
+      "parent_id": null,
+      "key": "2_recurrent_models_for_text_classification",
+      "text": "There are many neural sentence models, which can be used for text modelling, involving recurrent neural networks (Sutskever et al., 2014; Chung et al., 2014), convolutional neural networks (Collobert et al., 2011; Kalchbrenner et al., 2014), and recursive neural networks (Socher et al., 2013). Here we adopt recurrent neural network with long short-term memory (LSTM) due to their superior performance in various NLP tasks. Long Short-term Memory Long short-term memory network (LSTM) (Hochreiter and Schmidhuber, 1997) is a type of recurrent neural network (RNN) (Elman, 1990), and specifically addresses the issue of learning long-term dependencies. While there are numerous LSTM variants, here we use the LSTM architecture used by (Jozefowicz et al., 2015), which is similar to the architecture of (Graves, 2013) but without peep-hole connections. We define the LSTM units at each time step t to be a collection of vectors in Rd: an input gate it, a forget gate ft, an output gate ot, a memory cell ct and a hidden state ht. d is the number of the LSTM units. The elements of the gating vectors it, ft and ot are in [0, 1]. The LSTM is precisely specified as follows. c̃t ot it ft = tanh σ σ σ (Wp [ xtht−1 ] + bp ) , (1) ct = c̃t ⊙ it + ct−1 ⊙ ft, (2) ht = ot ⊙ tanh (ct) , (3) where xt ∈ Re is the input at the current time step; Wp ∈ R4d×(d+e) and bp ∈ R4d are parameters of affine transformation; σ denotes the logistic sigmoid function and ⊙ denotes elementwise multiplication. The update of each LSTM unit can be written precisely as follows: ht = LSTM(ht−1,xt, θp). (4) Here, the function LSTM(·, ·, ·, ·) is a shorthand for Eq. (1-3), and θp represents all the parameters of LSTM. Text Classification with LSTM Given a text sequence x = {x1, x2, · · · , xT }, we first use a lookup layer to get the vector representation (embeddings) xi of the each word xi. The output at the last moment hT can be regarded as the representation of the whole sequence, which has a fully connected layer followed by a softmax non-linear layer that predicts the probability distribution over classes. ŷ = softmax(WhT + b) (5) where ŷ is prediction probabilities, W is the weight which needs to be learned, b is a bias term. Given a corpus with N training samples (xi, yi), the parameters of the network are trained to minimise the cross-entropy of the predicted and true distributions. L(ŷ, y) = − N∑ i=1 C∑ j=1 yji log(ŷ j i ), (6) where yji is the ground-truth label; ŷ j i is prediction probabilities, and C is the class number.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_4",
+      "title": "3 Multi-task Learning for Text Classification",
+      "level": 1,
+      "parent_id": null,
+      "key": "3_multi_task_learning_for_text_classification",
+      "text": "The goal of multi-task learning is to utilizes the correlation among these related tasks to improve 3 201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 softmax Lmtask LSTM softmax Lntask xm xn (a) Fully Shared Model (FS-MTL) xm xn LSTM LSTM LSTM softmax softmax Lmtask Lntask (b) Shared-Private Model (SP-MTL) Figure 2: Two architectures for learning multiple tasks. Yellow and gray boxes represent shared and private LSTM layers respectively. classification by learning tasks in parallel. To facilitate this, we give some explanation for notations used in this paper. Formally, we refer to Dk as a dataset with Nk samples for task k. Specifically, Dk = {(xki , yki )} Nk i=1 (7) where xki and y k i denote a sentence and corresponding label for task k.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_5",
+      "title": "3.1 Two Sharing Schemes for Sentence Modeling",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_1_two_sharing_schemes_for_sentence_modeling",
+      "text": "The key factor of multi-task learning is the sharing scheme in latent feature space. In neural network based model, the latent features can be regarded as the states of hidden neurons. Specific to text classification, the latent features are the hidden states of LSTM at the end of a sentence. Therefore, the sharing schemes are different in how to group the shared features. Here, we first introduce two sharing schemes with multi-task learning: fully-shared scheme and shared-private scheme. Fully-SharedModel (FS-MTL) In fully-shared model, we use a single shared LSTM layer to extract features for all the tasks. For example, given two tasks m and n, it takes the view that the features of taskm can be totally shared by task n and vice versa. This model ignores the fact that some features are task-dependent. Figure 2a illustrates the fully-shared model. Shared-Private Model (SP-MTL) As shown in Figure 2b, the shared-private model introduces two feature spaces for each task: one is used to store task-dependent features, the other is used to capture task-invariant features. Accordingly, we can see each task is assigned a private LSTM layer and shared LSTM layer. Formally, for any sentence in task k, we can compute its shared representation skt and task-specific representation h k t as follows: skt = LSTM(xt, s k t−1, θs), (8) hkt = LSTM(xt,h m t−1, θk) (9) where LSTM(., θ) is defined as Eq. (4). The final features are concatenation of the features from private space and shared space.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_6",
+      "title": "3.2 Task-Specific Output Layer",
+      "level": 2,
+      "parent_id": "sec_4",
+      "key": "3_2_task_specific_output_layer",
+      "text": "For a sentence in task k, its feature h(k), emitted by the deep muti-task architectures, is ultimately fed into the corresponding task-specific softmax layer for classification or other tasks. The parameters of the network are trained to minimise the cross-entropy of the predicted and true distributions on all the tasks. The loss Ltask can be computed as: LTask = K∑ k=1 αkL(ŷ (k), y(k)) (10) where αk is the weights for each task k respectively. L(ŷ, y) is defined as Eq. 6.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_7",
+      "title": "4 Incorporating Adversarial Training",
+      "level": 1,
+      "parent_id": null,
+      "key": "4_incorporating_adversarial_training",
+      "text": "Although the shared-private model separates the feature space into the shared and private spaces, there is no guarantee that sharable features can not exist in private feature space, or vice versa. Thus, some useful sharable features could be ignored in shared-private model, and the shared feature space is also vulnerable to contamination by some taskspecific information. Therefore, a simple principle can be applied into multi-task learning that a good shared feature space should contain more common information and no task-specific information. To address this problem, we introduce adversarial training into multi-task framework as shown in Figure 3 (ASPMTL).",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_8",
+      "title": "4.1 Adversarial Network",
+      "level": 2,
+      "parent_id": "sec_7",
+      "key": "4_1_adversarial_network",
+      "text": "Adversarial networks have recently surfaced and are first used for generative model (Goodfellow 4 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 xm xn LSTM LSTM LSTM LDiff LAdvLDiff softmax softmax Lmtask Lntask Figure 3: Adversarial shared-private model. Yellow and gray boxes represent shared and private LSTM layers respectively. et al., 2014). The goal is to learn a generative distribution pG(x) that matches the real data distribution Pdata(x) Specifically, GAN learns a generative network G and discriminative model D, in which G generates samples from the generator distribution pG(x). and D learns to determine whether a sample is from pG(x) or Pdata(x). This min-max game can be optimized by the following risk: ϕ = min G max D ( Ex∼Pdata [logD(x)] + Ez∼p(z)[log(1−D(G(z)))] ) (11) While originally proposed for generating random samples, adversarial network can be used as a general tool to measure equivalence between distributions (Taigman et al., 2016). Formally, (Ajakan et al., 2014) linked the adversarial loss to the H-divergence between two distributions and successfully achieve unsupervised domain adaptation with adversarial network. Motivated by theory on domain adaptation (Ben-David et al., 2010, 2007; Bousmalis et al., 2016) that a transferable feature is one for which an algorithm cannot learn to identify the domain of origin of the input observation.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_9",
+      "title": "4.2 Task Adversarial Loss for MTL",
+      "level": 2,
+      "parent_id": "sec_7",
+      "key": "4_2_task_adversarial_loss_for_mtl",
+      "text": "Inspired by adversarial networks (Goodfellow et al., 2014), we proposed an adversarial sharedprivate model for multi-task learning, in which a shared recurrent neural layer is working adversarially towards a learnable multi-layer perceptron, preventing it from making an accurate prediction about the types of tasks. This adversarial training encourages shared space to be more pure and ensure the shared representation not be contaminated by task-specific features. Task Discriminator Discriminator is used to map the shared representation of sentences into a probability distribution, estimating what kinds of tasks the encoded sentence comes from. D(skT , θD) = softmax(b+Us k T ) (12) whereU ∈ Rd×d is a learnable parameter and b ∈ Rd is a bias. Adversarial Loss Different with most existing multi-task learning algorithm, we add an extra task adversarial loss LAdv to prevent task-specific feature from creeping in to shared space. The task adversarial loss is used to train a model to produce shared features such that a classifier cannot reliably predict the task based on these features. The original loss of adversarial network is limited since it can only be used in binary situation. To overcome this, we extend it to multi-class form, which allow our model can be trained together with multiple tasks: LAdv = min θs ( λmax θD ( K∑ k=1 Nk∑ i=1 dki log[D(E(x k))]) ) (13) where dki denotes the ground-truth label indicating the type of the current task. Here, there is a minmax optimization and the basic idea is that, given a sentence, the shared LSTM generates a representation to mislead the task discriminator. At the same time, the discriminator tries its best to make a correct classification on the type of task. After the training phase, the shared feature extractor and task discriminator reach a point at which both cannot improve and the discriminator is unable to differentiate among all the tasks. Semi-supervised Learning Multi-task Learning We notice that the LAdv requires only the input sentence x and does not require the corresponding label y, which makes it possible to combine our model with semi-supervised learning. Finally, in this semi-supervised multi-task learning framework, our model can not only utilize the data from related tasks, but can employ abundant unlabeled corpora.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_10",
+      "title": "4.3 Orthogonality Constraints",
+      "level": 2,
+      "parent_id": "sec_7",
+      "key": "4_3_orthogonality_constraints",
+      "text": "We notice that there is a potential drawback of the above model. That is, the task-invariant features can appear both in shared space and private space. Motivated by recently work(Jia et al., 2010; Salzmann et al., 2010; Bousmalis et al., 2016) 5 401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 419 420 421 422 423 424 425 426 427 428 429 430 431 432 433 434 435 436 437 438 439 440 441 442 443 444 445 446 447 448 449 450 451 452 453 454 455 456 457 458 459 460 461 462 463 464 465 466 467 468 469 470 471 472 473 474 475 476 477 478 479 480 481 482 483 484 485 486 487 488 489 490 491 492 493 494 495 496 497 498 499 Dataset Train Dev. Test Unlab. Avg. L Vocab. Books 1400 200 400 2000 159 62K Elec. 1398 200 400 2000 101 30K DVD 1400 200 400 2000 173 69K Kitchen 1400 200 400 2000 89 28K Apparel 1400 200 400 2000 57 21K Camera 1397 200 400 2000 130 26K Health 1400 200 400 2000 81 26K Music 1400 200 400 2000 136 60K Toys 1400 200 400 2000 90 28K Video 1400 200 400 2000 156 57K Baby 1300 200 400 2000 104 26K Mag. 1370 200 400 2000 117 30K Soft. 1315 200 400 2000 129 26K Sports 1400 200 400 2000 94 30K IMDB 1400 200 400 2000 269 44K MR 1400 200 400 2000 21 12K Table 1: Statistics of the 16 datasets. The columns 2-5 denote the number of samples in training, development, test and unlabeled sets. The last two columns represent the average length and vocabulary size of corresponding dataset. on shared-private latent space analysis, we introduce orthogonality constraints, which penalize redundant latent representations and encourages the shared and private extractors to encode different aspects of the inputs. After exploring many optional methods, we find below loss is optimal, which is used by Bousmalis et al. (2016) and achieve a better performance: Ldiff = K∑ k=1 ∥∥∥Sk⊤Hk∥∥∥2 F , (14) where ∥ · ∥2F is the squared Frobenius norm. S k and Hk are two matrics, whose rows are the output of shared extractor Es(, ; θs) and task-specific extrator Ek(, ; θk) of a input sentence.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_11",
+      "title": "4.4 Put It All Together",
+      "level": 2,
+      "parent_id": "sec_7",
+      "key": "4_4_put_it_all_together",
+      "text": "The final loss function of our model can be written as: L = LTask + λLAdv + γLDiff (15) where λ and γ are hyper-parameter. The networks are trained with backpropagation and this minimax optimization becomes possible via the use of a gradient reversal layer (Ganin and Lempitsky, 2015).",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_12",
+      "title": "5 Experiment",
+      "level": 1,
+      "parent_id": null,
+      "key": "5_experiment",
+      "text": "",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_13",
+      "title": "5.1 Dataset",
+      "level": 2,
+      "parent_id": "sec_12",
+      "key": "5_1_dataset",
+      "text": "To make an extensive evaluation, we collect 16 different datasets from several popular review corpora. The first 14 datasets are product reviews, which contain Amazon product reviews from different domains, such as Books, DVDs, Electronics, ect. The goal is to classify a product review as either positive or negative. These datasets are collected based on the raw data 1 provided by (Blitzer et al., 2007). Specifically, we extract the sentences and corresponding labels from the unprocessed original data 2. The only preprocessing operation of these sentences is tokenized using the Stanford tokenizer 3. The remaining two datasets are about movie reviews. The IMDB dataset4 consists of movie reviews with binary classes (Maas et al., 2011). One key aspect of this dataset is that each movie review has several sentences. The MR dataset also consists of movie reviews from rotten tomato website with two classes 5(Pang and Lee, 2005). All the datasets in each task are partitioned randomly into training set, development set and testing set with the proportion of 70%, 20% and 10% respectively. The detailed statistics about all the datasets are listed in Table 1.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_14",
+      "title": "5.2 Competitor Methods for Multi-task Learning",
+      "level": 2,
+      "parent_id": "sec_12",
+      "key": "5_2_competitor_methods_for_multi_task_learning",
+      "text": "The multi-task frameworks proposed by previous works are various while not all can be applied to the tasks we focused. Nevertheless, we chose two most related neural models for multi-task learning and implement them as competitor methods. • MT-CNN: This model is proposed by Collobert and Weston (2008) with convolutional layer, in which lookup-tables are shared partially while other layers are task-specific. 1https://www.cs.jhu.edu/˜mdredze/ datasets/sentiment/ 2Blitzer et al. (2007) also provides two extra processed datasets with the format of Bag-of-Words, which are not proper for neural-based models. 3http://nlp.stanford.edu/software/ tokenizer.shtml 4https://www.cs.jhu.edu/˜mdredze/ datasets/sentiment/unprocessed.tar.gz 5https://www.cs.cornell.edu/people/ pabo/movie-review-data/. 6 501 502 503 504 505 506 507 508 509 510 511 512 513 514 515 516 517 518 519 520 521 522 523 524 525 526 527 528 529 530 531 532 533 534 535 536 537 538 539 540 541 542 543 544 545 546 547 548 549 550 551 552 553 554 555 556 557 558 559 560 561 562 563 564 565 566 567 568 569 570 571 572 573 574 575 576 577 578 579 580 581 582 583 584 585 586 587 588 589 590 591 592 593 594 595 596 597 598 599 Task Single Task Multiple Tasks LSTM BiLSTM sLSTM Avg. MT-DNN MT-CNN FS-MTL SP-MTL ASP-MTL Books 20.5 19.0 18.0 19.2 17.7(−1.5) 15.6(−3.6) 17.5(−1.7) 18.7(−0.5) 13.0(−6.2) Electronics 19.5 21.5 23.3 21.4 18.2(−3.2) 16.9(−4.5) 14.3(−7.1) 12.3(−9.1) 11.0(−10.4) DVD 18.3 19.5 22.0 19.9 15.8(−4.1) 16.1(−3.8) 16.5(−3.4) 16.1(−3.8) 12.6(−7.3) Kitchen 22.0 18.8 19.5 20.1 19.2(−0.9) 16.8(−3.3) 14.0(−6.1) 14.8(−5.3) 12.8(−7.3) Apparel 16.8 14.0 16.3 15.7 14.9(−0.8) 16.1(+0.4) 15.5(−0.2) 13.4(−2.3) 11.3(−4.4) Camera 14.8 14.0 15.0 14.6 13.7(−0.9) 14.0(−0.6) 13.5(−1.1) 12.1(−2.5) 8.7(−5.9) Health 15.5 21.3 16.5 17.8 14.3(−3.5) 12.9(−4.9) 12.0(−5.8) 12.8(−5.0) 10.9(−6.9) Music 23.3 22.8 23.0 23.0 15.3(−7.7) 16.3(−6.7) 18.8(−4.2) 17.0(−6.0) 17.4(−5.6) Toys 16.8 15.3 16.8 16.3 12.1(−4.2) 10.9(−5.4) 15.5(−0.8) 14.9(−1.4) 11.2(−5.1) Video 18.5 16.3 16.3 17.0 15.0(−2.0) 18.7(+1.7) 16.3(−0.7) 16.8(−0.2) 14.5(−2.5) Baby 15.3 16.5 15.8 15.9 12.1(−3.8) 12.4(−3.5) 12.0(−3.9) 13.2(−2.7) 10.2(−5.7) Magazines 10.8 8.5 12.3 10.5 10.6(+0.1) 12.3(+1.8) 7.5(−3.0) 8.1(−2.4) 7.6(−2.9) Software 15.3 14.3 14.5 14.7 14.4(−0.3) 13.4(−1.3) 13.8(−0.9) 13.1(−1.6) 12.7(−2.0) Sports 18.3 16.0 17.5 17.3 16.8(−0.5) 16.1(−1.2) 14.5(−2.8) 12.7(−4.6) 13.3(−4.0) IMDB 18.3 15.0 18.5 17.3 16.7(−0.6) 13.7(−3.6) 17.5(+0.2) 15.2(−2.1) 14.2(−3.1) MR 27.3 25.3 28.0 26.9 24.5(−2.4) 25.5(−1.4) 25.3(−1.6) 24.1(−2.8) 22.7(−4.2) AVG 18.2 17.4 18.3 18.0 15.7(−2.3) 15.5(−2.5) 15.3(−2.7) 14.7(−3.3) 12.8(−5.2) Table 2: Error rates of our models on 16 datasets against typical baselines. The numbers in brackets represent the improvements relative to the average performance (Avg.) of three single task baselines. • MT-DNN: The model is proposed by Liu et al. (2015) with bag-of-words input and multi-layer perceptrons, in which a hidden layer is shared.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_15",
+      "title": "5.3 Hyperparameters",
+      "level": 2,
+      "parent_id": "sec_12",
+      "key": "5_3_hyperparameters",
+      "text": "The word embeddings for all of the models are initialized with the 200d GloVe vectors (840B token version, (Pennington et al., 2014)). The other parameters are initialized by randomly sampling from uniform distribution in [−0.1, 0.1]. The minibatch size is set to 16. For each task, we take the hyperparameters which achieve the best performance on the development set via an small grid search over combinations of the initial learning rate [0.1, 0.01], λ ∈ [0.01, 0.1], and γ ∈ [0.01, 0.1]. Finally, we chose the learning rate as 0.01, λ as 0.05 and γ as 0.01.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_16",
+      "title": "5.4 Performance Evaluation",
+      "level": 2,
+      "parent_id": "sec_12",
+      "key": "5_4_performance_evaluation",
+      "text": "Table 2 shows the error rates on 16 text classification tasks. The column of “Single Task” shows the results of vanilla LSTM, bidirectional LSTM (BiLSTM), stacked LSTM (sLSTM) and the average error rates of previous three models. The column of “Multiple Tasks” shows the results achieved by corresponding multi-task models. From this table, we can see that the performance of most tasks can be improved with a large margin with the help of multi-task learning, in which our model achieves the lowest error rates. More concretely, compared with SP-MTL, ASPMTL achieves 5.2% average improvement surpassing SP-MTL with 1.9%, which indicates the importance of adversarial learning. It is noteworthy that for FS-MTL, the performances of some tasks are degraded, since this model puts all private and shared information into a unified space.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_17",
+      "title": "5.5 Shared Knowledge Transfer",
+      "level": 2,
+      "parent_id": "sec_12",
+      "key": "5_5_shared_knowledge_transfer",
+      "text": "With the help of adversarial learning, the shared feature extractor Es can generate more pure taskinvariant representations, which can be considered as off-the-shelf knowledge and then be used for unseen new tasks. To test the transferability of our learned shared extractor, we also design an experiment, in which we take turns choosing 15 tasks to train our model MS with multi-task learning, then the learned shared layer are transferred to a second network MT that is used for the remaining one task. The parameters of transferred layer are kept frozen, and the rest of parameters of the network MT are randomly initialized. More formally, we investigate two mechanisms towards the transferred shared extractor. As shown in Figure 4. The first one Single Channel (SC) model consists of one shared feature extractor Es from MS , then the extracted representation will be sent to an output layer. By contrast, the BiChannel (BC) model introduces an extra LSTM layer to encode more task-specific information. To evaluate the effectiveness of our introduced adver- 7 601 602 603 604 605 606 607 608 609 610 611 612 613 614 615 616 617 618 619 620 621 622 623 624 625 626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 646 647 648 649 650 651 652 653 654 655 656 657 658 659 660 661 662 663 664 665 666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 686 687 688 689 690 691 692 693 694 695 696 697 698 699 Source Tasks Single Task Transfer Models LSTM BiLSTM sLSTM Avg. SP-MTL-SC SP-MTL-BC ASP-MTL-SC ASP-MTL-BC ϕ (Books) 20.5 19.0 18.0 19.2 17.8(−3.6) 16.2(−3.0) 16.7(−2.5) 13.3(−5.9) ϕ (Electronics) 19.5 21.5 23.3 21.4 15.1(−4.5) 14.6(−6.8) 15.1(−6.3) 14.9(−6.5) ϕ (DVD) 18.3 19.5 22.0 19.9 14.7(−3.8) 15.5(−4.4) 12.1(−7.8) 12.4(−7.5) ϕ (Kitchen) 22.0 18.8 19.5 20.1 15.0(−3.3) 16.6(−3.5) 14.6(−5.5) 14.1(−6.0) ϕ (Apparel) 16.8 14.0 16.3 15.7 14.9(+0.4) 12.3(−3.4) 11.6(−4.1) 13.6(−2.1) ϕ (Camera) 14.8 14.0 15.0 14.6 13.1(−0.6) 12.1(−2.5) 11.6(−3.0) 10.3(−4.3) ϕ (Health) 15.5 21.3 16.5 17.8 14.1(−4.9) 14.2(−3.6) 12.2(−5.6) 10.5(−7.3) ϕ (Music) 23.3 22.8 23.0 23.0 19.9(−6.7) 17.9(−5.1) 16.4(−6.6) 18.2(−4.8) ϕ (Toys) 16.8 15.3 16.8 16.3 13.8(−5.4) 12.2(−4.1) 13.0(−4.7) 11.2(−5.1) ϕ (Video) 18.5 16.3 16.3 17.0 14.2(+1.7) 15.1(−1.9) 14.8(−2.2) 14.8(−2.2) ϕ (Baby) 15.3 16.5 15.8 15.9 16.6(−3.5) 16.9(+1.0) 11.5(−4.4) 10.0(−5.9) ϕ (Magazines) 10.8 8.5 12.3 10.5 10.6(+1.8) 10.2(−0.3) 8.6(−1.9) 9.7(−0.8) ϕ (Software) 15.3 14.3 14.5 14.7 13.0(−1.3) 12.7(−2.0) 14.3(−0.4) 11.1(−3.6) ϕ (Sports) 18.3 16.0 17.5 17.3 16.3(−1.2) 16.2(−1.1) 13.4(−3.9) 13.6(−3.7) ϕ (IMDB) 18.3 15.0 18.5 17.3 12.4(−3.6) 12.8(−4.5) 12.5(−4.8) 13.3(−4.0) ϕ (MR) 27.3 25.3 28.0 26.9 26.0(−1.4) 26.5(−0.4) 22.7(−4.2) 23.5(−3.4) AVG 18.2 17.4 18.3 18.0 15.5(−2.5) 15.1(−2.9) 13.6(−4.2) 13.4(−4.6) Table 3: Error rates of our models on 16 datasets against vanilla multi-task learning. ϕ (Books) means that we transfer the knowledge of the other 15 tasks to the target task Books. xt LSTM softmax Es (a) Single Channel xt LSTM LSTM softmax Es (b) Bi-Channel Figure 4: Two transfer strategies using a pretrained shared LSTM layer. Yellow box denotes shared feature extractor Es trained by 15 tasks. sarial training framework, we also make a comparison with vanilla multi-task learning method. Results and Analysis As shown in Table 3, we can see the shared layer from ASP-MTL achieves a better performance compared with SP-MTL. Besides, for the two kinds of transfer strategies, the Bi-Channel model performs better. The reason is that the task-specific layer introduced in the BiChannel model can store some private features. Overall, the results indicate that we can save the existing knowledge into a shared recurrent layer using adversarial multi-task learning, which is quite useful for a new task.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_18",
+      "title": "5.6 Visualization",
+      "level": 2,
+      "parent_id": "sec_12",
+      "key": "5_6_visualization",
+      "text": "To get an intuitive understanding of how the introduced orthogonality constraints worked compared with vanilla shared-private model, we design an experiment to examine the behaviors of neurons from private layer and shared layer. More concretely, we refer to htj as the activation of the j- neuron at time step t, where t ∈ {1, . . . , n} and j ∈ {1, . . . , d}. By visualizing the hidden state hj and analyzing the maximum activation, we can find what kinds of patterns the current neuron focuses on. Figure 5 illustrates this phenomenon. Here, we randomly sample a sentence from the validation set of Baby task and analyze the changes of the predicted sentiment score at different time steps, which are obtained by SP-MTL and our proposed model. Additionally, to get more insights into how neurons in shared layer behave diversely towards different input word, we visualize the activation of two typical neurons. For the positive sentence “Five stars, my baby can fall asleep soon in the stroller”, both models capture the informative pattern “Five stars” 6. However, SP-MTL makes a wrong prediction due to misunderstanding of the word “asleep”. By contrast, our model makes a correct prediction and the reason can be inferred from the activation of Figure 5-(b), where the shared layer of SP-MTL is so sensitive that many features related to other tasks are included, such as ”asleep”, which misleads the final prediction. This indicates the importance of introducing adversarial learning to prevent the shared layer from being contaminated by task-specific features. 6For this case, the vanilla LSTM also give a wrong answer due to ignoring the feature “Five stars”. 8 701 702 703 704 705 706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 786 787 788 789 790 791 792 793 794 795 796 797 798 799 Five stars , my baby can fall asleep soon in the stroller 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 SP-MTL Ours (a) Predicted Sentiment Score by Two Models (b) Behaviours of Neuron hs18 and h s 21 Figure 5: (a) The change of the predicted sentiment score at different time steps. Y-axis represents the sentiment score, while X-axis represents the input words in chronological order. The darker grey horizontal line gives a border between the positive and negative sentiments. (b) The blue heat map describes the behaviour of neuron hs18 from shared layer of SP-MTL, while the purple one is used to show the behaviour of neuron hs21, which belongs to the shared layer of our model. Model Shared Layer Task-Movie Task-Baby SP-MTL good, great bad, love, simple, cut, slow, cheap, infantile good, great, well-directed, pointless, cut, cheap, infantile love, bad, cute, safety, mild, broken simple ASP-MTL good, great, love, bad poor well-directed, pointless, cut, cheap, infantile cute, safety, mild, broken simple Table 4: Typical patterns captured by shared layer and task-specific layer of SP-MTL and ASP-MTL models on Movie and Baby tasks. We also list some typical patterns captured by neurons from shared layer and task-specific layer in Table 4, and we have observed that: 1) for SP-MTL, if some patterns are captured by taskspecific layer, they are likely to be placed into shared space. Clearly, suppose we have many tasks to be trained jointly, the shared layer bear much pressure and must sacrifice substantial amount of capacity to capture the patterns they actually do not need. Furthermore, some typical taskinvariant features also go into task-specific layer. 2) for ASP-MTL, we find the features captured by shared and task-specific layer have a small amount of intersection, which allows these two kinds of layers can work effectively.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_19",
+      "title": "6 Related Work",
+      "level": 1,
+      "parent_id": null,
+      "key": "6_related_work",
+      "text": "There are two threads of related work. One thread is multi-task learning with neural network. Neural networks based multi-task learning has been proven effective in many NLP problems (Collobert and Weston, 2008; Glorot et al., 2011; Liu et al., 2015, 2016). In most of these models, the lower layers are shared across all tasks, while top layers are task-specific. These work has potential limitation of just learning a shared space solely on sharing parameters, while our model introduce two strategies to learn the clear and non-redundant shared-private space. Another thread of work is adversarial network. Adversarial networks have recently surfaced as a general tool measure equivalence between distributions and it has proven to be effective in a variety of tasks. Ajakan et al. (2014); Bousmalis et al. (2016) applied adverarial training to domain adaptation, aiming at transferring the knowledge of one source domain to target domain. Park and Im (2016) proposed a novel approach for multimodal representation learning which uses adversarial back-propagation concept. Different from these models, our model aims to find task-invariant sharable information for multiple related tasks using adversarial training strategy. Moreover, we extend binary adversarial training to multi-class, which enable multiple tasks to be jointly trained.",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    },
+    {
+      "id": "sec_20",
+      "title": "7 Conclusion",
+      "level": 1,
+      "parent_id": null,
+      "key": "7_conclusion",
+      "text": "In this paper, we have proposed an adversarial multi-task learning framework, in which the taskspecific and task-invariant features are learned non-redundantly, therefore capturing the sharedprivate separation of different tasks. We have demonstrated the effectiveness of our approach by applying our model to 16 different text classification tasks. We also perform extensive qualitative analysis, deriving insights and indirectly explaining the quantitative improvements in the overall performance. 9 801 802 803 804 805 806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 886 887 888 889 890 891 892 893 894 895 896 897 898 899",
+      "start_offset": null,
+      "end_offset": null,
+      "start_page": null,
+      "end_page": null
+    }
+  ],
+  "references": [
+    {
+      "id": "ref_1",
+      "raw": "Hana Ajakan. Pascal Germain. Hugo Larochelle. François Laviolette. Mario Marchand.. Domain-adversarial neural networks. arXiv preprint arXiv:1412.4446 .. 2014",
+      "marker": null,
+      "authors": [
+        "Hana Ajakan",
+        "Pascal Germain",
+        "Hugo Larochelle",
+        "François Laviolette",
+        "Mario Marchand."
+      ],
+      "title": "Domain-adversarial neural networks",
+      "year": "2014",
+      "venue": "arXiv preprint arXiv:1412.4446 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_2",
+      "raw": "Shai Ben-David. John Blitzer. Koby Crammer. Alex Kulesza. Fernando Pereira. Jennifer Wortman Vaughan.. A theory of learning from different domains. Machine learning 79(1-2):151–175.. 2010",
+      "marker": null,
+      "authors": [
+        "Shai Ben-David",
+        "John Blitzer",
+        "Koby Crammer",
+        "Alex Kulesza",
+        "Fernando Pereira",
+        "Jennifer Wortman Vaughan."
+      ],
+      "title": "A theory of learning from different domains",
+      "year": "2010",
+      "venue": "Machine learning 79(1-2):151–175.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_3",
+      "raw": "Shai Ben-David. John Blitzer. Koby Crammer. Fernando Pereira. Analysis of representations for domain adaptation. Advances in neural information processing systems 19:137. 2007",
+      "marker": null,
+      "authors": [
+        "Shai Ben-David",
+        "John Blitzer",
+        "Koby Crammer",
+        "Fernando Pereira"
+      ],
+      "title": "Analysis of representations for domain adaptation. Advances in neural information processing systems 19:137",
+      "year": "2007",
+      "venue": null,
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_4",
+      "raw": "John Blitzer. Mark Dredze. Fernando Pereira. Biographies, bollywood, boom-boxes and blenders: Domain adaptation for sentiment classification. In ACL. 2007",
+      "marker": null,
+      "authors": [
+        "John Blitzer",
+        "Mark Dredze",
+        "Fernando Pereira"
+      ],
+      "title": "Biographies, bollywood, boom-boxes and blenders: Domain adaptation for sentiment classification",
+      "year": "2007",
+      "venue": "In ACL",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_5",
+      "raw": "Konstantinos Bousmalis. George Trigeorgis. Nathan Silberman. Dilip Krishnan. Dumitru Erhan.. Domain separation networks. Advances in Neural Information Processing Systems. pages 343– 351.. 2016",
+      "marker": null,
+      "authors": [
+        "Konstantinos Bousmalis",
+        "George Trigeorgis",
+        "Nathan Silberman",
+        "Dilip Krishnan",
+        "Dumitru Erhan."
+      ],
+      "title": "Domain separation networks",
+      "year": "2016",
+      "venue": "Advances in Neural Information Processing Systems. pages 343– 351.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_6",
+      "raw": "Xilun Chen. Yu Sun. Ben Athiwaratkun. Claire Cardie. Kilian Weinberger.. Adversarial deep averaging networks for cross-lingual sentiment classification. arXiv preprint arXiv:1606.01614 .. 2016",
+      "marker": null,
+      "authors": [
+        "Xilun Chen",
+        "Yu Sun",
+        "Ben Athiwaratkun",
+        "Claire Cardie",
+        "Kilian Weinberger."
+      ],
+      "title": "Adversarial deep averaging networks for cross-lingual sentiment classification",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1606.01614 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_7",
+      "raw": "Junyoung Chung. Caglar Gulcehre. KyungHyun Cho. Yoshua Bengio.. Empirical evaluation of gated recurrent neural networks on sequence modeling. arXiv preprint arXiv:1412.3555 .. 2014",
+      "marker": null,
+      "authors": [
+        "Junyoung Chung",
+        "Caglar Gulcehre",
+        "KyungHyun Cho",
+        "Yoshua Bengio."
+      ],
+      "title": "Empirical evaluation of gated recurrent neural networks on sequence modeling",
+      "year": "2014",
+      "venue": "arXiv preprint arXiv:1412.3555 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_8",
+      "raw": "Ronan Collobert. Jason Weston.. A unified architecture for natural language processing: Deep neural networks with multitask learning. Proceedings of ICML.. 2008",
+      "marker": null,
+      "authors": [
+        "Ronan Collobert",
+        "Jason Weston."
+      ],
+      "title": "A unified architecture for natural language processing: Deep neural networks with multitask learning",
+      "year": "2008",
+      "venue": "Proceedings of ICML.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_9",
+      "raw": "Ronan Collobert. Jason Weston. Léon Bottou. Michael Karlen. Koray Kavukcuoglu. Pavel Kuksa.. Natural language processing (almost) from scratch. The Journal of Machine Learning Research 12:2493–2537.. 2011",
+      "marker": null,
+      "authors": [
+        "Ronan Collobert",
+        "Jason Weston",
+        "Léon Bottou",
+        "Michael Karlen",
+        "Koray Kavukcuoglu",
+        "Pavel Kuksa."
+      ],
+      "title": "Natural language processing (almost) from scratch",
+      "year": "2011",
+      "venue": "The Journal of Machine Learning Research 12:2493–2537.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_10",
+      "raw": "Jeffrey L Elman.. Finding structure in time. Cognitive science 14(2):179–211.. 1990",
+      "marker": null,
+      "authors": [
+        "Jeffrey L Elman."
+      ],
+      "title": "Finding structure in time",
+      "year": "1990",
+      "venue": "Cognitive science 14(2):179–211.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_11",
+      "raw": "Yaroslav Ganin. Victor Lempitsky.. Unsupervised domain adaptation by backpropagation. Proceedings of the 32nd International Conference on Machine Learning (ICML-15). pages 1180–1189.. 2015",
+      "marker": null,
+      "authors": [
+        "Yaroslav Ganin",
+        "Victor Lempitsky."
+      ],
+      "title": "Unsupervised domain adaptation by backpropagation",
+      "year": "2015",
+      "venue": "Proceedings of the 32nd International Conference on Machine Learning (ICML-15). pages 1180–1189.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_12",
+      "raw": "Xavier Glorot. Antoine Bordes. Yoshua Bengio.. Domain adaptation for large-scale sentiment classification: A deep learning approach. Proceedings of the 28th International Conference on Machine Learning (ICML-11). pages 513–520.. 2011",
+      "marker": null,
+      "authors": [
+        "Xavier Glorot",
+        "Antoine Bordes",
+        "Yoshua Bengio."
+      ],
+      "title": "Domain adaptation for large-scale sentiment classification: A deep learning approach",
+      "year": "2011",
+      "venue": "Proceedings of the 28th International Conference on Machine Learning (ICML-11). pages 513–520.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_13",
+      "raw": "Ian Goodfellow. Jean Pouget-Abadie. Mehdi Mirza. Bing Xu. David Warde-Farley. Sherjil Ozair. Aaron Courville. Yoshua Bengio.. Generative adversarial nets. Advances in Neural Information Processing Systems. pages 2672–2680.. 2014",
+      "marker": null,
+      "authors": [
+        "Ian Goodfellow",
+        "Jean Pouget-Abadie",
+        "Mehdi Mirza",
+        "Bing Xu",
+        "David Warde-Farley",
+        "Sherjil Ozair",
+        "Aaron Courville",
+        "Yoshua Bengio."
+      ],
+      "title": "Generative adversarial nets",
+      "year": "2014",
+      "venue": "Advances in Neural Information Processing Systems. pages 2672–2680.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_14",
+      "raw": "Alex Graves.. Generating sequences with recurrent neural networks. arXiv preprint arXiv:1308.0850 .. 2013",
+      "marker": null,
+      "authors": [
+        "Alex Graves."
+      ],
+      "title": "Generating sequences with recurrent neural networks",
+      "year": "2013",
+      "venue": "arXiv preprint arXiv:1308.0850 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_15",
+      "raw": "Sepp Hochreiter. Jürgen Schmidhuber.. Long short-term memory. Neural computation 9(8):1735–1780.. 1997",
+      "marker": null,
+      "authors": [
+        "Sepp Hochreiter",
+        "Jürgen Schmidhuber."
+      ],
+      "title": "Long short-term memory",
+      "year": "1997",
+      "venue": "Neural computation 9(8):1735–1780.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_16",
+      "raw": "Yangqing Jia. Mathieu Salzmann. Trevor Darrell.. Factorized latent spaces with structured sparsity. Advances in Neural Information Processing Systems. pages 982–990.. 2010",
+      "marker": null,
+      "authors": [
+        "Yangqing Jia",
+        "Mathieu Salzmann",
+        "Trevor Darrell."
+      ],
+      "title": "Factorized latent spaces with structured sparsity",
+      "year": "2010",
+      "venue": "Advances in Neural Information Processing Systems. pages 982–990.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_17",
+      "raw": "Rafal Jozefowicz. Wojciech Zaremba. Ilya Sutskever.. An empirical exploration of recurrent network architectures. Proceedings of The 32nd International Conference on Machine Learning.. 2015",
+      "marker": null,
+      "authors": [
+        "Rafal Jozefowicz",
+        "Wojciech Zaremba",
+        "Ilya Sutskever."
+      ],
+      "title": "An empirical exploration of recurrent network architectures",
+      "year": "2015",
+      "venue": "Proceedings of The 32nd International Conference on Machine Learning.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_18",
+      "raw": "Nal Kalchbrenner. Edward Grefenstette. Phil Blunsom.. A convolutional neural network for modelling sentences. Proceedings of ACL.. 2014",
+      "marker": null,
+      "authors": [
+        "Nal Kalchbrenner",
+        "Edward Grefenstette",
+        "Phil Blunsom."
+      ],
+      "title": "A convolutional neural network for modelling sentences",
+      "year": "2014",
+      "venue": "Proceedings of ACL.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_19",
+      "raw": "Pengfei Liu. Xipeng Qiu. Xuanjing Huang.. Recurrent neural network for text classification with multi-task learning. Proceedings of International Joint Conference on Artificial Intelligence. https://arxiv.org/abs/1605.05101.. 2016",
+      "marker": null,
+      "authors": [
+        "Pengfei Liu",
+        "Xipeng Qiu",
+        "Xuanjing Huang."
+      ],
+      "title": "Recurrent neural network for text classification with multi-task learning",
+      "year": "2016",
+      "venue": "Proceedings of International Joint Conference on Artificial Intelligence. https://arxiv.org/abs/1605.05101.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_20",
+      "raw": "Xiaodong Liu. Jianfeng Gao. Xiaodong He. Li Deng. Kevin Duh. Ye-Yi Wang.. Representation learning using multi-task deep neural networks for semantic classification and information retrieval. NAACL.. 2015",
+      "marker": null,
+      "authors": [
+        "Xiaodong Liu",
+        "Jianfeng Gao",
+        "Xiaodong He",
+        "Li Deng",
+        "Kevin Duh",
+        "Ye-Yi Wang."
+      ],
+      "title": "Representation learning using multi-task deep neural networks for semantic classification and information retrieval",
+      "year": "2015",
+      "venue": "NAACL.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_21",
+      "raw": "Minh-Thang Luong. Quoc V Le. Ilya Sutskever. Oriol Vinyals. Lukasz Kaiser.. Multi-task sequence to sequence learning. arXiv preprint arXiv:1511.06114 .. 2015",
+      "marker": null,
+      "authors": [
+        "Minh-Thang Luong",
+        "Quoc V Le",
+        "Ilya Sutskever",
+        "Oriol Vinyals",
+        "Lukasz Kaiser."
+      ],
+      "title": "Multi-task sequence to sequence learning",
+      "year": "2015",
+      "venue": "arXiv preprint arXiv:1511.06114 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_22",
+      "raw": "Andrew L Maas. Raymond E Daly. Peter T Pham. Dan Huang. Andrew Y Ng. Christopher Potts.. Learning word vectors for sentiment analysis. Proceedings of the ACL. pages 142–150.. 2011",
+      "marker": null,
+      "authors": [
+        "Andrew L Maas",
+        "Raymond E Daly",
+        "Peter T Pham",
+        "Dan Huang",
+        "Andrew Y Ng",
+        "Christopher Potts."
+      ],
+      "title": "Learning word vectors for sentiment analysis",
+      "year": "2011",
+      "venue": "Proceedings of the ACL. pages 142–150.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_23",
+      "raw": "Ishan Misra. Abhinav Shrivastava. Abhinav Gupta. Martial Hebert.. Cross-stitch networks for multi-task learning. Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. pages 3994–4003.. 2016",
+      "marker": null,
+      "authors": [
+        "Ishan Misra",
+        "Abhinav Shrivastava",
+        "Abhinav Gupta",
+        "Martial Hebert."
+      ],
+      "title": "Cross-stitch networks for multi-task learning",
+      "year": "2016",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. pages 3994–4003.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_24",
+      "raw": "Bo Pang. Lillian Lee.. Seeing stars: Exploiting class relationships for sentiment categorization with respect to rating scales. Proceedings of the 43rd annual meeting on association for computational linguistics. Association for Computational. 2005",
+      "marker": null,
+      "authors": [
+        "Bo Pang",
+        "Lillian Lee."
+      ],
+      "title": "Seeing stars: Exploiting class relationships for sentiment categorization with respect to rating scales",
+      "year": "2005",
+      "venue": "Proceedings of the 43rd annual meeting on association for computational linguistics. Association for Computational",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_25",
+      "raw": "Gwangbeen Park. Woobin Im.. Image-text multi-modal representation learning by adversarial backpropagation. arXiv preprint arXiv:1612.08354 .. 2016",
+      "marker": null,
+      "authors": [
+        "Gwangbeen Park",
+        "Woobin Im."
+      ],
+      "title": "Image-text multi-modal representation learning by adversarial backpropagation",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1612.08354 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_26",
+      "raw": "Jeffrey Pennington. Richard Socher. Christopher D Manning.. Glove: Global vectors for word representation. Proceedings of the Empiricial Methods in Natural Language Processing (EMNLP 2014) 12:1532–1543.. 2014",
+      "marker": null,
+      "authors": [
+        "Jeffrey Pennington",
+        "Richard Socher",
+        "Christopher D Manning."
+      ],
+      "title": "Glove: Global vectors for word representation",
+      "year": "2014",
+      "venue": "Proceedings of the Empiricial Methods in Natural Language Processing (EMNLP 2014) 12:1532–1543.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_27",
+      "raw": "Mathieu Salzmann. Carl Henrik Ek. Raquel Urtasun. Trevor Darrell.. Factorized orthogonal latent spaces. AISTATS. pages 701–708.. 2010",
+      "marker": null,
+      "authors": [
+        "Mathieu Salzmann",
+        "Carl Henrik Ek",
+        "Raquel Urtasun",
+        "Trevor Darrell."
+      ],
+      "title": "Factorized orthogonal latent spaces",
+      "year": "2010",
+      "venue": "AISTATS. pages 701–708.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_28",
+      "raw": "Richard Socher. Alex Perelygin. Jean Y Wu. Jason Chuang. Christopher D Manning. Andrew Y Ng. Christopher Potts.. Recursive deep models for semantic compositionality over a sentiment treebank. Proceedings of EMNLP.. 2013",
+      "marker": null,
+      "authors": [
+        "Richard Socher",
+        "Alex Perelygin",
+        "Jean Y Wu",
+        "Jason Chuang",
+        "Christopher D Manning",
+        "Andrew Y Ng",
+        "Christopher Potts."
+      ],
+      "title": "Recursive deep models for semantic compositionality over a sentiment treebank",
+      "year": "2013",
+      "venue": "Proceedings of EMNLP.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_29",
+      "raw": "Ilya Sutskever. Oriol Vinyals. Quoc VV Le.. Sequence to sequence learning with neural networks. Advances in Neural Information Processing Systems. pages 3104–3112.. 2014",
+      "marker": null,
+      "authors": [
+        "Ilya Sutskever",
+        "Oriol Vinyals",
+        "Quoc VV Le."
+      ],
+      "title": "Sequence to sequence learning with neural networks",
+      "year": "2014",
+      "venue": "Advances in Neural Information Processing Systems. pages 3104–3112.",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_30",
+      "raw": "Yaniv Taigman. Adam Polyak. Lior Wolf.. Unsupervised cross-domain image generation. arXiv preprint arXiv:1611.02200 .. 2016",
+      "marker": null,
+      "authors": [
+        "Yaniv Taigman",
+        "Adam Polyak",
+        "Lior Wolf."
+      ],
+      "title": "Unsupervised cross-domain image generation",
+      "year": "2016",
+      "venue": "arXiv preprint arXiv:1611.02200 .",
+      "doi": null,
+      "arxiv_id": null
+    },
+    {
+      "id": "ref_31",
+      "raw": "Zhanpeng Zhang. Ping Luo. Chen Change Loy. Xiaoou Tang.. Facial landmark detection by deep multi-task learning. European Conference on Computer Vision. Springer, pages 94–108.. 2014",
+      "marker": null,
+      "authors": [
+        "Zhanpeng Zhang",
+        "Ping Luo",
+        "Chen Change Loy",
+        "Xiaoou Tang."
+      ],
+      "title": "Facial landmark detection by deep multi-task learning",
+      "year": "2014",
+      "venue": "European Conference on Computer Vision. Springer, pages 94–108.",
+      "doi": null,
+      "arxiv_id": null
+    }
+  ],
+  "citation_mentions": [
+    {
+      "reference_id": "ref_23",
+      "marker": null,
+      "sentence": "Recently, neuralbased models for multi-task learning have become very popular, ranging from computer vision (Misra et al., 2016; Zhang et al., 2014) to natural language processing (Collobert and Weston, 2008; Luong et al.",
+      "section_id": "sec_2",
+      "start_offset": 127,
+      "end_offset": 348
+    },
+    {
+      "reference_id": "ref_31",
+      "marker": null,
+      "sentence": "Recently, neuralbased models for multi-task learning have become very popular, ranging from computer vision (Misra et al., 2016; Zhang et al., 2014) to natural language processing (Collobert and Weston, 2008; Luong et al.",
+      "section_id": "sec_2",
+      "start_offset": 127,
+      "end_offset": 348
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": ", 2014) to natural language processing (Collobert and Weston, 2008; Luong et al., 2015), since they provide a convenient way of combining information frommultiple tasks.",
+      "section_id": "sec_2",
+      "start_offset": 268,
+      "end_offset": 437
+    },
+    {
+      "reference_id": "ref_21",
+      "marker": null,
+      "sentence": ", 2014) to natural language processing (Collobert and Weston, 2008; Luong et al., 2015), since they provide a convenient way of combining information frommultiple tasks.",
+      "section_id": "sec_2",
+      "start_offset": 268,
+      "end_offset": 437
+    },
+    {
+      "reference_id": "ref_29",
+      "marker": null,
+      "sentence": "There are many neural sentence models, which can be used for text modelling, involving recurrent neural networks (Sutskever et al., 2014; Chung et al., 2014), convolutional neural networks (Collobert et al.",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 206
+    },
+    {
+      "reference_id": "ref_7",
+      "marker": null,
+      "sentence": "There are many neural sentence models, which can be used for text modelling, involving recurrent neural networks (Sutskever et al., 2014; Chung et al., 2014), convolutional neural networks (Collobert et al.",
+      "section_id": "sec_3",
+      "start_offset": 0,
+      "end_offset": 206
+    },
+    {
+      "reference_id": "ref_9",
+      "marker": null,
+      "sentence": ", 2014), convolutional neural networks (Collobert et al., 2011; Kalchbrenner et al., 2014), and recursive neural networks (Socher et al.",
+      "section_id": "sec_3",
+      "start_offset": 150,
+      "end_offset": 286
+    },
+    {
+      "reference_id": "ref_18",
+      "marker": null,
+      "sentence": ", 2014), convolutional neural networks (Collobert et al., 2011; Kalchbrenner et al., 2014), and recursive neural networks (Socher et al.",
+      "section_id": "sec_3",
+      "start_offset": 150,
+      "end_offset": 286
+    },
+    {
+      "reference_id": "ref_28",
+      "marker": null,
+      "sentence": ", 2014), and recursive neural networks (Socher et al., 2013).",
+      "section_id": "sec_3",
+      "start_offset": 233,
+      "end_offset": 294
+    },
+    {
+      "reference_id": "ref_15",
+      "marker": null,
+      "sentence": "Long Short-term Memory Long short-term memory network (LSTM) (Hochreiter and Schmidhuber, 1997) is a type of recurrent neural network (RNN) (Elman, 1990), and specifically addresses the issue of learning long-term dependencies.",
+      "section_id": "sec_3",
+      "start_offset": 425,
+      "end_offset": 652
+    },
+    {
+      "reference_id": "ref_10",
+      "marker": null,
+      "sentence": "Long Short-term Memory Long short-term memory network (LSTM) (Hochreiter and Schmidhuber, 1997) is a type of recurrent neural network (RNN) (Elman, 1990), and specifically addresses the issue of learning long-term dependencies.",
+      "section_id": "sec_3",
+      "start_offset": 425,
+      "end_offset": 652
+    },
+    {
+      "reference_id": "ref_17",
+      "marker": null,
+      "sentence": "While there are numerous LSTM variants, here we use the LSTM architecture used by (Jozefowicz et al., 2015), which is similar to the architecture of (Graves, 2013) but without peep-hole connections.",
+      "section_id": "sec_3",
+      "start_offset": 653,
+      "end_offset": 851
+    },
+    {
+      "reference_id": "ref_14",
+      "marker": null,
+      "sentence": ", 2015), which is similar to the architecture of (Graves, 2013) but without peep-hole connections.",
+      "section_id": "sec_3",
+      "start_offset": 753,
+      "end_offset": 851
+    },
+    {
+      "reference_id": "ref_30",
+      "marker": null,
+      "sentence": "While originally proposed for generating random samples, adversarial network can be used as a general tool to measure equivalence between distributions (Taigman et al., 2016).",
+      "section_id": "sec_8",
+      "start_offset": 1141,
+      "end_offset": 1316
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "Formally, (Ajakan et al., 2014) linked the adversarial loss to the H-divergence between two distributions and successfully achieve unsupervised domain adaptation with adversarial network.",
+      "section_id": "sec_8",
+      "start_offset": 1317,
+      "end_offset": 1504
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Motivated by theory on domain adaptation (Ben-David et al., 2010, 2007; Bousmalis et al., 2016) that a transferable feature is one for which an algorithm cannot learn to identify the domain of origin of the input observation.",
+      "section_id": "sec_8",
+      "start_offset": 1505,
+      "end_offset": 1730
+    },
+    {
+      "reference_id": "ref_13",
+      "marker": null,
+      "sentence": "Inspired by adversarial networks (Goodfellow et al., 2014), we proposed an adversarial sharedprivate model for multi-task learning, in which a shared recurrent neural layer is working adversarially towards a learnable multi-layer perceptron, preventing it from making an accurate prediction about the types of tasks.",
+      "section_id": "sec_9",
+      "start_offset": 0,
+      "end_offset": 316
+    },
+    {
+      "reference_id": "ref_16",
+      "marker": null,
+      "sentence": "Motivated by recently work(Jia et al., 2010; Salzmann et al., 2010; Bousmalis et al., 2016)",
+      "section_id": "sec_10",
+      "start_offset": 153,
+      "end_offset": 244
+    },
+    {
+      "reference_id": "ref_27",
+      "marker": null,
+      "sentence": "Motivated by recently work(Jia et al., 2010; Salzmann et al., 2010; Bousmalis et al., 2016)",
+      "section_id": "sec_10",
+      "start_offset": 153,
+      "end_offset": 244
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "Motivated by recently work(Jia et al., 2010; Salzmann et al., 2010; Bousmalis et al., 2016)",
+      "section_id": "sec_10",
+      "start_offset": 153,
+      "end_offset": 244
+    },
+    {
+      "reference_id": "ref_5",
+      "marker": null,
+      "sentence": "After exploring many optional methods, we find below loss is optimal, which is used by Bousmalis et al. (2016) and achieve a better performance:",
+      "section_id": "sec_10",
+      "start_offset": 1645,
+      "end_offset": 1789
+    },
+    {
+      "reference_id": "ref_11",
+      "marker": null,
+      "sentence": "The networks are trained with backpropagation and this minimax optimization becomes possible via the use of a gradient reversal layer (Ganin and Lempitsky, 2015).",
+      "section_id": "sec_11",
+      "start_offset": 123,
+      "end_offset": 285
+    },
+    {
+      "reference_id": "ref_4",
+      "marker": null,
+      "sentence": "These datasets are collected based on the raw data 1 provided by (Blitzer et al., 2007).",
+      "section_id": "sec_13",
+      "start_offset": 319,
+      "end_offset": 407
+    },
+    {
+      "reference_id": "ref_22",
+      "marker": null,
+      "sentence": "The IMDB dataset4 consists of movie reviews with binary classes (Maas et al., 2011).",
+      "section_id": "sec_13",
+      "start_offset": 659,
+      "end_offset": 743
+    },
+    {
+      "reference_id": "ref_24",
+      "marker": null,
+      "sentence": "The MR dataset also consists of movie reviews from rotten tomato website with two classes 5(Pang and Lee, 2005).",
+      "section_id": "sec_13",
+      "start_offset": 824,
+      "end_offset": 936
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "• MT-CNN: This model is proposed by Collobert and Weston (2008) with convolutional layer, in which lookup-tables are shared partially while other layers are task-specific.",
+      "section_id": "sec_14",
+      "start_offset": 239,
+      "end_offset": 410
+    },
+    {
+      "reference_id": "ref_19",
+      "marker": null,
+      "sentence": "• MT-DNN: The model is proposed by Liu et al. (2015) with bag-of-words input and multi-layer perceptrons, in which a hidden layer is shared.",
+      "section_id": "sec_14",
+      "start_offset": 2869,
+      "end_offset": 3009
+    },
+    {
+      "reference_id": "ref_8",
+      "marker": null,
+      "sentence": "Neural networks based multi-task learning has been proven effective in many NLP problems (Collobert and Weston, 2008; Glorot et al., 2011; Liu et al., 2015, 2016).",
+      "section_id": "sec_19",
+      "start_offset": 94,
+      "end_offset": 257
+    },
+    {
+      "reference_id": "ref_12",
+      "marker": null,
+      "sentence": "Neural networks based multi-task learning has been proven effective in many NLP problems (Collobert and Weston, 2008; Glorot et al., 2011; Liu et al., 2015, 2016).",
+      "section_id": "sec_19",
+      "start_offset": 94,
+      "end_offset": 257
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "Ajakan et al. (2014); Bousmalis et al.",
+      "section_id": "sec_19",
+      "start_offset": 771,
+      "end_offset": 809
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "Ajakan et al. (2014); Bousmalis et al. (2016) applied adverarial training to domain adaptation, aiming at transferring the knowledge of one source domain to target domain.",
+      "section_id": "sec_19",
+      "start_offset": 771,
+      "end_offset": 942
+    },
+    {
+      "reference_id": "ref_1",
+      "marker": null,
+      "sentence": "Ajakan et al. (2014); Bousmalis et al. (2016) applied adverarial training to domain adaptation, aiming at transferring the knowledge of one source domain to target domain. Park and Im (2016) proposed a novel approach for multimodal representation learning which uses adversarial back-propagation concept.",
+      "section_id": "sec_19",
+      "start_offset": 771,
+      "end_offset": 1075
+    }
+  ],
+  "figures": [],
+  "hidden_text_findings": [],
+  "hidden_text_checked": false
+}

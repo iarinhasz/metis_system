@@ -159,6 +159,8 @@ conexões reais para verificar que o resolver não mistura versões das rubricas
 
 ## Etapa 2.7 — Questions iniciais e amostra rotulada
 
+**Situação (15/11/2026):** implementada em 13/11: o catálogo das 4 Questions, o `seed_questions`, o `bench_profiling` e a amostra de 30 artigos, com a primeira referência medida só com as regras locais (119/152 papéis). Faltam a rodada do profiler com LLM (o papel `fast` usa o Gemini, e as chaves já estão no `.env` da `dev`) e a revisão humana das rubricas e dos rótulos.
+
 **O que fazer**
 - A Question genérica + 2–3 áreas (proposta: Computação, Física/Quântica e Saúde; questão aberta Q4), curadas no admin.
 - Amostra rotulada: ~10 artigos por área, com o field certo e os papéis das seções, em `evals/data/`.

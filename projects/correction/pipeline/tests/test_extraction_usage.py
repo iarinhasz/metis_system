@@ -28,7 +28,7 @@ def article() -> ExtractedArticle:
         title="Sintético",
         authors=(),
         language="pt",
-        model="google/gemini-3.6-flash",
+        model="google/gemini-2.5-flash",
         sections=(
             ExtractedSection(
                 id="sec_1",
@@ -109,7 +109,7 @@ def test_e1_records_the_actual_run_through_the_sdk_and_injected_sink(
     assert call.stage == Stage.EXTRACTION and call.agent == "document_extractor"
     assert call.role == "vision" and call.model == ARTICLE_CONFIG.model
     assert (call.input_tokens, call.output_tokens, call.cached_tokens) == (20, 12, 4)
-    assert call.cost_usd == Decimal("0.00005730")
+    assert call.cost_usd == Decimal("0.00003492")
     assert len(call.prompt_version) == 64
     assert outcome.payload["reused"] is False
     assert str(Run.get_by_id(run.pk).extraction_id) == outcome.payload["extraction_id"]

@@ -32,14 +32,14 @@ Os riscos R1–R12 e as questões Q1–Q14 vêm do [desenho de outubro](../../20
 
 | # | Pergunta | Situação | Decidir antes de |
 |---|---|---|---|
-| Q1 | Quais modelos em cada papel? | **Parcialmente decidido (D14):** OpenAI e Google; A = GPT, B = Gemini, C = outro modelo de uma das duas; juiz cruzado. Na 1.3 (12/11), a equipe escolheu padrões de desenvolvimento substituíveis pelo ambiente, documentados em `docs/agents.md`. Os ids e a calibração de produção continuam abertos | 1.3 (papéis), 1.8 (`vision`), 3.1 (avaliadores e juízes) |
+| Q1 | Quais modelos em cada papel? | **Decidido (15/11):** só três modelos. `gpt-5.6-luna` para o avaliador A, o juiz da OpenAI e o meta-revisor; `gpt-5.4-nano` para o avaliador C; `gemini-2.5-flash` para o avaliador B, o juiz do Google, o adjudicador, `vision`, `fast` e o E1. Juiz cruzado mantido (D14). Detalhe em `docs/agents.md` | 1.3 (papéis), 1.8 (`vision`), 3.1 (avaliadores e juízes) |
 | Q2 | Orçamento por artigo | Aberta; custo real de avaliação ainda sem medição. `LLMCall` e painel 6.2 implementados; alerta opcional não bloqueia chamadas | 3.13 |
 | Q3 | Identificação do artigo entre versões | **Decidido:** `external_id` obrigatório | — |
 | Q4 | Curadoria e áreas iniciais | Catálogo 2.7 implementado: genérica + Computação, Física/Quântica e Medicina. São rascunhos; responsável e revisão especialista continuam pendentes | 2.7 |
 | Q5 | Idioma do relatório | Aberta; proposta: idioma do artigo, com opção na submissão | 3.11 |
 | Q6 | Aviso de relatório pronto | Aberta; polling no início | Depois do M3 |
-| Q7 | Retenção de dados (LGPD) | Aberta; recorte 6.4 revisou docs/metas, sem decidir prazos ou implementar limpeza/dry-run | Antes de qualquer uso real; 6.4 |
-| Q8 | Revisores humanos no admin | Aberta; proposta: grupo "revisores" | 4.9 |
+| Q7 | Retenção de dados (LGPD) | **Fora do escopo (15/11):** o projeto não vai a uso real; sem prazos nem comando de limpeza | — |
+| Q8 | Revisores humanos no admin | **Decidido (15/11):** grupo `revisores`, que vê o run e os achados e decide no gate (`attempts.decide_run`), sem alterar o resto | 4.9 |
 | Q9 | Limites de upload e de páginas | Upload 50 MiB por padrão; sem limite de páginas nem timeout separado do pypdf. Tasks têm soft/hard limit 25/30 min. Medição de páginas/carga pendente | 6.3 |
 | Q10 | Volume esperado por dia | Aberta | Antes de dimensionar workers |
 | Q11 | Metas numéricas | Referências locais: citações E1 244/263 recall, 244/264 precisão; regras E2 119/152, F1 micro 0,7885. [Condições e pisos de comparação](../../../docs/status_and_metrics.md#metas-revistas-por-marco). LLM, notas/juiz e integridade ainda sem número | 4.10, 5.6, 6.1 |

@@ -153,6 +153,7 @@ def build_report(
     section_roles: dict[str, tuple[SectionRole, ...]],
     versions: ReportVersions,
     warnings: tuple[str, ...] = (),
+    integrity: IntegritySummary | None = None,
 ) -> ReportContent:
     sections = []
     unresolved = tuple(
@@ -202,7 +203,7 @@ def build_report(
         weaknesses=meta.weaknesses,
         suggestions=meta.suggestions,
         evidence=reference_catalog(reviews, aggregation),
-        integrity=IntegritySummary(),
+        integrity=integrity or IntegritySummary(),
         figures=tuple(
             FigureIssues(
                 id=figure.id, label=figure.label, page=figure.page, issues=figure.description.issues
@@ -213,7 +214,13 @@ def build_report(
         versions=versions,
         unresolved=unresolved,
         warnings=tuple(
-            dict.fromkeys((*warnings, "integrity_not_checked", "recommendation_bands_uncalibrated"))
+            dict.fromkeys(
+                (
+                    *warnings,
+                    *(() if integrity else ("integrity_not_checked",)),
+                    "recommendation_bands_uncalibrated",
+                )
+            )
         ),
     )
 

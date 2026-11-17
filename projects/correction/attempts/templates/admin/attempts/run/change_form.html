@@ -4,6 +4,7 @@
 <style>
   .run-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
   .run-actions .button { padding: 8px 14px; }
+  .run-note { width: 100%; max-width: 640px; margin-top: 10px; }
 </style>
 {% endblock %}
 
@@ -25,6 +26,10 @@
       <h2>{{ run_panel.title }}</h2>
       <div class="form-row">
         <p>{{ run_panel.help }}</p>
+        {% if run_panel.note %}
+          <label for="run-note">Nota da decisão (vai para o histórico do run)</label>
+          <textarea id="run-note" name="note" form="run-actions" rows="3" maxlength="2000" class="run-note"></textarea>
+        {% endif %}
         <div class="run-actions">
           {% for value, label, style in run_panel.actions %}
             <button type="submit" form="run-actions" name="action" value="{{ value }}" class="button {{ style }}">{{ label }}</button>
@@ -33,5 +38,6 @@
       </div>
     </fieldset>
   {% endif %}
+  {% include "admin/integrity/findings_panel.html" %}
   {{ block.super }}
 {% endblock %}

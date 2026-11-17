@@ -3,14 +3,16 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from projects.correction.agents.schemas.criteria import Criterion
 from projects.correction.agents.schemas.section_roles import SectionRole
 
 type Text = Annotated[str, Field(min_length=1, max_length=20000)]
 type Confidence = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
-type Grade = Literal[1, 2, 3, 4, 5]
+# Inteiro com limites, e não Literal[1..5]: o SDK do Gemini só aceita enum de texto e recusa o
+# schema inteiro ("Input should be a valid string") onde aparece uma nota.
+type Grade = Annotated[int, Field(ge=1, le=5)]
 
 
 class Output(BaseModel):
@@ -116,7 +118,9 @@ class RevisionResponse(ItemRef):
     action: Literal["accept", "rebut"]
     justification: Text
     evidence: tuple[Evidence, ...] = ()
-    replacement: dict[str, JsonValue] | None = None
+    # Tipado, e não um dict livre: a saída estruturada da OpenAI recusa um objeto sem schema
+    # (400 "schema must have a 'type' key"). O tipo certo para o alvo é conferido na revisão.
+    replacement: Observation | CrossCheckResult | CriterionSynthesis | None = None
 
 
 class ReviewState(Output):

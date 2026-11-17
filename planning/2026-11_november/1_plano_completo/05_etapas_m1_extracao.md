@@ -11,6 +11,8 @@ Caminhos relativos a `projects/correction/`.
 
 ## Etapa 1.1 — Contrato do ExtractedDocument e fixtures do PeerRead
 
+**Situação:** implementada em 16/11/2026. O contrato `ExtractedDocument` e o `render_for_llm()` são da trilha de Avaliação; a Plataforma gerou as 12 fixtures reais (ACL 2017) em `extractor/tests/fixtures/peerread/`, com a atribuição (CC BY 4.0), e o `test_peerread_fixture_files.py` carrega e renderiza cada uma.
+
 **O que fazer**
 - **`extraction/contract.py`:** o `ExtractedDocument` em pydantic congelado, com os campos de [Extração](../../../docs/extraction.md#o-extracteddocument) e um `contract_version`.
   - Seções com hierarquia (`level`, `parent_id`), offsets e páginas.
@@ -161,6 +163,17 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 
 ## Etapa 1.7 — Texto oculto
 
+**Decidido (15/11):** feita pela Plataforma, para fechar a trilha (a Integridade ainda não tem código), com o pdfminer.six no lugar do pdfplumber: é o motor de leitura do pdfplumber, só Python, sem o Pillow e o pypdfium2. O resultado fica no `ExtractedArticle` (`hidden_text`); e no `ExtractedDocument` (`hidden_text_findings`, 1.11).
+
+**Situação:** implementada em 15/11/2026.
+
+**Como ficou** (detalhe em [Extração](../../../docs/extraction.md#passo-a-passo), passo 12):
+- `extractor/hidden_text.py`: marca o trecho em branco (cinza, RGB ou CMYK), em fonte abaixo de 2 pt ou fora da página; trechos seguidos viram um; `instruction` quando parece instrução a um revisor de IA, em inglês ou português. Um trecho precisa de uma palavra com 3 letras ou mais.
+- `ExtractedArticle.hidden_text[]` (`page`, `text`, `reasons`) e `hidden_text_checked`; `DocumentConfig.scan_hidden_text`; o evento do E1 conta `hidden_passages` e `hidden_instructions`.
+- Fica de fora: texto atrás de imagem e o modo de renderização invisível (usado pelo OCR dos PDFs escaneados).
+
+**Teste:** `test_hidden_text.py` (branco em cinza, RGB e CMYK; 1 pt; fora da página; instrução em inglês e em português; linhas seguidas; cinza legível, glifo solto e letras espaçadas de figura não contam; PDF ilegível → não verificado) e `test_service.py` (o artigo traz o achado; a busca desliga pela config). Nos 12 PDFs reais da calibração, nenhum achado; com instruções plantadas no ICLR 410, o achado sai com `color`, `size` e `instruction`.
+
 **O que fazer**
 - `extraction/hidden_text.py` com pdfplumber: cor ≈ fundo, fonte < ~2 pt, fora da página, sob imagens, e padrões de instrução dirigida a revisores IA.
 - Saída: `hidden_text_findings[]` no contrato.
@@ -245,6 +258,8 @@ Um ponto único para modelos, chaves, retries, custo e fakes. Sem ele, cada est�
 ---
 
 ## Etapa 1.11 — `ExtractedDocument` a partir da extração
+
+**Situação:** implementada em 16/11/2026. O adaptador `ExtractedArticle` → `ExtractedDocument` é da trilha de Avaliação; a Plataforma acrescentou ao contrato `hidden_text_findings[]` e `hidden_text_checked`, preenchidos a partir da 1.7. O texto oculto fica fora do `render_for_llm()`: vai para a integridade, nunca para os avaliadores (teste em `test_document_adapter.py`).
 
 **Decidido (12/11):** sai da 1.9 e fica na trilha Plataforma e Extração. Espera o contrato da 1.1 (Avaliação) e o texto oculto da 1.7 (Integridade).
 
